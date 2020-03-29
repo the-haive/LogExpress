@@ -4,9 +4,9 @@ using Avalonia.Markup.Xaml;
 
 namespace LogExpress.Views
 {
-    public class MainWindow : Window
+    public class AddItemView : UserControl
     {
-        public MainWindow()
+        public AddItemView()
         {
             InitializeComponent();
         }

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Tail": {
+      "commandName": "Project",
+      "commandLineArgs": "-b 100KB .\\Console.deps.json"
+    }
+  }
+}
