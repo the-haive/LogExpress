@@ -2,7 +2,7 @@
   "profiles": {
     "Tail": {
       "commandName": "Project",
-      "commandLineArgs": "-b 100KB .\\Console.deps.json"
+      "commandLineArgs": "-pn 0 D:\\src\\FLEXY\\LogExpress\\src\\Tail\\TailOptions.cs"
     }
   }
 }

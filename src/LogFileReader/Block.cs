@@ -9,7 +9,7 @@ namespace Flexy
 {
     internal class Block
     {
-        private static readonly ILogger Logger = Log.ForContext<LogFile>();
+        private static readonly ILogger Logger = Log.ForContext<LogFileReader>();
 
         public byte[] Data;
 

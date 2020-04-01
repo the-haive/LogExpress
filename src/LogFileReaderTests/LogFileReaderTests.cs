@@ -1,16 +1,13 @@
 ﻿using NUnit.Framework;
-using Flexy;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 using Serilog;
 
 namespace Flexy.Tests
 {
     [TestFixture()]
-    public class LogFileTests
+    public class LogFileReaderTests
     {
         private string _testFilePath;
 
@@ -26,7 +23,7 @@ namespace Flexy.Tests
                 .MinimumLevel.Verbose()
                 .WriteTo.Console(outputTemplate: outputTemplate)
                 .WriteTo.File(
-                    @"D:\src\FLEXY\LogExpress\src\LogFileTests\LogFileTests.log", 
+                    @"D:\src\FLEXY\LogExpress\src\LogFileReaderTests\LogFileReaderTests.log", 
                     rollingInterval: RollingInterval.Day,
                     outputTemplate: outputTemplate
                 )
@@ -101,7 +98,7 @@ namespace Flexy.Tests
                 Log.Logger.Information("Time to create testFile with {NumLines} lines -> Size: {Size:n0} bytes> {Duration}", numLinesToGenerate, fileLength, stopwatch.Elapsed);
 
                 stopwatch = Stopwatch.StartNew();
-                var logFile = new LogFile(_testFilePath, blockSize: blockSize);
+                var logFile = new LogFileReader(_testFilePath, blockSize: blockSize);
                 var startPos = (long) (fromPosPct / 100.0 * fileLength);
                 var lines = logFile.GetLines(startPos);
                 stopwatch.Stop();

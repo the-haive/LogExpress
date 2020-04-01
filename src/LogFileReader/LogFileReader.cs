@@ -5,9 +5,9 @@ using Serilog;
 
 namespace Flexy
 {
-    public class LogFile
+    public class LogFileReader
     {
-        private static readonly ILogger Logger = Log.ForContext<LogFile>();
+        private static readonly ILogger Logger = Log.ForContext<LogFileReader>();
         private const int DefaultUpdateFreqMs = 500;
         private const int DefaultBlockSize = 500_000;
         private readonly int _blockSize;
@@ -18,14 +18,14 @@ namespace Flexy
         public FileInfo FileInfo { get; private set; }
         public int UpdateFreqMs { get; set; }
 
-        public LogFile(string filePath, int updateFreqMs = DefaultUpdateFreqMs, int blockSize = DefaultBlockSize)
+        public LogFileReader(string filePath, int updateFreqMs = DefaultUpdateFreqMs, int blockSize = DefaultBlockSize)
         {
             if (!File.Exists(filePath)) throw new ArgumentException($"The file '{filePath}' could not be found.");
             _filePath = filePath;
             _blockSize = blockSize < 0 ? DefaultBlockSize : blockSize;
             UpdateFreqMs = updateFreqMs < 0 ? DefaultUpdateFreqMs : updateFreqMs;
             CheckFileInfo();
-            Logger.Information("Created LogFile for '{FilePath}': FileSize={FileSize}, BlockSize={BlockSize}, UpdateFreqMs={UpdateFreqMs}. LastModified={LastModified}", _filePath, FileInfo.Length, _blockSize, UpdateFreqMs, FileInfo.LastWriteTimeUtc);
+            Logger.Information("Created LogFileReader for '{FilePath}': FileSize={FileSize}, BlockSize={BlockSize}, UpdateFreqMs={UpdateFreqMs}. LastModified={LastModified}", _filePath, FileInfo.Length, _blockSize, UpdateFreqMs, FileInfo.LastWriteTimeUtc);
         }
 
         public IReadOnlyList<Line> GetLines(long startPos)

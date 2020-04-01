@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\LogFile\LogFile.csproj" />
+    <ProjectReference Include="..\LogFileReader\LogFileReader.csproj" />
   </ItemGroup>
 
 </Project>
