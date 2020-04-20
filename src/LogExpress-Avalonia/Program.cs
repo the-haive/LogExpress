@@ -1,9 +1,7 @@
 ﻿using Avalonia;
-using Avalonia.Logging;
 using Avalonia.Logging.Serilog;
 using Avalonia.ReactiveUI;
 using Serilog;
-using Serilog.Filters;
 
 namespace LogExpress
 {
@@ -14,11 +12,22 @@ namespace LogExpress
         // yet and stuff might break.
         public static void Main(string[] args)
         {
-            SerilogLogger.Initialize(new LoggerConfiguration()
-                .Filter.ByIncludingOnly(Matching.WithProperty("Area", LogArea.Layout))
+            const string outputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff}|{Level:u3}|{ThreadId}:{SourceContext}({FilePath})|{Message:lj}{NewLine}{Exception}";
+            //SerilogLogger.Initialize(new LoggerConfiguration()
+            Log.Logger = new LoggerConfiguration()
+                //.Filter.ByIncludingOnly(Matching.WithProperty("Area", LogArea.Layout))
+                .Enrich.FromLogContext()
+                .Enrich.WithThreadId()
                 .MinimumLevel.Verbose()
-                .WriteTo.Trace(outputTemplate: "{Area}: {Message}")
-                .CreateLogger());
+                //.WriteTo.Trace(outputTemplate: "{Area}: {Message}")
+                //.WriteTo.Console(outputTemplate: outputTemplate)
+                .WriteTo.File(
+                    @"D:\src\Haive\LogExpress\src\LogExpress.log", 
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: outputTemplate
+                )
+                .CreateLogger();
+
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);
         }

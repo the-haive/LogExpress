@@ -1,14 +1,13 @@
-using Avalonia;
-using Avalonia.Controls;
+﻿using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
 namespace LogExpress.Views
 {
-    public class TodoListView : UserControl
+    public class FilterView : UserControl
     {
-        public TodoListView()
+        public FilterView()
         {
-            InitializeComponent();
+            this.InitializeComponent();
         }
 
         private void InitializeComponent()

@@ -1,0 +1,79 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:progRing="clr-namespace:AvaloniaProgressRing;assembly=AvaloniaProgressRing"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="LogExpress.Views.LogView">
+  <UserControl.Styles>
+    <Style Selector="TextBox">
+      <Setter Property="IsReadOnly" Value="True" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="#Files > TextBox">
+      <Setter Property="Margin" Value="0 0 10 0" />
+    </Style>
+  </UserControl.Styles>
+  <DockPanel>
+    <Expander ExpandDirection="Down" IsExpanded="{Binding !IsAnalyzed}" Header="List of scoped log-files (click to toggle)" DockPanel.Dock="Top">
+      <ListBox Name="Files" Items="{Binding LogFiles}">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Orientation="Horizontal">
+              <TextBox Text="{Binding CreationTimeUtc}"/>
+              <TextBox Text="{Binding Length}"/>
+              <TextBox Text="{Binding Name}"/>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Expander>
+    <DockPanel HorizontalAlignment="Stretch">
+      <StackPanel Orientation="Vertical" IsVisible="{Binding !IsAnalyzed}">
+        <progRing:ProgressRing 
+          Width="70" 
+          Height="70"
+          IsActive="{Binding !IsAnalyzed}"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Foreground="Green"
+          Margin="20 20 20 0"
+          />
+        <TextBlock Text="Analyzing log-file(s)..." Margin="20 0 20 20"/>
+      </StackPanel>
+      <!--ScrollViewer
+        IsVisible="{Binding IsAnalyzed}"
+        VerticalScrollBarVisibility="Visible" 
+        HorizontalScrollBarVisibility="Auto">
+        <ItemsRepeater Items="{Binding Lines}">
+          <ItemsRepeater.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal">
+                <TextBox Text="{Binding GlobalPosition}" Width="40" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="0 0 10 0"/>
+                <TextBox Text="{Binding LogFileIndex}" Width="20" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="0 0 10 0"/>
+                <TextBox Text="{Binding LineNum}" Width="40" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="0 0 10 0"/>
+                <TextBox Text="{Binding Content}" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+      </ScrollViewer-->
+      <ListBox 
+        Name="Lines"
+        IsVisible="{Binding IsAnalyzed}"
+        VirtualizationMode="Simple"
+        Items="{Binding Lines}"
+        SelectedItem="{Binding LineSelected}"
+        >
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <StackPanel Orientation="Horizontal">
+              <TextBox Text="{Binding Content}" Padding="0" FontFamily="Consolas"/>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+  </DockPanel>
+</UserControl>

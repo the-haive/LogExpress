@@ -1,14 +1,13 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 
 namespace LogExpress.Views
 {
-    public class AddItemView : UserControl
+    public class OpenLogSetView : UserControl
     {
-        public AddItemView()
+        public OpenLogSetView()
         {
-            InitializeComponent();
+            this.InitializeComponent();
         }
 
         private void InitializeComponent()

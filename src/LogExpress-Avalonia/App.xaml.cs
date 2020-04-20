@@ -1,14 +1,15 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using LogExpress.Services;
-using LogExpress.ViewModels;
 using LogExpress.Views;
 
 namespace LogExpress
 {
     public class App : Application
     {
+        public static Window MainWindow;
+
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
@@ -20,11 +21,7 @@ namespace LogExpress
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                var db = new Database();
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = new MainWindowViewModel(db),
-                };
+                MainWindow = desktop.MainWindow = new MainWindow();
             }
 
         }

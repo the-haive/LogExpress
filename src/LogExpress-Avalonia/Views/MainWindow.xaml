@@ -1,14 +1,66 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:LogExpress.Views"
-        xmlns:vm="clr-namespace:LogExpress.ViewModels;assembly=LogExpress"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="300"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
         x:Class="LogExpress.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
-        Width="200" Height="300"
+        Width="1024" Height="768"
         Title="LogExpress"
-        Content="{Binding Content}"
         >
+  <Window.Styles>
+    <!-- NB! The theme must be the first style. Used in MainWindowViewModel for switching theme. -->  
+    <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseLight.xaml"/>
+    <Style Selector="Separator.hor_line">
+      <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
+      <Setter Property="Height" Value="1"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>       
+    <Style Selector="#InfoBar > Separator">
+      <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
+      <Setter Property="Width" Value="1"/>
+      <Setter Property="Margin" Value="5 3 10 3"/>
+    </Style>
+    <Style Selector="StackPanel#InfoBar TextBox">
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="IsReadOnly" Value="True"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Margin" Value="0 0 5 0"/>
+    </Style>            
+    <Style Selector="StackPanel#InfoBar TextBlock">
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Margin" Value="0 0 5 0"/>
+    </Style>            
+  </Window.Styles>
+  <DockPanel>
+    <Menu DockPanel.Dock="Top">
+      <MenuItem Header="Open _Logfile" Command="{Binding OpenLogFileCommand}"/>
+      <MenuItem Header="Open Log _Set" Command="{Binding OpenLogSetCommand}"/>
+      <MenuItem Header="_Exit" Command="{Binding ExitCommand}"/>
+      <Separator/>
+      <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" />
+      <CheckBox Name="DarkTheme" Command="{Binding ToggleDarkThemeCommand}" Content="Dark Theme"/>
+    </Menu>
+    <Separator DockPanel.Dock="Top" Classes="hor_line"/>
+    <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="10 0 5 0">
+      <TextBox Text="{Binding InfoBarScope}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarTotalSize}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarSelectedLine}" />
+    </StackPanel>
+    <Grid ColumnDefinitions="*">
+      <Grid.RowDefinitions>
+          <RowDefinition />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="{Binding FilterPaneHeight, Mode=TwoWay}" />
+      </Grid.RowDefinitions>
+      <views:LogView Name="LogPanel" Grid.Row="0" IsVisible="{Binding $parent[2].DataContext.ShowLogPanel}" DataContext="{Binding LogViewModel}"/>
+      <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="{DynamicResource ThemeForegroundLowBrush}" IsVisible="{Binding $parent[2].DataContext.ShowFilterPanel}" />
+      <views:FilterView Name="FilterPanel" Grid.Row="2" IsVisible="{Binding $parent[2].DataContext.ShowFilterPanel}" DataContext="{Binding FilterViewModel}"/>
+    </Grid>
+  </DockPanel>
 </Window>
