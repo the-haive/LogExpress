@@ -305,11 +305,12 @@ namespace LogExpress.ViewModels
                 .ToProperty(this, x => x.InfoBarSelectedLine);
 
             // Setup subscription for showing the total size in the InfoBar
-            _infoBarTotalSize = _logViewModel.WhenAnyValue(x => x.HumanTotalSize)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Select(x => $"Size: {x}")
+            _infoBarTotalSize = _logViewModel.WhenAnyValue(x => x.HumanTotalSize, x => x.Lines.Count)
+                .Where(x => !string.IsNullOrWhiteSpace(x.Item1))
+                .Select(x => $"Size: {x.Item1} Lines: {x.Item2}")
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.InfoBarTotalSize);
+
         }
     }
 }

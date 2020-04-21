@@ -120,13 +120,18 @@ namespace LogExpress.Services
             var iterator = logFiles.GetEnumerator();
             try
             {
-                var lines = new List<LineItem>();
+                //var lines = new List<LineItem>();
                 long position = 0;
                 var logFileIndex = 0;
                 while (iterator.MoveNext())
                 {
                     var fileInfo = iterator.Current;
-                    lines.AddRange(await ReadFileLinePositions(fileInfo, logFileIndex, position));
+                    // TODO: Optimize to add to the actual list within ReadFileLinePositions
+                    //lines.AddRange(await ReadFileLinePositions(fileInfo, logFileIndex, position));
+                    _lines.Edit(async editLines =>
+                    {
+                        await ReadFileLinePositions(fileInfo, logFileIndex, position, editLines);
+                    });
                     Debug.Assert(fileInfo != null, nameof(fileInfo) + " != null");
                     position += fileInfo.Length;
                     logFileIndex++;
@@ -134,7 +139,8 @@ namespace LogExpress.Services
 
                 iterator.Dispose();
 
-                _lines.AddOrUpdate(lines);
+                // TODO: Optimize to add to the actual list within ReadFileLinePositions
+                //_lines.AddOrUpdate(lines);
                 IsAnalyzed = true;
             }
             catch (Exception ex)
@@ -154,25 +160,27 @@ namespace LogExpress.Services
         /// <returns></returns>
         public IObservable<IChangeSet<LineItem, long>> Connect() => _lines.Connect();
 
-        private static async Task<List<LineItem>> ReadFileLinePositions(FileInfo file, int fileIndex, long position)
+        private static async Task ReadFileLinePositions(FileInfo file, int fileIndex, long position, ISourceUpdater<LineItem, long> lines)
         {
-            if (file.Length <= 0) return new List<LineItem>();
+            if (file.Length <= 0) return; //new List<LineItem>();
             await using var fileStream =
                 new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream);
 
-            return FindNewLinePositions();
+            FindNewLinePositions();
 
-            List<LineItem> FindNewLinePositions()
+            // Local method to encapsulate the Span, which is not allowed in async code
+            void FindNewLinePositions()
             {
-                var linePositions = new List<LineItem>();
+                //var linePositions = new List<LineItem>();
                 var buffer = new Span<char>(new char[1]);
 
                 var stopwatch = Stopwatch.StartNew();
                 // All files with length > 0 implicitly starts with a line
                 var lineNum = 1;
                 var filePosition = 0;
-                linePositions.Add(new LineItem {LogFileIndex = fileIndex, Position = filePosition, LineNum = lineNum});
+                //linePositions.Add(new LineItem {LogFileIndex = fileIndex, Position = filePosition, LineNum = lineNum});
+                lines.AddOrUpdate(new LineItem {LogFileIndex = fileIndex, Position = filePosition, LineNum = lineNum});
                 while (!reader.EndOfStream)
                 {
                     var numRead = reader.Read(buffer);
@@ -180,7 +188,8 @@ namespace LogExpress.Services
                     filePosition++;
                     if (buffer[0] == '\n')
                     {
-                        linePositions.Add(new LineItem {LogFileIndex = fileIndex, Position = filePosition, LineNum = ++lineNum});
+                        //linePositions.Add(new LineItem {LogFileIndex = fileIndex, Position = filePosition, LineNum = ++lineNum});
+                        lines.AddOrUpdate(new LineItem {LogFileIndex = fileIndex, Position = filePosition, LineNum = ++lineNum});
                     }
                 }
 
@@ -188,7 +197,7 @@ namespace LogExpress.Services
                 var duration = stopwatch.Elapsed;
                 Logger.Debug("Time spent on analyzing lines in {LogFile}: {Duration}", file.FullName, duration);
 
-                return linePositions;
+                //return linePositions;
             }
         }
 
