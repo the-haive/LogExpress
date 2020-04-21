@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -103,12 +103,20 @@ namespace LogExpress.ViewModels
 
         private void ToggleDarkThemeExecute()
         {
-            // NB! Depends on the first Window.Styles StyleInclude to be the theme
-            if (_mainWindow.DarkThemeControl.IsChecked != null && _mainWindow.DarkThemeControl.IsChecked.Value) 
-                _mainWindow.Styles[0] = _darkTheme;
-            else 
-                _mainWindow.Styles[0] = _lightTheme;
-            Logger.Verbose("Switched theme to {Theme}", _mainWindow.DarkThemeControl.IsChecked != null && _mainWindow.DarkThemeControl.IsChecked.Value ? "Dark":"Light");
+            // NB! Depends on the first Window.Styles StyleInclude to be the theme, and the third App.Styles to be the theme
+            if (_mainWindow.DarkThemeControl.IsChecked != null && _mainWindow.DarkThemeControl.IsChecked.Value)
+            {
+                _mainWindow.Styles[0] = Application.Current.Styles[2] = _darkTheme;
+            }
+            else
+            {
+                _mainWindow.Styles[0] = Application.Current.Styles[2] = _lightTheme;
+            }
+
+            Logger.Verbose("Switched theme to {Theme}",
+                _mainWindow.DarkThemeControl.IsChecked != null && _mainWindow.DarkThemeControl.IsChecked.Value
+                    ? "Dark"
+                    : "Light");
         }
 
         private void ToggleFilterPaneExecute()
