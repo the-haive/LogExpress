@@ -19,12 +19,12 @@ namespace LogExpress.Views
         {
             AvaloniaXamlLoader.Load(this);
 
-            DarkThemeControl = this.FindControl<CheckBox>("DarkTheme");
+            ThemeControl = this.FindControl<CheckBox>("Theme");
 
             this.DataContext = new MainWindowViewModel(this);
 
         }
 
-        public CheckBox DarkThemeControl { get; set; }
+        public CheckBox ThemeControl { get; set; }
     }
 }

@@ -37,12 +37,12 @@
   </Window.Styles>
   <DockPanel>
     <Menu DockPanel.Dock="Top">
-      <MenuItem Header="Open _Logfile" Command="{Binding OpenLogFileCommand}"/>
-      <MenuItem Header="Open Log _Set" Command="{Binding OpenLogSetCommand}"/>
+      <MenuItem Header="Open _File" Command="{Binding OpenLogFileCommand}"/>
+      <MenuItem Header="Open _Set" Command="{Binding OpenLogSetCommand}"/>
       <MenuItem Header="_Exit" Command="{Binding ExitCommand}"/>
       <Separator/>
       <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" />
-      <CheckBox Name="DarkTheme" Command="{Binding ToggleDarkThemeCommand}" Content="Dark Theme"/>
+      <CheckBox Name="Theme" Command="{Binding ToggleThemeCommand}" Content="Dark Theme"/>
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
     <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="10 0 5 0">

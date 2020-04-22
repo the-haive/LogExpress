@@ -1,10 +1,29 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-             x:Class="LogExpress.Views.OpenLogSetView">
-  <DockPanel>
-    <TextBlock>OpenLogSetView</TextBlock>
-  </DockPanel>
-</UserControl>
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Width="450"
+        Height="200"
+        WindowStartupLocation="CenterOwner"
+        x:Class="LogExpress.Views.OpenLogSetView"
+        Title="Open Log Set">
+  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="20">
+    <DockPanel>
+      <TextBlock Text="Log folder:" VerticalAlignment="Center" Margin="5" DockPanel.Dock="Left"/>
+      <Button Name="SelectFolder" Content="Select folder" Margin="5" Padding="5" DockPanel.Dock="Right" Command="{Binding SelectFolderCommand}"/>
+      <TextBox Name="Folder" Watermark="Folder" Margin="5" Padding="5" Text="{Binding Folder}"/>
+    </DockPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+      <TextBlock Text="Log pattern:" VerticalAlignment="Center" Margin="5"/>
+      <TextBox Name="Pattern" Watermark="*.log" Margin="5" Padding="5" Text="{Binding Pattern}"/>
+      <Separator Width="20"/>
+      <CheckBox Content="_Recursive:" Margin="5" Padding="5" HorizontalAlignment="Center" IsChecked="{Binding Recursive}"/>
+    </StackPanel>
+    <Separator Height="20"/>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+      <Button Content="Open" Margin="5" Padding="5" HorizontalAlignment="Center" Command="{Binding OpenCommand}"/>
+      <Separator Width="20"/>
+      <Button Content="Cancel"  Margin="5" Padding="5"  HorizontalAlignment="Center" Command="{Binding CancelCommand}"/>
+    </StackPanel>
+  </StackPanel>
+</Window>

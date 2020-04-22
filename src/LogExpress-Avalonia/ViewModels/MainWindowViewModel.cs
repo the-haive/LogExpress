@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -27,9 +27,9 @@ namespace LogExpress.ViewModels
 
         private readonly IDisposable _logViewSubscription;
 
-        private string _baseDir = string.Empty;
+        private string _folder = string.Empty;
 
-        private string _filter = string.Empty;
+        private string _pattern = string.Empty;
 
         private FilterViewModel _filterViewModel;
 
@@ -68,12 +68,12 @@ namespace LogExpress.ViewModels
             OpenLogFileCommand = ReactiveCommand.Create(OpenLogFileExecute);
             OpenLogSetCommand = ReactiveCommand.Create(OpenLogSetExecute);
             ToggleFilterPaneCommand = ReactiveCommand.Create(ToggleFilterPaneExecute);
-            ToggleDarkThemeCommand = ReactiveCommand.Create(ToggleDarkThemeExecute);
+            ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplication);
 
             // Reactive trigger for when the basedir, filters and recursive has changed
             _logViewSubscription = this
-                .WhenAnyValue(x => x.BaseDir, x => x.Filter, x => x.Recursive)
+                .WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive)
                 .Where(((string baseDir, string filter, bool recursive) observerTuple) =>
                 {
                     var (baseDir, filter, _) = observerTuple;
@@ -101,10 +101,10 @@ namespace LogExpress.ViewModels
             }
         }
 
-        private void ToggleDarkThemeExecute()
+        private void ToggleThemeExecute()
         {
             // NB! Depends on the first Window.Styles StyleInclude to be the theme, and the third App.Styles to be the theme
-            if (_mainWindow.DarkThemeControl.IsChecked != null && _mainWindow.DarkThemeControl.IsChecked.Value)
+            if (_mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value)
             {
                 _mainWindow.Styles[0] = Application.Current.Styles[2] = _darkTheme;
             }
@@ -113,8 +113,8 @@ namespace LogExpress.ViewModels
                 _mainWindow.Styles[0] = Application.Current.Styles[2] = _lightTheme;
             }
 
-            Logger.Verbose("Switched theme to {Theme}",
-                _mainWindow.DarkThemeControl.IsChecked != null && _mainWindow.DarkThemeControl.IsChecked.Value
+            Logger.Verbose("Switched theme to '{Theme}'",
+                _mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value
                     ? "Dark"
                     : "Light");
         }
@@ -134,18 +134,18 @@ namespace LogExpress.ViewModels
             ShowFilterPanel = !ShowFilterPanel;
         }
 
-        public string BaseDir
+        public string Folder
         {
-            get => _baseDir;
-            set => this.RaiseAndSetIfChanged(ref _baseDir, value);
+            get => _folder;
+            set => this.RaiseAndSetIfChanged(ref _folder, value);
         }
 
         public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
-        public string Filter
+        public string Pattern
         {
-            get => _filter;
-            set => this.RaiseAndSetIfChanged(ref _filter, value);
+            get => _pattern;
+            set => this.RaiseAndSetIfChanged(ref _pattern, value);
         }
 
         public FilterViewModel FilterViewModel
@@ -173,7 +173,7 @@ namespace LogExpress.ViewModels
         public ReactiveCommand<Unit, Unit> OpenLogFileCommand { get; }
 
         public ReactiveCommand<Unit, Unit> OpenLogSetCommand { get; }
-        public ReactiveCommand<Unit, Unit> ToggleDarkThemeCommand { get; }
+        public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
         public ReactiveCommand<Unit, Unit> ToggleFilterPaneCommand { get; }
 
         public bool Recursive
@@ -219,7 +219,7 @@ namespace LogExpress.ViewModels
                 Title = "Select folder",
                 AllowMultiple = false,
                 InitialFileName = "*.log",
-                Directory = BaseDir
+                Directory = Folder
             };
 
             var file = await openFileDialog.ShowAsync(App.MainWindow);
@@ -234,22 +234,24 @@ namespace LogExpress.ViewModels
             Logger.Information("Selected file {LogFile}", fileName);
             var fileInfo = new FileInfo(fileName);
             var dirInfo = Directory.GetParent(fileInfo.FullName);
-            BaseDir = dirInfo.FullName;
-            Filter = fileInfo.Name;
+            Folder = dirInfo.FullName;
+            Pattern = fileInfo.Name;
             Recursive = false;
         }
 
         private async void OpenLogSetExecute()
         {
-            Logger.Verbose("OpenLogSet clicked: Not implemented yet");
-            /*
-                        var openFolderDialog = new OpenFolderDialog()
-                        {
-                            Title = "Select folder",
-                        };
-                        var folder = await openFolderDialog.ShowAsync(App.MainWindow);
-            */
+
+            var openLogSetView = new OpenLogSetView();
+            openLogSetView.DataContext = new OpenLogSetViewModel(openLogSetView, _folder, _pattern, _recursive);
+            var result = await openLogSetView.ShowDialog<OpenLogSetViewModel.Result>(App.MainWindow);
+            if (result == null) return;
+
+            Folder = result.Folder;
+            Pattern = result.Pattern;
+            Recursive = result.Recursive;
         }
+
 
         private void ParseArgs(List<string> args)
         {
@@ -263,20 +265,13 @@ namespace LogExpress.ViewModels
                 if (File.Exists(args[0]))
                 {
                     var dirInfo = Directory.GetParent(args[0]);
-                    BaseDir = dirInfo.FullName;
-                    Filter = new FileInfo(args[0]).Name;
+                    Folder = dirInfo.FullName;
+                    Pattern = new FileInfo(args[0]).Name;
                 }
                 else
                 {
-                    if (Directory.Exists(args[0]))
-                    {
-                        var dirInfo = new DirectoryInfo(args[0]);
-                        BaseDir = dirInfo.FullName;
-                        if (args.Count > 1)
-                            Filter = args[1];
-                        else
-                            Filter = "*.log";
-                    }
+                    Folder = args[0];
+                    Pattern = args.Count > 1 ? args[1] : "*.log";
                 }
             }
         }
@@ -294,7 +289,7 @@ namespace LogExpress.ViewModels
             LogViewModel = new LogViewModel(baseDir, filter, recursive);
 
             // Set the InfoBar property for the scope selected
-            InfoBarScope = $"Scope: {BaseDir}{Path.DirectorySeparatorChar}{Filter} {(Recursive ? "(recursive)" : "")}";
+            InfoBarScope = $"Scope: {Folder}{Path.DirectorySeparatorChar}{Pattern} {(Recursive ? "(recursive)" : "")}";
 
             // Setup subscription for showing the selected line info in the InfoBar
             _infoBarSelectedLine = _logViewModel.WhenAnyValue(x => x.LineSelected, x => x.LogFiles)
