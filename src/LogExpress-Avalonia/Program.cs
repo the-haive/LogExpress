@@ -1,4 +1,5 @@
 ﻿using Avalonia;
+using Avalonia.Dialogs;
 using Avalonia.Logging.Serilog;
 using Avalonia.ReactiveUI;
 using Serilog;
@@ -36,6 +37,7 @@ namespace LogExpress
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
+                .UseManagedSystemDialogs()
                 .LogToDebug()
                 .UseReactiveUI();
     }

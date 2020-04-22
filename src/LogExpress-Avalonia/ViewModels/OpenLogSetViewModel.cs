@@ -1,12 +1,7 @@
 ﻿using LogExpress.Views;
 using ReactiveUI;
-using System;
-using System.IO;
-using System.Linq;
 using System.Reactive;
-using System.Reactive.Linq;
 using Avalonia.Controls;
-using Tmds.DBus;
 
 namespace LogExpress.ViewModels
 {
@@ -61,7 +56,7 @@ namespace LogExpress.ViewModels
             View.Close();
         }
 
-        private async void OpenExecute()
+        private void OpenExecute()
         {
             View.Close(new Result {Folder = Folder, Pattern = Pattern, Recursive = Recursive});
         }
@@ -71,7 +66,7 @@ namespace LogExpress.ViewModels
             var openFolderDialog = new OpenFolderDialog()
             {
                 Directory = Folder,
-                Title = "Select log-folder"
+                Title = "Select log-folder",
             };
 
             var result = await openFolderDialog.ShowAsync(this.View);

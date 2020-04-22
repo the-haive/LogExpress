@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:progRing="clr-namespace:AvaloniaProgressRing;assembly=AvaloniaProgressRing"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="LogExpress.Views.LogView">
   <UserControl.Styles>
     <Style Selector="TextBox">
@@ -16,14 +16,14 @@
     </Style>
   </UserControl.Styles>
   <DockPanel>
-    <Expander ExpandDirection="Down" IsExpanded="{Binding !IsAnalyzed}" Header="List of scoped log-files (click to toggle)" DockPanel.Dock="Top">
-      <ListBox Name="Files" Items="{Binding LogFiles}">
+    <Expander ExpandDirection="Down" IsExpanded="{Binding !IsAnalyzed}" Header="{Binding LogListHeader}" DockPanel.Dock="Top">
+      <ListBox Name="Files" Items="{Binding LogFiles}" HorizontalAlignment="Stretch">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <StackPanel Orientation="Horizontal">
               <TextBox Text="{Binding CreationTimeUtc}"/>
-              <TextBox Text="{Binding Length}"/>
-              <TextBox Text="{Binding Name}"/>
+              <TextBox Text="{Binding Length}" Width="80" TextAlignment="Right"/>
+              <TextBox Text="{Binding FullName}"/>
             </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>

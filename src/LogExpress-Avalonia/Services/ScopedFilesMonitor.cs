@@ -98,7 +98,7 @@ namespace LogExpress.Services
                         _basePath, filter, _includeSubdirectories);
                     SetupWatcher(filter);
 
-                    var alreadyExistingFiles = Directory.GetFiles(_basePath, filter);
+                    var alreadyExistingFiles = Directory.GetFiles(_basePath, filter, new EnumerationOptions{ RecurseSubdirectories = _includeSubdirectories});
                     foreach (var file in alreadyExistingFiles)
                     {
                         var fi = new FileInfo(file);

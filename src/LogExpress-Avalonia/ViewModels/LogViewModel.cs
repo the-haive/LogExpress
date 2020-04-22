@@ -26,6 +26,7 @@ namespace LogExpress.ViewModels
         private LineItem _lineSelected;
 
         public readonly VirtualLogFile VirtualLogFile;
+        private ObservableAsPropertyHelper<string> _logListHeader;
 
         public LogViewModel(string basePath, string filter, in bool recursive)
         {
@@ -55,6 +56,12 @@ namespace LogExpress.ViewModels
             _isAnalyzed = VirtualLogFile.WhenAnyValue(x => x.IsAnalyzed)
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.IsAnalyzed);
+
+            _logListHeader = this.WhenAnyValue(x => x.LogFiles.Count)
+                .DistinctUntilChanged()
+                .Select(x => $"{x} scoped log-files (click to toggle)")
+                .ToProperty(this, x => x.LogListHeader);
+
         }
 
         ~LogViewModel()
@@ -94,6 +101,7 @@ namespace LogExpress.ViewModels
 
         public long TotalSize => _totalSize.Value;
         public string HumanTotalSize => _humanTotalSize.Value;
+        public string LogListHeader => _logListHeader.Value;
 
         public LineItem LineSelected
         {
