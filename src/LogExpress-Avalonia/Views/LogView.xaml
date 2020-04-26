@@ -14,6 +14,15 @@
     <Style Selector="#Files > TextBox">
       <Setter Property="Margin" Value="0 0 10 0" />
     </Style>
+    <Style Selector="#Lines > ListBoxItem">
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="Panel#Selector">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Panel#Selector:pointerover">
+      <Setter Property="Background" Value="Gray"/>
+    </Style>
   </UserControl.Styles>
   <DockPanel>
     <Expander ExpandDirection="Down" IsExpanded="{Binding !IsAnalyzed}" Header="{Binding LogListHeader}" DockPanel.Dock="Top">
@@ -21,7 +30,7 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <StackPanel Orientation="Horizontal">
-              <TextBox Text="{Binding CreationTimeUtc}"/>
+              <TextBox Text="{Binding CreationTime}"/>
               <TextBox Text="{Binding Length}" Width="80" TextAlignment="Right"/>
               <TextBox Text="{Binding FullName}"/>
             </StackPanel>
@@ -29,8 +38,8 @@
         </ListBox.ItemTemplate>
       </ListBox>
     </Expander>
-    <DockPanel HorizontalAlignment="Stretch">
-      <StackPanel Orientation="Vertical" IsVisible="{Binding !IsAnalyzed}">
+    <DockPanel LastChildFill="True">
+      <StackPanel Orientation="Vertical" IsVisible="{Binding !IsAnalyzed}" DockPanel.Dock="Left">
         <progRing:ProgressRing 
           Width="70" 
           Height="70"
@@ -59,18 +68,28 @@
           </ItemsRepeater.ItemTemplate>
         </ItemsRepeater>
       </ScrollViewer-->
+      <Grid 
+        Name="LogLevelMaps" 
+        Margin="0 20"
+        Width="10" 
+        DockPanel.Dock="Right"/>
       <ListBox 
         Name="Lines"
         IsVisible="{Binding IsAnalyzed}"
         VirtualizationMode="Simple"
         Items="{Binding Lines}"
         SelectedItem="{Binding LineSelected}"
+        SelectionMode="Multiple"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch"
         >
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <StackPanel Orientation="Horizontal">
-              <TextBox Text="{Binding Content}" Padding="0" FontFamily="Consolas"/>
-            </StackPanel>
+            <DockPanel HorizontalAlignment="Stretch">
+              <TextBox DockPanel.Dock="Left" Text="{Binding LineNumber}" IsReadOnly="True" TextAlignment="Right" Padding="0" Margin="0 0 5 0" FontFamily="Consolas" Width="60" ToolTip.Tip="{Binding LogFile.FullName}"/>
+              <Panel Name="Selector" Width="15"/>
+              <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="5 0 0 0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" SelectionStart="{Binding $parent[ListBox].DataContext.SelectionStart}"/>
+            </DockPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>

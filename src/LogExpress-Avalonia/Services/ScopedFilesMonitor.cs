@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
 using DynamicData;
+using LogExpress.Models;
+using ReactiveUI;
 using Serilog;
 
 namespace LogExpress.Services
@@ -21,14 +24,16 @@ namespace LogExpress.Services
         private readonly Dictionary<string, FileSystemWatcher> _watchers = new Dictionary<string, FileSystemWatcher>();
         private FileSystemWatcher _parentWatcher;
         
-        private readonly SourceCache<FileInfo, string> _files = new SourceCache<FileInfo, string>(fi => fi.FullName);
+        //private readonly SourceCache<FileInfo, string> _files = new SourceCache<FileInfo, string>(fi => fi.FullName);
+        private readonly SourceCache<ScopedFile, ulong> _files = new SourceCache<ScopedFile, ulong>(LineItem.GetCreationTimeTicks);
 
         /// <summary>
         ///     Used to connect to a stream of changes in the list of scoped files.
         ///     (Using ReactiveUI DynamicData pattern)
         /// </summary>
         /// <returns>An observable ChangeSet of FileInfo</returns>
-        public IObservable<IChangeSet<FileInfo, string>> Connect() => _files.Connect();
+        //public IObservable<IChangeSet<FileInfo, string>> Connect() => _files.Connect().ObserveOn(RxApp.MainThreadScheduler);
+        public IObservable<IChangeSet<ScopedFile, ulong>> Connect() => _files.Connect().ObserveOn(RxApp.MainThreadScheduler);
 
         /// <summary>
         ///     Creates an instance that monitors the filesystem for files that matches the basePath and filter.
@@ -101,7 +106,7 @@ namespace LogExpress.Services
                     var alreadyExistingFiles = Directory.GetFiles(_basePath, filter, new EnumerationOptions{ RecurseSubdirectories = _includeSubdirectories});
                     foreach (var file in alreadyExistingFiles)
                     {
-                        var fi = new FileInfo(file);
+                        var fi = new ScopedFile(file);
                         _files.AddOrUpdate(fi);
                         Logger.Debug("Added file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
                     }
@@ -126,18 +131,20 @@ namespace LogExpress.Services
         {
             Logger.Debug("File ChangeType={ChangeType}: Name={Name} FullPath={FullPath}", e.ChangeType,
                 e.Name, e.FullPath);
-            var fi = new FileInfo(e.FullPath);
+            var fi = new ScopedFile(e.FullPath);
             _files.AddOrUpdate(fi);
             Logger.Debug("Added file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
         }
 
         private void OnFileDeleted(object _, FileSystemEventArgs e)
         {
-            Logger.Debug("File {ChangeType}: Name={Name} FullPath={FullPath}", e.ChangeType,
-                e.Name, e.FullPath);
-            var fi = new FileInfo(e.FullPath);
-            _files.Remove(fi.FullName);
+            Logger.Debug("File {ChangeType}: Name={Name} FullPath={FullPath}", e.ChangeType, e.Name, e.FullPath);
+            // TODO: Figure out how to handle deletes, as the fileInfo is needed to do the lookup in the Files list
+/*
+            var fi = new ScopedFile(e.FullPath);
+            _files.Remove(LineItem.GetCreationTimeTicks(fi));
             Logger.Debug("Removed file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
+*/            
         }
 
         private void OnParentFolderCreated(object sender, FileSystemEventArgs e)

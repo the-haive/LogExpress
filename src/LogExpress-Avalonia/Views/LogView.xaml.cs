@@ -13,11 +13,17 @@ namespace LogExpress.Views
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+
+            //LogLevelMapImageControl = this.FindControl<Image>("LogLevelMap");
+            LogLevelMaps = this.FindControl<Grid>("LogLevelMaps");
+
 /*            
             ListBoxControl = this.FindControl<ListBox>("Lines");
             ListBoxVirtualizingStackPanel = ListBoxControl.FindVisualChildOfType<VirtualizingStackPanel>();
 */
         }
+
+        public Grid LogLevelMaps { get; set; }
 
         //public VirtualizingStackPanel ListBoxVirtualizingStackPanel { get; set; }
 

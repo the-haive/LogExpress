@@ -10,6 +10,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml.Styling;
 using LogExpress.Models;
+using LogExpress.Services;
 using LogExpress.Views;
 using ReactiveUI;
 using Serilog;
@@ -58,12 +59,15 @@ namespace LogExpress.ViewModels
         private readonly StyleInclude _darkTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog")) 
         { 
             Source = new Uri("resm:Avalonia.Themes.Default.Accents.BaseDark.xaml?assembly=Avalonia.Themes.Default") 
-        }; 
+        };
+
+        private LogView _logView;
 
         public MainWindowViewModel(MainWindow mainWindow)
         {
             Logger.Information("Application started");
             _mainWindow = mainWindow;
+            _logView = _mainWindow.LogView;
 
             OpenLogFileCommand = ReactiveCommand.Create(OpenLogFileExecute);
             OpenLogSetCommand = ReactiveCommand.Create(OpenLogSetExecute);
@@ -286,23 +290,24 @@ namespace LogExpress.ViewModels
             var (baseDir, filter, recursive) = observerTuple;
             Logger.Debug("Scope changed, setting up the LogView DataContext");
             ShowLogPanel = true;
-            LogViewModel = new LogViewModel(baseDir, filter, recursive);
+            LogViewModel = new LogViewModel(baseDir, filter, recursive, _logView);
 
             // Set the InfoBar property for the scope selected
             InfoBarScope = $"Scope: {Folder}{Path.DirectorySeparatorChar}{Pattern} {(Recursive ? "(recursive)" : "")}";
 
             // Setup subscription for showing the selected line info in the InfoBar
             _infoBarSelectedLine = _logViewModel.WhenAnyValue(x => x.LineSelected, x => x.LogFiles)
-                .Where(((LineItem lineSelected, ReadOnlyObservableCollection<FileInfo> logFiles) tuple) =>
+                .Where(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
                 {
                     var (lineSelected, logFiles) = tuple;
                     return lineSelected != null && logFiles != null && logFiles.Any();
                 })
-                .Select(((LineItem lineSelected, ReadOnlyObservableCollection<FileInfo> logFiles) tuple) =>
+                .Select(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
                 {
-                    var (lineSelected, logFiles) = tuple;
-                    var fileInfo = logFiles.ElementAt(lineSelected.LogFileIndex);
-                    return $"Selected: [Line {lineSelected.LineNum:n0}] [Pos {lineSelected.Position:n0}] [File {fileInfo.Name}] [Path {fileInfo.DirectoryName}]";
+                    var (lineSelected, _) = tuple;
+                    var fileInfo = lineSelected.LogFile;
+                    if (fileInfo == null) return "Error finding the file based on selected line";
+                    return $"Selected: [Line {lineSelected.LineNumber:n0}] [Pos {lineSelected.Position:n0}] [File {fileInfo.Name}] [Path {fileInfo.DirectoryName}] [LogLevel {lineSelected.LogLevel}]";
                 })
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.InfoBarSelectedLine);

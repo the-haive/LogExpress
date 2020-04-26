@@ -20,11 +20,13 @@ namespace LogExpress.Views
             AvaloniaXamlLoader.Load(this);
 
             ThemeControl = this.FindControl<CheckBox>("Theme");
+            LogView = this.FindControl<LogView>("LogPanel");
 
             this.DataContext = new MainWindowViewModel(this);
 
         }
 
         public CheckBox ThemeControl { get; set; }
+        public LogView LogView { get; set; }
     }
 }
