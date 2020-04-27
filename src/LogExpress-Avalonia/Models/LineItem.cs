@@ -5,11 +5,24 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using Avalonia.Media;
 using LogExpress.Services;
 using Serilog;
 
 namespace LogExpress.Models
 {
+    public static class LogColors {
+        public static readonly Brush OrangeRedOpaque = new SolidColorBrush(Colors.OrangeRed, 0.5);
+        public static readonly Brush SalmonOpaque = new SolidColorBrush(Colors.Salmon, 0.5);
+        public static readonly Brush GoldOpaque = new SolidColorBrush(Colors.Gold, 0.5);
+        public static readonly Brush BeigeOpaque = new SolidColorBrush(Colors.Beige, 0.5);
+        public static readonly Brush WheatOpaque = new SolidColorBrush(Colors.Wheat, 0.5);
+        public static readonly Brush TanOpaque = new SolidColorBrush(Colors.Tan, 0.5);
+        public static readonly Brush FloralWhiteOpaque = new SolidColorBrush(Colors.FloralWhite, 0.5);
+        public static readonly Brush Black = new SolidColorBrush(Colors.Black);
+        public static readonly Brush Gray = new SolidColorBrush(Colors.Gray);
+    }
+
     /// <summary>
     ///     When scanning the log-files we generate a LineItem for each line we find in all the scoped log-files.
     ///     The LineItem instances are kept in a reactive dynamic data collection.
@@ -142,18 +155,18 @@ namespace LogExpress.Models
         ///   Error" foregroundColor="Red"/>
         ///   Fatal" foregroundColor="Red" backgroundColor="White"/>
         /// </summary>
-        public string LogFgColor {
+        public Brush LogFgColor {
             get
             {
                 return LogLevel switch
                 {
-                    6 => "GhostWhite",
-                    5 => "Black",
-                    4 => "Black",
-                    3 => "Black",
-                    2 => "Black",
-                    1 => "Black",
-                    _ => "Gray"
+                    6 => LogColors.Black,
+                    5 => LogColors.Black,
+                    4 => LogColors.Black,
+                    3 => LogColors.Black,
+                    2 => LogColors.Black,
+                    1 => LogColors.Black,
+                    _ => LogColors.Gray
                 };
             }
         }
@@ -167,18 +180,18 @@ namespace LogExpress.Models
         ///   Error" foregroundColor="Red"/>
         ///   Fatal" foregroundColor="Red" backgroundColor="White"/>
         /// </summary>
-        public string LogBgColor {
+        public Brush LogBgColor {
             get
             {
                 return LogLevel switch
                 {
-                    6 => "Red",
-                    5 => "Salmon",
-                    4 => "Gold",
-                    3 => "Beige",
-                    2 => "Wheat",
-                    1 => "Tan",
-                    _ => "Transparent"
+                    6 => LogColors.OrangeRedOpaque,
+                    5 => LogColors.SalmonOpaque,
+                    4 => LogColors.GoldOpaque,
+                    3 => LogColors.BeigeOpaque,
+                    2 => LogColors.WheatOpaque,
+                    1 => LogColors.TanOpaque,
+                    _ => LogColors.FloralWhiteOpaque
                 };
             }
         }

@@ -23,10 +23,120 @@
     <Style Selector="Panel#Selector:pointerover">
       <Setter Property="Background" Value="Gray"/>
     </Style>
+    <Style Selector="#Toolbar StackPanel.spinner">
+      <Setter Property="Width" Value="40"/>
+    </Style>
+    <Style Selector="#Toolbar StackPanel.group">
+      <Setter Property="Orientation" Value="Horizontal"/>
+      <Setter Property="Margin" Value="10 0 0 0"/>
+    </Style>
+    <Style Selector="#Toolbar StackPanel.spinner>TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="FontSize" Value="10"/>
+    </Style>
+    <Style Selector="#Toolbar StackPanel.spinner>RepeatButton">
+      <Setter Property="FontSize" Value="8"/>
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="#Toolbar > StackPanel#FileBrowser StackPanel.spinner">
+      <Setter Property="Width" Value="70"/>
+    </Style>
   </UserControl.Styles>
   <DockPanel>
-    <Expander ExpandDirection="Down" IsExpanded="{Binding !IsAnalyzed}" Header="{Binding LogListHeader}" DockPanel.Dock="Top">
-      <ListBox Name="Files" Items="{Binding LogFiles}" HorizontalAlignment="Stretch">
+    <StackPanel 
+      Name="Toolbar"
+      Orientation="Horizontal"
+      IsVisible="{Binding IsAnalyzed}"
+      DockPanel.Dock="Top">
+      <StackPanel Name="FileBrowser" Classes="group">
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding FileBrowserUpCommand}"/>
+          <TextBlock>File</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding FileBrowserDownCommand}"/>
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Name="TimeBrowser" Classes="group">
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding TimeBrowserYearUpCommand}"/>
+          <TextBlock>Year</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding TimeBrowserYearDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding TimeBrowserMonthUpCommand}"/>
+          <TextBlock>Month</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding TimeBrowserMonthDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding TimeBrowserDayUpCommand}"/>
+          <TextBlock>Day</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding TimeBrowserDayDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding TimeBrowserHourUpCommand}"/>
+          <TextBlock>Hour</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding TimeBrowserHourDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding TimeBrowserMinUpCommand}"/>
+          <TextBlock>Minute</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding TimeBrowserMinDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding TimeBrowserSecUpCommand}"/>
+          <TextBlock>Second</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding TimeBrowserSecDownCommand}"/>
+        </StackPanel>
+      </StackPanel>
+      <StackPanel Name="LevelBrowser" Classes="group">
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding LevelBrowserTraceUpCommand}"/>
+          <TextBlock>Trace</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding LevelBrowserTraceDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding LevelBrowserDebugUpCommand}"/>
+          <TextBlock>Debug</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding LevelBrowserDebugDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding LevelBrowserInfoUpCommand}"/>
+          <TextBlock>Info</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding LevelBrowserInfoDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding LevelBrowserWarnUpCommand}"/>
+          <TextBlock>Warn</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding LevelBrowserWarnDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding LevelBrowserErrorUpCommand}"/>
+          <TextBlock>Error</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding LevelBrowserErrorDownCommand}"/>
+        </StackPanel>
+        <StackPanel Orientation="Vertical" Classes="spinner">
+          <RepeatButton Content="▲" Command="{Binding LevelBrowserFatalUpCommand}"/>
+          <TextBlock>Fatal</TextBlock>
+          <RepeatButton Content="▼" Command="{Binding LevelBrowserFatalDownCommand}"/>
+        </StackPanel>
+      </StackPanel>
+      <Button Width="80" Command="{Binding CopyCommand}" Margin="10 0 0 0">
+        <TextBlock 
+          HorizontalAlignment="Stretch" 
+          TextAlignment="Center" 
+          TextWrapping="Wrap"
+          FontSize="10"
+          >Copy selected line(s)</TextBlock>
+      </Button>
+      <CheckBox Content="Tail" Command="{Binding TailCommand}" Margin="10 0 0 0"/>
+    </StackPanel>
+    <Expander 
+      ExpandDirection="Down" 
+      Header="{Binding LogListHeader}"
+      DockPanel.Dock="Top">
+      <ListBox 
+        Name="Files" 
+        Items="{Binding LogFiles}" 
+        HorizontalAlignment="Stretch">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <StackPanel Orientation="Horizontal">
@@ -39,7 +149,7 @@
       </ListBox>
     </Expander>
     <DockPanel LastChildFill="True">
-      <StackPanel Orientation="Vertical" IsVisible="{Binding !IsAnalyzed}" DockPanel.Dock="Left">
+      <StackPanel Orientation="Vertical" IsVisible="{Binding !IsAnalyzed}">
         <progRing:ProgressRing 
           Width="70" 
           Height="70"
@@ -51,27 +161,11 @@
           />
         <TextBlock Text="Analyzing log-file(s)..." Margin="20 0 20 20"/>
       </StackPanel>
-      <!--ScrollViewer
-        IsVisible="{Binding IsAnalyzed}"
-        VerticalScrollBarVisibility="Visible" 
-        HorizontalScrollBarVisibility="Auto">
-        <ItemsRepeater Items="{Binding Lines}">
-          <ItemsRepeater.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Orientation="Horizontal">
-                <TextBox Text="{Binding GlobalPosition}" Width="40" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="0 0 10 0"/>
-                <TextBox Text="{Binding LogFileIndex}" Width="20" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="0 0 10 0"/>
-                <TextBox Text="{Binding LineNum}" Width="40" IsReadOnly="True" BorderThickness="0" Background="Transparent" Margin="0 0 10 0"/>
-                <TextBox Text="{Binding Content}" IsReadOnly="True" BorderThickness="0" Background="Transparent"/>
-              </StackPanel>
-            </DataTemplate>
-          </ItemsRepeater.ItemTemplate>
-        </ItemsRepeater>
-      </ScrollViewer-->
-      <Grid 
-        Name="LogLevelMaps" 
+      <Image 
+        Name="LogLevelMap" 
         Margin="0 20"
         Width="10" 
+        Stretch="Fill"
         DockPanel.Dock="Right"/>
       <ListBox 
         Name="Lines"
@@ -79,16 +173,18 @@
         VirtualizationMode="Simple"
         Items="{Binding Lines}"
         SelectedItem="{Binding LineSelected}"
+        SelectedItems="{Binding LinesSelected}"
         SelectionMode="Multiple"
+        AutoScrollToSelectedItem="True"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
         >
         <ListBox.ItemTemplate>
           <DataTemplate>
             <DockPanel HorizontalAlignment="Stretch">
+              <Panel Name="Selector" Width="15" ToolTip.Tip="Click to select" Background="PowderBlue" Opacity="0.5"/>
               <TextBox DockPanel.Dock="Left" Text="{Binding LineNumber}" IsReadOnly="True" TextAlignment="Right" Padding="0" Margin="0 0 5 0" FontFamily="Consolas" Width="60" ToolTip.Tip="{Binding LogFile.FullName}"/>
-              <Panel Name="Selector" Width="15"/>
-              <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="5 0 0 0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" SelectionStart="{Binding $parent[ListBox].DataContext.SelectionStart}"/>
+              <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" SelectionStart="{Binding $parent[ListBox].DataContext.SelectionStart}"/>
             </DockPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>

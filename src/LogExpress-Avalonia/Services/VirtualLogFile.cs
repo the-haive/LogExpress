@@ -4,27 +4,23 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
-using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Controls.Shapes;
-using Avalonia.Media;
+using System.Timers;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using DynamicData;
 using DynamicData.Binding;
 using LogExpress.Models;
-using Microsoft.VisualBasic.FileIO;
 using ReactiveUI;
 using Serilog;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
-using SkiaSharp;
-using Color = Avalonia.Media.Color;
+using SixLabors.ImageSharp.Processing;
 using Path = System.IO.Path;
+using Timer = System.Timers.Timer;
 
 
 namespace LogExpress.Services
@@ -46,10 +42,8 @@ namespace LogExpress.Services
         public string Name{ get; }
         public string FullName{ get; }
         public object DirectoryName { get; }
-        public long Length{ get; }
+        public long Length { get; set; }
         public ulong LinesListCreationTime{ get; }
-        public Dictionary<byte, long> LogLevelStats{ get; }
-
     }
 
     /// <summary>
@@ -58,9 +52,7 @@ namespace LogExpress.Services
     /// </summary>
     public class VirtualLogFile : ReactiveObject, IDisposable
     {
-        private const int SKImageMaxSize = 32_000;
-
-        public Dictionary<string, byte> LogLevelLookup = new Dictionary<string, byte>
+        public readonly Dictionary<string, byte> LogLevelLookup = new Dictionary<string, byte>
         {
             {"|VRB", 1},
             {"|VERBOSE", 1},
@@ -77,6 +69,8 @@ namespace LogExpress.Services
             {"|FTL", 6},
             {"|FATAL", 6}
         };
+
+        private Dictionary<byte, long> _logLevelStats;
 
         private static readonly ILogger Logger = Log.ForContext<VirtualLogFile>();
 
@@ -135,17 +129,14 @@ namespace LogExpress.Services
                 .Subscribe(x =>
                 {
                     Lines = LinesInBgThread;
+
                     if (Lines != null && Lines.Any())
                     {
                         // Create LogLevelMap to show on the side of the scrollbar
                         CreateLogLevelMapImage();
                     }
-/*                    if (LinesInBgThread != null)
-                    {
-                        Lines.AddRange(LinesInBgThread);
-                        LinesInBgThread = null;
-                    }
-*/                    Logger.Debug("Finished analyzing");
+
+                    Logger.Debug("Finished analyzing");
                 });
 
             _fileMonitor = new ScopedFilesMonitor(BasePath, new List<string>{Filter}, recursive);
@@ -155,80 +146,138 @@ namespace LogExpress.Services
                 .Bind(out _logFiles)
                 .Subscribe(InitializeLines);
 
-            this.WhenAnyValue(x => x.LogFiles)
-                .Where(x => x.Any())
-                .Select(x => x.LastOrDefault())
+            this.WhenAnyValue(x => x.LogFiles, x => x.IsAnalyzed)
                 .DistinctUntilChanged()
                 .Subscribe(MonitorActiveLogFile);
+
+            this.WhenAnyValue(x => x.NewLines)
+                .Where(x => x != null && x.Any())
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(AddNewLinesExecute);
+
+            //AddNewLinesCommand = ReactiveCommand.Create<ObservableCollection<LineItem>, Unit>(AddNewLinesExecute);
         }
+
+        private void AddNewLinesExecute(ObservableCollection<LineItem> newLines)
+        {
+            Lines.RemoveAt(Lines.Count-1);
+            Lines.AddRange(newLines);
+            newLines.Clear();
+        }
+
+
+        public ReactiveCommand<ObservableCollection<LineItem>, Unit> AddNewLinesCommand { get; }
 
         private void CreateLogLevelMapImage()
         {
-            LogLevelMapFiles = null;
-            _logLevelMap?.Dispose();
+            var logLevelStats = new Dictionary<byte, long>();
 
-            // Create or empty the temp logLevel bitmap directory
-            var tmpFolder = Path.Combine("tmp","LogLevelBitmaps");
-            var di = Directory.CreateDirectory(tmpFolder);
+            var tmpFolder = Path.Combine("tmp");
+            Directory.CreateDirectory(tmpFolder);
 
-            foreach (var file in di.GetFiles())
+            using var image = new Image<Rgba32>(10, Lines.Count);
+
+            for (var y = 0; y < Lines.Count; y++)
             {
-                file.Delete(); 
-            }
-            foreach (var dir in di.GetDirectories())
-            {
-                dir.Delete(true); 
-            }
+                var lineItem = Lines[y];
 
-            var parts = Lines.Count / SKImageMaxSize;
-            var linesInLastPiece = Lines.Count % SKImageMaxSize;
-            var fileNames = new Dictionary<string, long>();
+                LogLevelStatsIncrement(logLevelStats, lineItem.LogLevel);
 
-            for (var part = 0; part < parts+1; part++)
-            {
-                var height = part < parts ? SKImageMaxSize : linesInLastPiece;
-
-                if (height <= 0) break;
-
-                using var bm = new Image<Rgba32>(1, height);
-                var lineStart = part * SKImageMaxSize;
-
-                for (var y = 0; y < height; y++)
+                var pixel = lineItem.LogLevel switch
                 {
-                    var lineNumber = lineStart + y;
-                    var lineItem = Lines[lineNumber];
-                    var pixel = lineItem.LogLevel switch
-                    {
-                        6 => Rgba32.Red,
-                        5 => Rgba32.Salmon,
-                        4 => Rgba32.Gold,
-                        3 => Rgba32.Beige,
-                        2 => Rgba32.Wheat,
-                        1 => Rgba32.Tan,
-                        _ => Rgba32.White
-                    };
-                    bm[y, 0] = pixel;
-                }
+                    6 => Rgba32.Red,
+                    5 => Rgba32.Salmon,
+                    4 => Rgba32.Gold,
+                    3 => Rgba32.Beige,
+                    2 => Rgba32.Wheat,
+                    1 => Rgba32.Tan,
+                    _ => Rgba32.FloralWhite
+                };
 
-                var fileName = Path.Combine(tmpFolder, $"logLevelMap{part:000}.bmp");
-                fileNames.Add(fileName, height);
-                bm.Save(fileName, new BmpEncoder());
+                var pixelRowSpan = image.GetPixelRowSpan(y);
+
+                for (var x = 0; x < image.Width; x++)
+                {
+                    pixelRowSpan[x] = pixel;
+                }
             }
 
-            LogLevelMapFiles = fileNames;
+            LogLevelStats = logLevelStats;
+
+            if (image.Height > 2048)
+            {
+                image.Mutate(x => x.Resize(10, 2048));
+            }
+
+            var fileName = Path.Combine(tmpFolder, "logLevelMap.bmp");
+            image.Save(fileName, new BmpEncoder());
+
+            LogLevelMapFile = fileName;
         }
 
-        public Dictionary<string, long> _logLevelMapFiles;
-
-        public Dictionary<string, long> LogLevelMapFiles
+        private static void LogLevelStatsIncrement(IDictionary<byte, long> logLevelStats, byte logLevel)
         {
-            get => _logLevelMapFiles;
-            set => this.RaiseAndSetIfChanged(ref _logLevelMapFiles, value);
+            if (!logLevelStats.ContainsKey(logLevel))
+            {
+                logLevelStats.Add(logLevel, 0);
+            }
+
+            logLevelStats[logLevel] += 1;
         }
 
-        private void MonitorActiveLogFile(ScopedFile f)
+        private string _logLevelMapFile;
+
+        public string LogLevelMapFile
         {
-            // TODO: Update the ActiveLogFile monitor
+            get => _logLevelMapFile;
+            set => this.RaiseAndSetIfChanged(ref _logLevelMapFile, value);
+        }
+
+        private void MonitorActiveLogFile((ReadOnlyObservableCollection<ScopedFile> scopedFiles, bool isAnalyzed) tuple)
+        {
+            var (scopedFiles, isAnalyzed) = tuple;
+
+            if (scopedFiles == null || !scopedFiles.Any() || !isAnalyzed)
+            {
+                _activeLogFileMonitor?.Dispose();
+                _activeLogFileMonitor = null;
+            } 
+            else 
+            {
+                // Three checks every second
+                _activeLogFileMonitor = new Timer(333);
+                _activeLogFileMonitor.Elapsed += CheckActiveLogFileChanged;
+                _activeLogFileMonitor.AutoReset = true;
+                _activeLogFileMonitor.Enabled = true;
+            }
+        }
+
+        private void CheckActiveLogFileChanged(object sender, ElapsedEventArgs e)
+        {
+            if (!_logFiles.Any()) return;
+            _activeLogFileMonitor.Stop();
+
+            var previousFileInfo = _logFiles.Last();
+
+            var currentFileInfo = new ScopedFile(previousFileInfo.FullName);
+            if (currentFileInfo.Length > previousFileInfo.Length)
+            {
+                var newLines = new ObservableCollection<LineItem>();
+                ReadFileLinePositions(newLines, currentFileInfo, previousFileInfo);
+                NewLines = newLines;
+                //AddNewLinesCommand.Execute(newLines).ObserveOn(RxApp.MainThreadScheduler).Subscribe().Dispose();
+
+                previousFileInfo.Length = currentFileInfo.Length;
+            }
+            _activeLogFileMonitor.Start();
+        }
+
+        private ObservableCollection<LineItem> _newLines;
+
+        public ObservableCollection<LineItem> NewLines
+        {
+            get => _newLines;
+            set => this.RaiseAndSetIfChanged(ref _newLines, value);
         }
 
         public bool AnalyzeError
@@ -263,6 +312,12 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _totalSize, value);
         }
 
+        public Dictionary<byte, long> LogLevelStats
+        {
+            get => _logLevelStats;
+            set => this.RaiseAndSetIfChanged(ref _logLevelStats, value);
+        }
+
         // Used to indicate whether or not a single logfile has been selected. 
         // If so then that file's lines are the only ones that should be shown. 
         // If null (none selected) then all logfiles' lines are shown.
@@ -282,8 +337,9 @@ namespace LogExpress.Services
         }
 
         public ObservableCollection<LineItem> LinesInBgThread;
-        private Dictionary<WordMatcher, byte> _logLevelMatchers = new Dictionary<WordMatcher, byte>();
+        private readonly Dictionary<WordMatcher, byte> _logLevelMatchers = new Dictionary<WordMatcher, byte>();
         private Bitmap _logLevelMap;
+        private Timer _activeLogFileMonitor;
 
         public Bitmap LogLevelMap
         {
@@ -310,6 +366,7 @@ namespace LogExpress.Services
             _logLevelMap.Dispose();
             _fileMonitorSubscription?.Dispose();
             _fileMonitor?.Dispose();
+            _activeLogFileMonitor?.Dispose();
         }
 
         private void AnalyzeLinesInLogFile(object arg)
@@ -352,7 +409,7 @@ namespace LogExpress.Services
                 while (iterator.MoveNext())
                 {
                     var fileInfo = iterator.Current;
-                    ReadFileLinePositions(fileInfo);
+                    ReadFileLinePositions(LinesInBgThread, fileInfo);
 /*
                     _linesOLD.Edit(async editLines =>
                     {
@@ -398,7 +455,8 @@ namespace LogExpress.Services
         }
 */
 
-        private void ReadFileLinePositions(ScopedFile file)
+        private void ReadFileLinePositions(ObservableCollection<LineItem> linesCollection, ScopedFile file,
+            ScopedFile previousFileInfo = null)
         {
 
             if (file.Length <= 0) return; 
@@ -417,10 +475,11 @@ namespace LogExpress.Services
 
                 var stopwatch = Stopwatch.StartNew();
                 // All files with length > 0 implicitly starts with a line
-                var lineNum = 1;
-                uint filePosition = 0;
-                uint lastNewLinePos = 0;
+                var lineNum = previousFileInfo == null ? 1 : _lines.Last().LineNumber;
+                uint filePosition = (uint) (previousFileInfo?.Length ?? 0);
+                uint lastNewLinePos = previousFileInfo == null ? 0 : _lines.Last().Position;
                 byte logLevel = 0;
+                reader.BaseStream.Seek(filePosition, SeekOrigin.Begin);
                 while (!reader.EndOfStream)
                 {
                     var numRead = reader.Read(buffer);
@@ -447,7 +506,7 @@ namespace LogExpress.Services
 
                     if (buffer[0] == '\n')
                     {
-                        LinesInBgThread.Add(new LineItem(file, lineNum, lastNewLinePos, logLevel));
+                        linesCollection.Add(new LineItem(file, lineNum, lastNewLinePos, logLevel));
                         lastNewLinePos = filePosition;
                         lineNum += 1;
                         logLevel = 0;
@@ -456,12 +515,12 @@ namespace LogExpress.Services
 
                 if (filePosition >= lastNewLinePos)
                 {
-                    LinesInBgThread.Add(new LineItem(file, lineNum, lastNewLinePos, logLevel));
+                    linesCollection.Add(new LineItem(file, lineNum, lastNewLinePos, logLevel));
                 }
 
                 stopwatch.Stop();
                 var duration = stopwatch.Elapsed;
-                Logger.Debug("Time spent on analyzing lines in {LogFile}: {Duration}", file.FullName, duration);
+                //Logger.Debug("Time spent on analyzing lines in {LogFile}: {Duration}", file.FullName, duration);
             }
         }
 

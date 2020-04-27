@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -35,8 +36,6 @@ namespace LogExpress.ViewModels
         private FilterViewModel _filterViewModel;
 
         private string _infoBarScope;
-
-        private ObservableAsPropertyHelper<string> _infoBarSelectedLine;
 
         private ObservableAsPropertyHelper<string> _infoBarTotalSize;
 
@@ -164,8 +163,6 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _infoBarScope, value);
         }
 
-        public string InfoBarSelectedLine => _infoBarSelectedLine?.Value;
-
         public string InfoBarTotalSize => _infoBarTotalSize?.Value;
 
         public LogViewModel LogViewModel
@@ -228,7 +225,7 @@ namespace LogExpress.ViewModels
 
             var file = await openFileDialog.ShowAsync(App.MainWindow);
 
-            if (file.Length <= 0)
+            if (file?.Length <= 0)
             {
                 Logger.Information("No file selected");
                 return;
@@ -295,6 +292,7 @@ namespace LogExpress.ViewModels
             // Set the InfoBar property for the scope selected
             InfoBarScope = $"Scope: {Folder}{Path.DirectorySeparatorChar}{Pattern} {(Recursive ? "(recursive)" : "")}";
 
+/*
             // Setup subscription for showing the selected line info in the InfoBar
             _infoBarSelectedLine = _logViewModel.WhenAnyValue(x => x.LineSelected, x => x.LogFiles)
                 .Where(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
@@ -311,11 +309,42 @@ namespace LogExpress.ViewModels
                 })
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.InfoBarSelectedLine);
+*/
 
             // Setup subscription for showing the total size in the InfoBar
-            _infoBarTotalSize = _logViewModel.WhenAnyValue(x => x.HumanTotalSize, x => x.Lines.Count)
+            _infoBarTotalSize = _logViewModel.WhenAnyValue(x => x.HumanTotalSize, x => x.Lines.Count, x => x.LogLevelStats)
                 .Where(x => !string.IsNullOrWhiteSpace(x.Item1))
-                .Select(x => $"Size: {x.Item1} Lines: {x.Item2:n0}")
+                .Select(x =>
+                {
+                    var (size, lines, logLevelStats) = x;
+
+                    var sizeOut = $"Size: {size}";
+
+                    var linesOut = $"Lines: {lines:n0}";
+
+                    var logStatsOut = new StringBuilder();
+                    if (logLevelStats != null && logLevelStats.Any())
+                    {
+                        foreach (var (level, count) in logLevelStats)
+                        {
+                            if (level < 1 || level > 6) continue;
+
+                            var severity = level switch
+                            {
+                                6 => "Fatal",
+                                5 => "Error",
+                                4 => "Warn",
+                                3 => "Info",
+                                2 => "Debug",
+                                1 => "Trace",
+                                _ => ""
+                            };
+                            logStatsOut.Append($"{severity}: {count:n0} ");
+                        }
+
+                    }
+                    return $"{sizeOut} {linesOut} {logStatsOut}";
+                })
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.InfoBarTotalSize);
 

@@ -49,8 +49,6 @@
       <TextBox Text="{Binding InfoBarScope}" />
       <Separator />
       <TextBlock Text="{Binding InfoBarTotalSize}" />
-      <Separator />
-      <TextBlock Text="{Binding InfoBarSelectedLine}" />
     </StackPanel>
     <Grid ColumnDefinitions="*">
       <Grid.RowDefinitions>
