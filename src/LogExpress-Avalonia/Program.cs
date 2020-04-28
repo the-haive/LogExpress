@@ -23,7 +23,7 @@ namespace LogExpress
                 //.WriteTo.Trace(outputTemplate: "{Area}: {Message}")
                 //.WriteTo.Console(outputTemplate: outputTemplate)
                 .WriteTo.File(
-                    @"D:\src\Haive\LogExpress\src\LogExpress.log", 
+                    @"LogExpress.log", 
                     rollingInterval: RollingInterval.Day,
                     outputTemplate: outputTemplate
                 )
@@ -37,7 +37,7 @@ namespace LogExpress
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
-                .UseManagedSystemDialogs()
+                //.UseManagedSystemDialogs()
                 .LogToDebug()
                 .UseReactiveUI();
     }

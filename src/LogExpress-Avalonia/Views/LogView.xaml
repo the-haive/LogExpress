@@ -50,73 +50,73 @@
       DockPanel.Dock="Top">
       <StackPanel Name="FileBrowser" Classes="group">
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding FileBrowserUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseFileBackCommand}"/>
           <TextBlock>File</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding FileBrowserDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseFileFrwdCommand}"/>
         </StackPanel>
       </StackPanel>
       <StackPanel Name="TimeBrowser" Classes="group">
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding TimeBrowserYearUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseTimeYearBackCommand}"/>
           <TextBlock>Year</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding TimeBrowserYearDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseTimeYearFrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding TimeBrowserMonthUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseTimeMonthBackCommand}"/>
           <TextBlock>Month</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding TimeBrowserMonthDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseTimeMonthFrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding TimeBrowserDayUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseTimeDayBackCommand}"/>
           <TextBlock>Day</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding TimeBrowserDayDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseTimeDayFrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding TimeBrowserHourUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseTimeHourBackCommand}"/>
           <TextBlock>Hour</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding TimeBrowserHourDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseTimeHourFrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding TimeBrowserMinUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseTimeMinuteBackCommand}"/>
           <TextBlock>Minute</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding TimeBrowserMinDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseTimeMinuteFrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding TimeBrowserSecUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseTimeSecondBackCommand}"/>
           <TextBlock>Second</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding TimeBrowserSecDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseTimeSecondFrwdCommand}"/>
         </StackPanel>
       </StackPanel>
       <StackPanel Name="LevelBrowser" Classes="group">
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding LevelBrowserTraceUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseLevel1BackCommand}"/>
           <TextBlock>Trace</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding LevelBrowserTraceDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseLevel1FrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding LevelBrowserDebugUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseLevel2BackCommand}"/>
           <TextBlock>Debug</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding LevelBrowserDebugDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseLevel2FrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding LevelBrowserInfoUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseLevel3BackCommand}"/>
           <TextBlock>Info</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding LevelBrowserInfoDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseLevel3FrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding LevelBrowserWarnUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseLevel4BackCommand}"/>
           <TextBlock>Warn</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding LevelBrowserWarnDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseLevel4FrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding LevelBrowserErrorUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseLevel5BackCommand}"/>
           <TextBlock>Error</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding LevelBrowserErrorDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseLevel5FrwdCommand}"/>
         </StackPanel>
         <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding LevelBrowserFatalUpCommand}"/>
+          <RepeatButton Content="▲" Command="{Binding BrowseLevel6BackCommand}"/>
           <TextBlock>Fatal</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding LevelBrowserFatalDownCommand}"/>
+          <RepeatButton Content="▼" Command="{Binding BrowseLevel6FrwdCommand}"/>
         </StackPanel>
       </StackPanel>
       <Button Width="80" Command="{Binding CopyCommand}" Margin="10 0 0 0">
@@ -127,7 +127,7 @@
           FontSize="10"
           >Copy selected line(s)</TextBlock>
       </Button>
-      <CheckBox Content="Tail" Command="{Binding TailCommand}" Margin="10 0 0 0"/>
+      <CheckBox Content="Tail" Command="{Binding TailCommand}" Margin="10 0 0 0" IsChecked="True"/>
     </StackPanel>
     <Expander 
       ExpandDirection="Down" 
@@ -163,7 +163,7 @@
       </StackPanel>
       <Image 
         Name="LogLevelMap" 
-        Margin="0 20"
+        Margin="0 20 0 38"
         Width="10" 
         Stretch="Fill"
         DockPanel.Dock="Right"/>
@@ -178,13 +178,14 @@
         AutoScrollToSelectedItem="True"
         HorizontalAlignment="Stretch"
         VerticalAlignment="Stretch"
-        >
+        ScrollViewer.HorizontalScrollBarVisibility="Visible"
+        ScrollViewer.VerticalScrollBarVisibility="Visible">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <DockPanel HorizontalAlignment="Stretch">
               <Panel Name="Selector" Width="15" ToolTip.Tip="Click to select" Background="PowderBlue" Opacity="0.5"/>
-              <TextBox DockPanel.Dock="Left" Text="{Binding LineNumber}" IsReadOnly="True" TextAlignment="Right" Padding="0" Margin="0 0 5 0" FontFamily="Consolas" Width="60" ToolTip.Tip="{Binding LogFile.FullName}"/>
-              <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" SelectionStart="{Binding $parent[ListBox].DataContext.SelectionStart}"/>
+              <TextBox DockPanel.Dock="Left" Text="{Binding LineNumber}" IsReadOnly="True" TextAlignment="Right" Padding="0" Margin="0 0 5 0" FontFamily="Consolas" Width="60" ToolTip.Tip="{Binding LogFile.FullName}" IsVisible="True"/>
+              <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" IsVisible="True"/>
             </DockPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>

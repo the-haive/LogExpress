@@ -32,10 +32,10 @@ namespace LogExpress.ViewModels
         private LineItem _lineSelected;
         private ObservableCollection<LineItem> _linesSelected = new ObservableCollection<LineItem>();
         private string _logLevelMapFile;
-        private bool _tail;
+        private bool _tail = true;
         private LogView _logView;
         private bool _selectedLast;
-        private IObservable<bool> _canCopy;
+        private IObservable<bool> _hasSelection;
 
         public string BasePath
         {
@@ -142,19 +142,34 @@ namespace LogExpress.ViewModels
                     Lines = VirtualLogFile.Lines;
                 });
 
+            this.WhenAnyValue(x => x.Lines.Count, x => x.Tail)
+                .Where(((int lineCount, bool tail) tuple) =>
+                {
+                    var (lineCount, tail) = tuple;
+                    return lineCount > 0 && tail;
+                })
+                .Delay(new TimeSpan(100))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ =>
+                {
+                    //_logView.ListBoxControl.SelectedItem = 
+                    //_logView.ListBoxControl.ScrollIntoView(_logView.ListBoxControl.SelectedItem);
+                    _logView.ListBoxControl.ScrollIntoView(Lines.Last());
+                });
+
             this.WhenAnyValue(x => x.Lines)
                 .Where(x => x != null && x.Any())
                 .Delay(new TimeSpan(0,0,1))
-                .ObserveOn(RxApp.MainThreadScheduler)
                 .TakeUntil(_ => _selectedLast)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
                     _logView.ListBoxControl.SelectedItem = Lines.Last();
-                    _logView.ListBoxControl.ScrollIntoView(_logView.ListBoxControl.SelectedIndex);
+                    //_logView.ListBoxControl.ScrollIntoView(_logView.ListBoxControl.SelectedItem);
                     _selectedLast = true;
                 });
 
-            _canCopy = this
+            _hasSelection = this
                 .WhenAnyValue(x => x.LinesSelected.Count, x => x > 0)
                 .ObserveOn(RxApp.MainThreadScheduler);
 
@@ -164,33 +179,33 @@ namespace LogExpress.ViewModels
                 .Throttle(new TimeSpan(0,0,0,0, 100))
                 .Subscribe(_ => CopySelectedLinesToClipBoard());
 */
-            FileBrowserUpCommand = ReactiveCommand.Create(FileBrowserUpExecute);
-            FileBrowserDownCommand = ReactiveCommand.Create(FileBrowserDownExecute);
-            TimeBrowserYearUpCommand = ReactiveCommand.Create(TimeBrowserYearUpExecute);
-            TimeBrowserYearDownCommand = ReactiveCommand.Create(TimeBrowserYearDownExecute);
-            TimeBrowserMonthUpCommand = ReactiveCommand.Create(TimeBrowserMonthUpExecute);
-            TimeBrowserMonthDownCommand = ReactiveCommand.Create(TimeBrowserMonthDownExecute);
-            TimeBrowserDayUpCommand = ReactiveCommand.Create(TimeBrowserDayUpExecute);
-            TimeBrowserDayDownCommand = ReactiveCommand.Create(TimeBrowserDayDownExecute);
-            TimeBrowserHourUpCommand = ReactiveCommand.Create(TimeBrowserHourUpExecute);
-            TimeBrowserHourDownCommand = ReactiveCommand.Create(TimeBrowserHourDownExecute);
-            TimeBrowserMinUpCommand = ReactiveCommand.Create(TimeBrowserMinUpExecute);
-            TimeBrowserMinDownCommand = ReactiveCommand.Create(TimeBrowserMinDownExecute);
-            TimeBrowserSecUpCommand = ReactiveCommand.Create(TimeBrowserSecUpExecute);
-            TimeBrowserSecDownCommand = ReactiveCommand.Create(TimeBrowserSecDownExecute);
-            LevelBrowserTraceUpCommand = ReactiveCommand.Create(LevelBrowserTraceUpExecute);
-            LevelBrowserTraceDownCommand = ReactiveCommand.Create(LevelBrowserTraceDownExecute);
-            LevelBrowserDebugUpCommand = ReactiveCommand.Create(LevelBrowserDebugUpExecute);
-            LevelBrowserDebugDownCommand = ReactiveCommand.Create(LevelBrowserDebugDownExecute);
-            LevelBrowserInfoUpCommand = ReactiveCommand.Create(LevelBrowserInfoUpExecute);
-            LevelBrowserInfoDownCommand = ReactiveCommand.Create(LevelBrowserInfoDownExecute);
-            LevelBrowserWarnUpCommand = ReactiveCommand.Create(LevelBrowserWarnUpExecute);
-            LevelBrowserWarnDownCommand = ReactiveCommand.Create(LevelBrowserWarnDownExecute);
-            LevelBrowserErrorUpCommand = ReactiveCommand.Create(LevelBrowserErrorUpExecute);
-            LevelBrowserErrorDownCommand = ReactiveCommand.Create(LevelBrowserErrorDownExecute);
-            LevelBrowserFatalUpCommand = ReactiveCommand.Create(LevelBrowserFatalUpExecute);
-            LevelBrowserFatalDownCommand = ReactiveCommand.Create(LevelBrowserFatalDownExecute);
-            CopyCommand = ReactiveCommand.CreateFromTask(CopyExecute, _canCopy);
+            BrowseFileBackCommand = ReactiveCommand.Create(BrowseFileBack);
+            BrowseFileFrwdCommand = ReactiveCommand.Create(BrowseFileFrwd);
+            BrowseTimeYearBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime => new DateTime(contentTime.Year, 1, 1).Ticks - 1));
+            BrowseTimeYearFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, 1, 1).AddYears(1).Ticks));
+            BrowseTimeMonthBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, 1).Ticks - 1));
+            BrowseTimeMonthFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, 1).AddMonths(1).Ticks));
+            BrowseTimeDayBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).Ticks - 1));
+            BrowseTimeDayFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).AddDays(1).Ticks));
+            BrowseTimeHourBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, 0, 0).Ticks - 1));
+            BrowseTimeHourFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, 0, 0).AddHours(1).Ticks));
+            BrowseTimeMinuteBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute, 0).Ticks - 1));
+            BrowseTimeMinuteFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute, 0).AddMinutes(1).Ticks));
+            BrowseTimeSecondBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute, contentTime.Second).Ticks - 1));
+            BrowseTimeSecondFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute, contentTime.Second).AddSeconds(1).Ticks));
+            BrowseLevel1BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(1));
+            BrowseLevel1FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(1));
+            BrowseLevel2BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(2));
+            BrowseLevel2FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(2));
+            BrowseLevel3BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(3));
+            BrowseLevel3FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(3));
+            BrowseLevel4BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(4));
+            BrowseLevel4FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(4));
+            BrowseLevel5BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(5));
+            BrowseLevel5FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(5));
+            BrowseLevel6BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(6));
+            BrowseLevel6FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(6));
+            CopyCommand = ReactiveCommand.CreateFromTask(CopyExecute, _hasSelection);
             TailCommand = ReactiveCommand.Create(TailExecute);
         }
 
@@ -206,191 +221,84 @@ namespace LogExpress.ViewModels
 
         #region Toolbar
 
-        public ReactiveCommand<Unit, Unit> FileBrowserDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseFileFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> FileBrowserUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseFileBackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserDebugDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel2FrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserDebugUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel2BackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserErrorDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel5FrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserErrorUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel5BackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserFatalDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel6FrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserFatalUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel6BackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserInfoDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel3FrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserInfoUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel3BackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserTraceDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel1FrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserTraceUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel1BackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserWarnDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel4FrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> LevelBrowserWarnUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel4BackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserDayDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserDayUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserHourDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserHourUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserMinDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMinuteFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserMinUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMinuteBackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserMonthDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMonthFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserMonthUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMonthBackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserSecDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeSecondFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserSecUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeSecondBackCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserYearDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeYearFrwdCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> TimeBrowserYearUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeYearBackCommand { get; }
 
         public ReactiveCommand<Unit, Unit> CopyCommand { get; }
 
         public ReactiveCommand<Unit, Unit> TailCommand { get; }
 
-        private void FileBrowserDownExecute()
+        private void BrowseFileFrwd()
         {
-            // TODO: Implement command
+            var match = _lineSelected != null 
+                ? Lines.FirstOrDefault(l => l.CreationTimeTicks > _lineSelected.CreationTimeTicks) 
+                : Lines.FirstOrDefault();
+
+            if (match == null) return;
+
+            _logView.ListBoxControl.SelectedItem = match;
         }
 
-        private void FileBrowserUpExecute()
+        private void BrowseFileBack()
         {
-            // TODO: Implement command
+            var match = _lineSelected != null 
+                ? Lines.LastOrDefault(l => l.CreationTimeTicks < _lineSelected.CreationTimeTicks)
+                : Lines.LastOrDefault();
+
+            if (match == null) return;
+
+            _logView.ListBoxControl.SelectedItem = match;
         }
 
-        private void LevelBrowserDebugDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserDebugUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserErrorDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserErrorUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserFatalDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserFatalUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserInfoDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserInfoUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserTraceDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserTraceUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserWarnDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void LevelBrowserWarnUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserDayDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserDayUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserHourDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserHourUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserMinDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserMinUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserMonthDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserMonthUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserSecDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserSecUpExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserYearDownExecute()
-        {
-            // TODO: Implement command
-        }
-
-        private void TimeBrowserYearUpExecute()
-        {
-            // TODO: Implement command
-        }
 
         private async Task<Unit> CopyExecute()
         {
@@ -410,9 +318,83 @@ namespace LogExpress.ViewModels
 
         private void TailExecute()
         {
-            // TODO: Implement command
+            Tail = !Tail;
         }
 
         #endregion
+        private void BrowseLevelFrwd(int logLevel)
+        {
+            var match = _lineSelected != null
+                ? Lines.FirstOrDefault(l =>
+                    l.LogLevel == logLevel && (l.CreationTimeTicks > _lineSelected.CreationTimeTicks ||
+                                               l.LineNumber > _lineSelected.LineNumber))
+                : Lines.FirstOrDefault();
+
+            if (match == null) return;
+
+            _logView.ListBoxControl.SelectedItem = match;
+        }
+
+        private void BrowseLevelBack(int logLevel)
+        {
+            var match = _lineSelected != null
+                ? Lines.LastOrDefault(l =>
+                    l.LogLevel == logLevel && (l.CreationTimeTicks < _lineSelected.CreationTimeTicks ||
+                                               l.LineNumber < _lineSelected.LineNumber))
+                : Lines.LastOrDefault();
+
+            if (match == null) return;
+
+            _logView.ListBoxControl.SelectedItem = match;
+        }
+
+        private void BrowseTimeFrwd(Func<DateTime, long> minTicksFactory)
+        {
+            if (_lineSelected == null) return;
+
+            var selIdx = _logView.ListBoxControl.SelectedIndex;
+            var content = Lines[selIdx].Content.Split('|').FirstOrDefault();
+
+            if (!DateTime.TryParse(content, out var contentTime))
+            {
+                contentTime = DateTime.MinValue;
+            }
+
+            var minTicks = minTicksFactory(contentTime); 
+
+            for (var i = selIdx + 1; i < Lines.Count; i++)
+            {
+                var lineContent = Lines[i].Content.Split('|').FirstOrDefault();
+
+                if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
+                if (itemTime.Ticks <= minTicks) continue;
+                _logView.ListBoxControl.SelectedItem = Lines[i];
+                break;
+            }
+        }
+        private void BrowseTimeBack(Func<DateTime, long> maxTicksFactory)
+        {
+            if (_lineSelected == null) return;
+
+            var selIdx = _logView.ListBoxControl.SelectedIndex;
+            var content = Lines[selIdx].Content.Split('|').FirstOrDefault();
+
+            if (!DateTime.TryParse(content, out var contentTime))
+            {
+                contentTime = DateTime.MaxValue;
+            }
+
+            var maxTicks = maxTicksFactory(contentTime); 
+
+            for (var i = selIdx - 1; i >= 0; i--)
+            {
+                var lineContent = Lines[i].Content.Split('|').FirstOrDefault();
+
+                if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
+                if (itemTime.Ticks >= maxTicks) continue;
+                _logView.ListBoxControl.SelectedItem = Lines[i];
+                break;
+            }
+        }
     }
 }

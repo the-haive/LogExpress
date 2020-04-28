@@ -155,64 +155,130 @@ namespace LogExpress.Services
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(AddNewLinesExecute);
 
-            //AddNewLinesCommand = ReactiveCommand.Create<ObservableCollection<LineItem>, Unit>(AddNewLinesExecute);
         }
 
         private void AddNewLinesExecute(ObservableCollection<LineItem> newLines)
         {
-            Lines.RemoveAt(Lines.Count-1);
-            Lines.AddRange(newLines);
+            foreach (var lineItem in newLines)
+            {
+                var addPosition = -1;
+                for (var i = Lines.Count - 1; i >= 0; i--)
+                {
+                    if (Lines[i].CreationTimeTicks == lineItem.CreationTimeTicks 
+                        && Lines[i].Position == lineItem.Position)
+                    {
+                        addPosition = i;
+                        break;
+                    }
+
+                    if (Lines[i].CreationTimeTicks < lineItem.CreationTimeTicks
+                        || Lines[i].Position < lineItem.Position)
+                    {
+                        addPosition = -1;
+                        break;
+                    }
+                }
+
+                if (addPosition == -1)
+                {
+                    Lines.Add(lineItem);
+                }
+                else
+                {
+                    Lines[addPosition] = lineItem;
+                }
+            }
+
             newLines.Clear();
         }
 
-
-        public ReactiveCommand<ObservableCollection<LineItem>, Unit> AddNewLinesCommand { get; }
-
         private void CreateLogLevelMapImage()
         {
+            const int targetPartImageHeight = 500_000;
+            const int logLevelMapHeight = 2_048;
+
             var logLevelStats = new Dictionary<byte, long>();
 
             var tmpFolder = Path.Combine("tmp");
             Directory.CreateDirectory(tmpFolder);
 
-            using var image = new Image<Rgba32>(10, Lines.Count);
+            var parts = Lines.Count / targetPartImageHeight + 1;
+            var linesPerPart = (int) Math.Ceiling((double) Lines.Count / parts);
 
-            for (var y = 0; y < Lines.Count; y++)
+            var imgParts = new List<Image<Rgba32>>(parts);
+
+            var linesDone = 0;
+            for (var i = 0; i < parts; i++)
             {
-                var lineItem = Lines[y];
+                var linesInThisPart = Math.Min(linesPerPart * (i + 1), Lines.Count) - linesDone;
 
-                LogLevelStatsIncrement(logLevelStats, lineItem.LogLevel);
+                var image = new Image<Rgba32>(10, linesInThisPart);
 
-                var pixel = lineItem.LogLevel switch
+                for (var y = 0; y < linesInThisPart; y++)
                 {
-                    6 => Rgba32.Red,
-                    5 => Rgba32.Salmon,
-                    4 => Rgba32.Gold,
-                    3 => Rgba32.Beige,
-                    2 => Rgba32.Wheat,
-                    1 => Rgba32.Tan,
-                    _ => Rgba32.FloralWhite
-                };
+                    var lineItem = Lines[linesDone];
 
-                var pixelRowSpan = image.GetPixelRowSpan(y);
+                    LogLevelStatsIncrement(logLevelStats, lineItem.LogLevel);
 
-                for (var x = 0; x < image.Width; x++)
-                {
-                    pixelRowSpan[x] = pixel;
+                    var pixel = lineItem.LogLevel switch
+                    {
+                        6 => Rgba32.Red,
+                        5 => Rgba32.Salmon,
+                        4 => Rgba32.Gold,
+                        3 => Rgba32.Beige,
+                        2 => Rgba32.Wheat,
+                        1 => Rgba32.Tan,
+                        _ => Rgba32.FloralWhite
+                    };
+
+                    var pixelRowSpan = image.GetPixelRowSpan(y);
+
+                    for (var x = 0; x < image.Width; x++)
+                    {
+                        pixelRowSpan[x] = pixel;
+                    }
+                    linesDone++;
                 }
+
+                if (linesInThisPart > logLevelMapHeight)
+                {
+                    image.Mutate(x => x.Resize(10, logLevelMapHeight / parts));
+                }
+
+                imgParts.Add(image);
             }
 
             LogLevelStats = logLevelStats;
 
-            if (image.Height > 2048)
+            var combinedImage = parts == 1 ? imgParts[0] : new Image<Rgba32>(10, logLevelMapHeight);
+            if (parts > 1)
             {
-                image.Mutate(x => x.Resize(10, 2048));
+                var globalRow = 0;
+                for (int i = 0; i < parts; i++)
+                {
+                    var img = imgParts[i];
+
+                    for (var y = 0; y < logLevelMapHeight / parts; y++)
+                    {
+                        var combinedImageRowSpan = combinedImage.GetPixelRowSpan(globalRow);
+
+                        for (var x = 0; x < img.Width; x++)
+                        {
+                            combinedImageRowSpan[x] = img[x, y];
+                        }
+
+                        globalRow++;
+                    }
+                }
             }
 
             var fileName = Path.Combine(tmpFolder, "logLevelMap.bmp");
-            image.Save(fileName, new BmpEncoder());
+            combinedImage.Save(fileName, new BmpEncoder());
 
             LogLevelMapFile = fileName;
+
+            imgParts.ForEach(i => i.Dispose());
+            combinedImage.Dispose();
         }
 
         private static void LogLevelStatsIncrement(IDictionary<byte, long> logLevelStats, byte logLevel)
@@ -265,7 +331,6 @@ namespace LogExpress.Services
                 var newLines = new ObservableCollection<LineItem>();
                 ReadFileLinePositions(newLines, currentFileInfo, previousFileInfo);
                 NewLines = newLines;
-                //AddNewLinesCommand.Execute(newLines).ObserveOn(RxApp.MainThreadScheduler).Subscribe().Dispose();
 
                 previousFileInfo.Length = currentFileInfo.Length;
             }

@@ -219,7 +219,6 @@ namespace LogExpress.Models
                 line.Append(buffer);
             }
 
-            // TODO: Figure out how to do line decorations (Timestamp & Level)
             return line.ToString();
         }
     }
