@@ -196,11 +196,33 @@ namespace LogExpress.Models
             }
         }
 
+        public bool ShowNewFileSeparator => LineNumber == 1;
+
         /// <summary>
         ///     File-positions in general are long values, but we want to enforce it to be max 4GB, by requiring
         ///     this to be an uint (32 bits)
         /// </summary>
         public uint Position { get; }
+
+        /// <summary>
+        /// Reads the date for the line from disk and parses it to a datetime, if a date was found
+        /// </summary>
+        public DateTime? Timestamp => ReadDateFromFilePosition(LogFile, Position);
+
+        private static DateTime? ReadDateFromFilePosition(ScopedFile file, long position)
+        {
+            using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var reader = new StreamReader(fileStream);
+            reader.BaseStream.Seek(position, SeekOrigin.Begin);
+            
+            // TODO: Make the date-length configurable
+            var buffer = new Span<char>(new char[23]);
+
+            var numRead = reader.Read(buffer);
+            if (numRead == -1) return null;
+            if (DateTime.TryParse(buffer, out var dateTime)) return dateTime;
+            return null;
+        }
 
         private static string ReadLineFromFilePosition(ScopedFile file, long position)
         {

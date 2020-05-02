@@ -23,7 +23,7 @@
     <Style Selector="Panel#Selector:pointerover">
       <Setter Property="Background" Value="Gray"/>
     </Style>
-    <Style Selector="#Toolbar StackPanel.spinner">
+    <Style Selector="#Toolbar2 StackPanel.spinner">
       <Setter Property="Width" Value="40"/>
     </Style>
     <Style Selector="#Toolbar StackPanel.group">
@@ -41,85 +41,66 @@
     <Style Selector="#Toolbar > StackPanel#FileBrowser StackPanel.spinner">
       <Setter Property="Width" Value="70"/>
     </Style>
+    <Style Selector="#Toolbar ComboBox.item">
+      <Setter Property="Margin" Value="0 0 5 0"/>
+    </Style>
+    <Style Selector="#Toolbar StackPanel.item">
+      <Setter Property="Margin" Value="0 0 5 0"/>
+    </Style>
   </UserControl.Styles>
   <DockPanel>
-    <StackPanel 
-      Name="Toolbar"
-      Orientation="Horizontal"
-      IsVisible="{Binding IsAnalyzed}"
-      DockPanel.Dock="Top">
-      <StackPanel Name="FileBrowser" Classes="group">
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseFileBackCommand}"/>
-          <TextBlock>File</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseFileFrwdCommand}"/>
+    <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top">
+      <ComboBox Name="FilterFiles" Classes="item" Width="150" 
+                SelectedItem="{Binding VirtualLogFile.LogFileFilterSelected}"
+                IsEnabled="{Binding VirtualLogFile.IsAnalyzed}"
+                Items="{Binding VirtualLogFile.LogFilesFilterItems}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>    
+      <ComboBox Name="FilterYears" Classes="item"
+                SelectedItem="{Binding VirtualLogFile.YearFilterSelected}"
+                IsEnabled="{Binding VirtualLogFile.IsAnalyzed}"
+                Items="{Binding VirtualLogFile.YearFilterItems}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <ComboBox Name="FilterMonths" Classes="item" SelectedIndex="0" IsEnabled="False">
+        <ComboBoxItem>(TODO) Any month</ComboBoxItem>
+        <ComboBoxItem>2019</ComboBoxItem>
+        <ComboBoxItem>2020</ComboBoxItem>
+      </ComboBox>
+      <StackPanel Name="NavDay" Classes="item">
+        <TextBlock Text="Day" FontSize="10" HorizontalAlignment="Center" TextAlignment="Center"/>
+        <StackPanel Orientation="Horizontal">
+          <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseTimeDayBackCommand}" Padding="3 0 3 0" VerticalAlignment="Top"/>
+          <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseTimeDayFrwdCommand}" Padding="3 0 3 0" VerticalAlignment="Top"/>
         </StackPanel>
       </StackPanel>
-      <StackPanel Name="TimeBrowser" Classes="group">
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseTimeYearBackCommand}"/>
-          <TextBlock>Year</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseTimeYearFrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseTimeMonthBackCommand}"/>
-          <TextBlock>Month</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseTimeMonthFrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseTimeDayBackCommand}"/>
-          <TextBlock>Day</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseTimeDayFrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseTimeHourBackCommand}"/>
-          <TextBlock>Hour</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseTimeHourFrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseTimeMinuteBackCommand}"/>
-          <TextBlock>Minute</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseTimeMinuteFrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseTimeSecondBackCommand}"/>
-          <TextBlock>Second</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseTimeSecondFrwdCommand}"/>
+      <StackPanel Name="NavHour" Classes="item">
+        <TextBlock Text="Hour" FontSize="10" HorizontalAlignment="Center" TextAlignment="Center"/>
+        <StackPanel Orientation="Horizontal">
+          <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseTimeHourBackCommand}" Padding="3 0 3 0" VerticalAlignment="Top"/>
+          <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseTimeHourFrwdCommand}" Padding="3 0 3 0" VerticalAlignment="Top"/>
         </StackPanel>
       </StackPanel>
-      <StackPanel Name="LevelBrowser" Classes="group">
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseLevel1BackCommand}"/>
-          <TextBlock>Trace</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseLevel1FrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseLevel2BackCommand}"/>
-          <TextBlock>Debug</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseLevel2FrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseLevel3BackCommand}"/>
-          <TextBlock>Info</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseLevel3FrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseLevel4BackCommand}"/>
-          <TextBlock>Warn</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseLevel4FrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseLevel5BackCommand}"/>
-          <TextBlock>Error</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseLevel5FrwdCommand}"/>
-        </StackPanel>
-        <StackPanel Orientation="Vertical" Classes="spinner">
-          <RepeatButton Content="▲" Command="{Binding BrowseLevel6BackCommand}"/>
-          <TextBlock>Fatal</TextBlock>
-          <RepeatButton Content="▼" Command="{Binding BrowseLevel6FrwdCommand}"/>
-        </StackPanel>
-      </StackPanel>
-      <Button Width="80" Command="{Binding CopyCommand}" Margin="10 0 0 0">
+      <ComboBox Name="FilterLevels" Classes="item"
+                SelectedIndex="{Binding VirtualLogFile.LevelFilterSelected}"
+                IsEnabled="{Binding VirtualLogFile.IsAnalyzed}">
+        <ComboBoxItem>Any log-level</ComboBoxItem>
+        <ComboBoxItem>Log-level 1+</ComboBoxItem>
+        <ComboBoxItem>Log-level 2+</ComboBoxItem>
+        <ComboBoxItem>Log-level 3+</ComboBoxItem>
+        <ComboBoxItem>Log-level 4+</ComboBoxItem>
+        <ComboBoxItem>Log-level 5+</ComboBoxItem>
+        <ComboBoxItem>Log-level 6</ComboBoxItem>
+      </ComboBox>
+      <Button Width="80" Command="{Binding CopyCommand}" Margin="10 0 0 0" Classes="item">
         <TextBlock 
           HorizontalAlignment="Stretch" 
           TextAlignment="Center" 
@@ -127,33 +108,14 @@
           FontSize="10"
           >Copy selected line(s)</TextBlock>
       </Button>
-      <CheckBox Content="Tail" Command="{Binding TailCommand}" Margin="10 0 0 0" IsChecked="True"/>
+      <CheckBox Content="Tail" Command="{Binding TailCommand}" Margin="10 0 0 0" IsChecked="True" Classes="item"/>
     </StackPanel>
-    <Expander 
-      ExpandDirection="Down" 
-      Header="{Binding LogListHeader}"
-      DockPanel.Dock="Top">
-      <ListBox 
-        Name="Files" 
-        Items="{Binding LogFiles}" 
-        HorizontalAlignment="Stretch">
-        <ListBox.ItemTemplate>
-          <DataTemplate>
-            <StackPanel Orientation="Horizontal">
-              <TextBox Text="{Binding CreationTime}"/>
-              <TextBox Text="{Binding Length}" Width="80" TextAlignment="Right"/>
-              <TextBox Text="{Binding FullName}"/>
-            </StackPanel>
-          </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
-    </Expander>
     <DockPanel LastChildFill="True">
-      <StackPanel Orientation="Vertical" IsVisible="{Binding !IsAnalyzed}">
+      <StackPanel Orientation="Vertical" IsVisible="{Binding !VirtualLogFile.IsAnalyzed}">
         <progRing:ProgressRing 
           Width="70" 
           Height="70"
-          IsActive="{Binding !IsAnalyzed}"
+          IsActive="{Binding !VirtualLogFile.IsAnalyzed}"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Foreground="Green"
@@ -169,9 +131,9 @@
         DockPanel.Dock="Right"/>
       <ListBox 
         Name="Lines"
-        IsVisible="{Binding IsAnalyzed}"
+        IsVisible="{Binding VirtualLogFile.IsAnalyzed}"
         VirtualizationMode="Simple"
-        Items="{Binding Lines}"
+        Items="{Binding VirtualLogFile.FilteredLines}"
         SelectedItem="{Binding LineSelected}"
         SelectedItems="{Binding LinesSelected}"
         SelectionMode="Multiple"
@@ -182,11 +144,14 @@
         ScrollViewer.VerticalScrollBarVisibility="Visible">
         <ListBox.ItemTemplate>
           <DataTemplate>
-            <DockPanel HorizontalAlignment="Stretch">
-              <Panel Name="Selector" Width="15" ToolTip.Tip="Click to select" Background="PowderBlue" Opacity="0.5"/>
-              <TextBox DockPanel.Dock="Left" Text="{Binding LineNumber}" IsReadOnly="True" TextAlignment="Right" Padding="0" Margin="0 0 5 0" FontFamily="Consolas" Width="60" ToolTip.Tip="{Binding LogFile.FullName}" IsVisible="True"/>
-              <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" IsVisible="True"/>
-            </DockPanel>
+            <StackPanel>
+              <Separator Name="FileSeparator" Background="Black" Opacity="0.5" Height="2" IsVisible="{Binding ShowNewFileSeparator}"/>
+              <DockPanel HorizontalAlignment="Stretch">
+                <Panel Name="Selector" Width="15" ToolTip.Tip="Click to select" Background="PowderBlue" Opacity="0.5"/>
+                <TextBox DockPanel.Dock="Left" Text="{Binding LineNumber}" IsReadOnly="True" TextAlignment="Right" Padding="0" Margin="0 0 5 0" FontFamily="Consolas" Width="60" ToolTip.Tip="{Binding LogFile.FullName}" IsVisible="True"/>
+                <TextBox DockPanel.Dock="Left" Text="{Binding Content}" IsReadOnly="True" Padding="0" Margin="5 0 0 0" FontFamily="Consolas" Background="{Binding LogBgColor}" Foreground="{Binding LogFgColor}" IsVisible="True"/>
+              </DockPanel>
+            </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>

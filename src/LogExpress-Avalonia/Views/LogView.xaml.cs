@@ -16,7 +16,6 @@ namespace LogExpress.Views
 
             //LogLevelMapImageControl = this.FindControl<Image>("LogLevelMap");
             LogLevelMap = this.FindControl<Image>("LogLevelMap");
-
             ListBoxControl = this.FindControl<ListBox>("Lines");
         }
 

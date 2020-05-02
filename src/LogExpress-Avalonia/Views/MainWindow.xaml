@@ -7,7 +7,8 @@
         x:Class="LogExpress.Views.MainWindow"
         Icon="/Assets/avalonia-logo.ico"
         Width="1024" Height="768"
-        Title="LogExpress"
+        Title="{Binding AppTitle}"
+        DragDrop.AllowDrop="True"
         >
   <Window.Styles>
     <!-- NB! The theme must be the first style. Used in MainWindowViewModel for switching theme. -->  
@@ -45,11 +46,31 @@
       <CheckBox Name="Theme" Command="{Binding ToggleThemeCommand}" Content="Dark Theme"/>
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
+    <TextBlock Text="Debugger" IsVisible="False"/>
     <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="10 0 5 0">
       <TextBox Text="{Binding InfoBarScope}" />
       <Separator />
-      <TextBlock Text="{Binding InfoBarTotalSize}" />
+      <TextBlock Text="Size:" Margin="0 0 5 0"/>
+      <TextBlock Text="{Binding InfoBarByteSize}" />
+      <Separator />
+      <TextBlock Text="Lines:" Margin="0 0 5 0"/>
+      <TextBlock Text="{Binding InfoBarLineCount}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel1}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel2}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel3}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel4}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel5}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel6}" />
+      <Separator />
+      <TextBlock Text="{Binding InfoBarLogLevel0}" />
     </StackPanel>
+    
     <Grid ColumnDefinitions="*">
       <Grid.RowDefinitions>
           <RowDefinition />

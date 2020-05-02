@@ -1,17 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
-using LogExpress.Models;
+using ByteSizeLib;
 using LogExpress.Services;
+using LogExpress.Utils;
 using LogExpress.Views;
 using ReactiveUI;
 using Serilog;
@@ -32,13 +36,15 @@ namespace LogExpress.ViewModels
         private string _folder = string.Empty;
 
         private string _pattern = string.Empty;
+        private string _appTitle = "LogExpress";
 
         private FilterViewModel _filterViewModel;
 
         private string _infoBarScope;
 
-        private ObservableAsPropertyHelper<string> _infoBarTotalSize;
-
+        private ObservableAsPropertyHelper<string> _infoBarByteSize;
+        private ObservableAsPropertyHelper<string> _infoBarLineCount;
+        private string _infoBarLogLevels;
         private LogViewModel _logViewModel;
 
         private bool _recursive;
@@ -64,7 +70,9 @@ namespace LogExpress.ViewModels
 
         public MainWindowViewModel(MainWindow mainWindow)
         {
+            AppTitle = App.TitleWithVersion;
             Logger.Information("Application started");
+
             _mainWindow = mainWindow;
             _logView = _mainWindow.LogView;
 
@@ -102,7 +110,33 @@ namespace LogExpress.ViewModels
                 );
                 messageBoxStandardWindow.ShowDialog(_mainWindow);
             }
+
+            mainWindow.AddHandler(DragDrop.DragOverEvent, DragOver);
+            mainWindow.AddHandler(DragDrop.DropEvent, Drop);
         }
+
+        private void DragOver(object sender, DragEventArgs e)
+        {
+            // Only allow Copy or Link as Drop Operations.
+            e.DragEffects = e.DragEffects & (DragDropEffects.Copy | DragDropEffects.Link);
+
+            // Only allow if the dragged data contains text or filenames.
+            if (!e.Data.Contains(DataFormats.Text) && !e.Data.Contains(DataFormats.FileNames))
+                e.DragEffects = DragDropEffects.None;
+        }
+
+        private void Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.Contains(DataFormats.Text))
+            {
+                Logger.Information("Text dropped in application: {Text}", e.Data.GetText());
+            }
+            else if (e.Data.Contains(DataFormats.FileNames))
+            {
+                Logger.Information("Files(s) dropped in application: {Filenames}", string.Join(", ", e.Data.GetFileNames()));
+            }
+        }
+
 
         private void ToggleThemeExecute()
         {
@@ -151,6 +185,12 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _pattern, value);
         }
 
+        public string AppTitle
+        {
+            get => _appTitle;
+            set => this.RaiseAndSetIfChanged(ref _appTitle, value);
+        }
+
         public FilterViewModel FilterViewModel
         {
             get => _filterViewModel;
@@ -163,7 +203,13 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _infoBarScope, value);
         }
 
-        public string InfoBarTotalSize => _infoBarTotalSize?.Value;
+        public string InfoBarByteSize => _infoBarByteSize?.Value;
+        public string InfoBarLineCount => _infoBarLineCount?.Value;
+        public string InfoBarLogLevels
+        {
+            get => _infoBarLogLevels;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevels, value);
+        }
 
         public LogViewModel LogViewModel
         {
@@ -232,6 +278,11 @@ namespace LogExpress.ViewModels
             }
 
             var fileName = file.First();
+            OpenFile(fileName);
+        }
+
+        private void OpenFile(string fileName)
+        {
             Logger.Information("Selected file {LogFile}", fileName);
             var fileInfo = new FileInfo(fileName);
             var dirInfo = Directory.GetParent(fileInfo.FullName);
@@ -244,25 +295,51 @@ namespace LogExpress.ViewModels
         {
 
             var openLogSetView = new OpenLogSetView();
-            openLogSetView.DataContext = new OpenLogSetViewModel(openLogSetView, _folder, _pattern, _recursive);
+            openLogSetView.DataContext = new OpenLogSetViewModel(openLogSetView, _folder);
             var result = await openLogSetView.ShowDialog<OpenLogSetViewModel.Result>(App.MainWindow);
             if (result == null) return;
 
-            Folder = result.Folder;
-            Pattern = result.Pattern;
-            Recursive = result.Recursive;
+            if (result.SelectedFile != null)
+            {
+                OpenFile(result.SelectedFile.FullName);
+            }
+            else
+            {
+                Folder = result.Folder;
+                Pattern = result.Pattern;
+                Recursive = result.Recursive;
+            }
         }
 
 
         private void ParseArgs(List<string> args)
         {
-            var origLength = args.Count;
-            args = args.Where(a => a != "-r").ToList();
+            var optDebugger = args.Contains("-d");
+            var optWaitForDebugger = args.Contains("-w");
 
-            Recursive = args.Count < origLength;
+            if (!Debugger.IsAttached && optDebugger)
+            {
+                if (optWaitForDebugger)
+                {
+                    Logger.Information("Waiting for debugger to attach. Process ID: {ProcessID}...", Process.GetCurrentProcess().Id);
+                    while (!Debugger.IsAttached)
+                    {
+                        Thread.Sleep(100);
+                    }
+                }
+                else
+                {
+                    Debugger.Launch();
+                }
+            }
+
+            Recursive = args.Contains("-r");
+
+            args = args.Where(a => !new List<string>{"-r", "-d", "-w"}.Contains(a)).ToList();
 
             if (args.Count > 0)
             {
+                Debugger.Launch();
                 if (File.Exists(args[0]))
                 {
                     var dirInfo = Directory.GetParent(args[0]);
@@ -292,6 +369,8 @@ namespace LogExpress.ViewModels
             // Set the InfoBar property for the scope selected
             InfoBarScope = $"Scope: {Folder}{Path.DirectorySeparatorChar}{Pattern} {(Recursive ? "(recursive)" : "")}";
 
+            // TODO: Add info on number of files in the set
+
 /*
             // Setup subscription for showing the selected line info in the InfoBar
             _infoBarSelectedLine = _logViewModel.WhenAnyValue(x => x.LineSelected, x => x.LogFiles)
@@ -312,42 +391,130 @@ namespace LogExpress.ViewModels
 */
 
             // Setup subscription for showing the total size in the InfoBar
-            _infoBarTotalSize = _logViewModel.WhenAnyValue(x => x.HumanTotalSize, x => x.Lines.Count, x => x.LogLevelStats)
-                .Where(x => !string.IsNullOrWhiteSpace(x.Item1))
-                .Select(x =>
+            // TODO: Implement filters in VirtualLogFile, and show both the filtered and total size, i.e. 'Size: 4kb/21Mb'
+            _infoBarByteSize = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.TotalSize)
+                .Select(x => ByteSize.FromBytes(x).ToString())
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .ToProperty(this, x => x.InfoBarByteSize);
+
+            // TODO: Add info on oldest and newest date in the log-file
+
+            // TODO: Implement filters in VirtualLogFile, and show both the filtered and total no of lines, i.e. 'Lines: 12/931'
+            _infoBarLineCount = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.FilteredLines.Count)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Select(x => x.ToString("N0"))
+                .ToProperty(this, x => x.InfoBarLineCount);
+
+            // TODO: Implement filters in VirtualLogFile, and show both the filtered and total count, i.e. 'Trace: 4/19'
+            LogViewModel.VirtualLogFile
+                .WhenAnyValue(x => x.LogLevelStats)
+                .Where(x => x != null)
+                .Subscribe(obs =>
                 {
-                    var (size, lines, logLevelStats) = x;
-
-                    var sizeOut = $"Size: {size}";
-
-                    var linesOut = $"Lines: {lines:n0}";
-
-                    var logStatsOut = new StringBuilder();
-                    if (logLevelStats != null && logLevelStats.Any())
+                    var logStatsChanged =
+                        Observable.FromEvent<NotifyCollectionChangedEventHandler, NotifyCollectionChangedEventArgs>(
+                            handler =>
+                            {
+                                NotifyCollectionChangedEventHandler chHandler = (sender, e) => { handler(e); };
+                                return chHandler;
+                            },
+                            chHandler => obs.CollectionChanged += chHandler,
+                            chHandler => obs.CollectionChanged -= chHandler);
+                    logStatsChanged
+                        .DistinctUntilChanged()
+                        .Subscribe(_ =>
                     {
+                        var logLevelStats = LogViewModel.VirtualLogFile.LogLevelStats;
+                        if (logLevelStats == null || !logLevelStats.Any()) return;
+
                         foreach (var (level, count) in logLevelStats)
                         {
-                            if (level < 1 || level > 6) continue;
-
-                            var severity = level switch
+                            if (level == 0)
                             {
-                                6 => "Fatal",
-                                5 => "Error",
-                                4 => "Warn",
-                                3 => "Info",
-                                2 => "Debug",
-                                1 => "Trace",
-                                _ => ""
-                            };
-                            logStatsOut.Append($"{severity}: {count:n0} ");
+                                InfoBarLogLevel0 = $"No log-level: {count}";
+                            }
+                            else if (level == 1)
+                            {
+                                InfoBarLogLevel1 = $"Trace: {count}";
+                            }
+                            else if (level == 2)
+                            {
+                                InfoBarLogLevel2 = $"Debug: {count}";
+                            }
+                            else if (level == 3)
+                            {
+                                InfoBarLogLevel3 = $"Info: {count}";
+                            }
+                            else if (level == 4)
+                            {
+                                InfoBarLogLevel4 = $"Warn: {count}";
+                            }
+                            else if (level == 5)
+                            {
+                                InfoBarLogLevel5 = $"Error: {count}";
+                            }
+                            else if (level == 6)
+                            {
+                                InfoBarLogLevel6 = $"Fatal: {count}";
+                            }
                         }
+                    });
+                });
+        }
 
-                    }
-                    return $"{sizeOut} {linesOut} {logStatsOut}";
-                })
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .ToProperty(this, x => x.InfoBarTotalSize);
+        private string _infoBarLogLevel0;
 
+        public string InfoBarLogLevel0
+        {
+            get => _infoBarLogLevel0;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel0, value);
+        }
+
+        private string _infoBarLogLevel1;
+
+        public string InfoBarLogLevel1
+        {
+            get => _infoBarLogLevel1;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel1, value);
+        }
+
+        private string _infoBarLogLevel2;
+
+        public string InfoBarLogLevel2
+        {
+            get => _infoBarLogLevel2;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel2, value);
+        }
+
+        private string _infoBarLogLevel3;
+
+        public string InfoBarLogLevel3
+        {
+            get => _infoBarLogLevel3;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel3, value);
+        }
+
+        private string _infoBarLogLevel4;
+
+        public string InfoBarLogLevel4
+        {
+            get => _infoBarLogLevel4;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel4, value);
+        }
+
+        private string _infoBarLogLevel5;
+
+        public string InfoBarLogLevel5
+        {
+            get => _infoBarLogLevel5;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel5, value);
+        }
+
+        private string _infoBarLogLevel6;
+
+        public string InfoBarLogLevel6 { 
+            get => _infoBarLogLevel6;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel6, value);
         }
     }
 }

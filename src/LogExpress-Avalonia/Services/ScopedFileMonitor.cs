@@ -13,9 +13,9 @@ namespace LogExpress.Services
     /// <summary>
     ///     Maintain a list of actual files on disk that matched the passed constructor parameters.
     /// </summary>
-    public class ScopedFilesMonitor : IDisposable
+    public class ScopedFileMonitor : IDisposable
     {
-        private static readonly ILogger Logger = Log.ForContext<ScopedFilesMonitor>();
+        private static readonly ILogger Logger = Log.ForContext<ScopedFileMonitor>();
 
         private readonly string _basePath;
         private readonly List<string> _filters;
@@ -41,7 +41,7 @@ namespace LogExpress.Services
         /// <param name="basePath">The base folder where the files are expected to be</param>
         /// <param name="filters">The wildcard patterns that defines which files to monitor</param>
         /// <param name="includeSubdirectories">Whether or not to look for the same patterns also in sub-folders of the basePath</param>
-        public ScopedFilesMonitor(string basePath, List<string> filters, bool includeSubdirectories)
+        public ScopedFileMonitor(string basePath, List<string> filters, bool includeSubdirectories)
         {
             Logger.Debug("Creating instance");
             _basePath = basePath;
@@ -106,7 +106,7 @@ namespace LogExpress.Services
                     var alreadyExistingFiles = Directory.GetFiles(_basePath, filter, new EnumerationOptions{ RecurseSubdirectories = _includeSubdirectories});
                     foreach (var file in alreadyExistingFiles)
                     {
-                        var fi = new ScopedFile(file);
+                        var fi = new ScopedFile(file, _basePath);
                         _files.AddOrUpdate(fi);
                         Logger.Debug("Added file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
                     }
@@ -131,7 +131,7 @@ namespace LogExpress.Services
         {
             Logger.Debug("File ChangeType={ChangeType}: Name={Name} FullPath={FullPath}", e.ChangeType,
                 e.Name, e.FullPath);
-            var fi = new ScopedFile(e.FullPath);
+            var fi = new ScopedFile(e.FullPath, _basePath);
             _files.AddOrUpdate(fi);
             Logger.Debug("Added file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
         }

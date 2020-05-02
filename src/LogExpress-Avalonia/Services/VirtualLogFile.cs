@@ -1,17 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Timers;
 using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Binding;
+using JetBrains.Annotations;
 using LogExpress.Models;
+using LogExpress.Utils;
 using ReactiveUI;
 using Serilog;
 using SixLabors.ImageSharp;
@@ -19,68 +19,90 @@ using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using ILogger = Serilog.ILogger;
 using Path = System.IO.Path;
 using Timer = System.Timers.Timer;
 
 
 namespace LogExpress.Services
 {
-    public class ScopedFile
-    {
-        public ScopedFile(string file)
-        {
-            var fi = new FileInfo(file);
-            CreationTime = fi.CreationTime;
-            Name = fi.Name;
-            FullName = fi.FullName;
-            Length = fi.Length;
-            DirectoryName = fi.DirectoryName;
-            LinesListCreationTime = (ulong) (CreationTime.Ticks / LineItem.TicksPerSec);
-        }
-
-        public DateTime CreationTime { get; }
-        public string Name{ get; }
-        public string FullName{ get; }
-        public object DirectoryName { get; }
-        public long Length { get; set; }
-        public ulong LinesListCreationTime{ get; }
-    }
-
     /// <summary>
     ///     Using the given fileSpecs, monitor the matching files, either existing, created, deleted or updated.
     ///     Order the monitored file-list by creation date and allows for looking up a given byte position with a given size.
     /// </summary>
     public class VirtualLogFile : ReactiveObject, IDisposable
     {
+        /**
+         * TODO-list
+         * * Filters:
+         *   • Change the scopedFiles detector to parse start and end to find the date-range for every file.
+         *   • Use the aforementioned start-date as the creation-date in the file-info (avoid problems with copied files)
+         *   • Check for overlaps in the log-files loaded and show error message if that happens
+         *   • Use the aforementioned start- and end-dates to create a filter year-list.
+         *   • Use the above year-list filter to find out where to start and stop filtering, when the filter is applied.
+         *   • If more than two years range, then consider looking for the years in-between (should be rare cases only...?)
+         *   • Do not allow selecting a month until a year has been chosen. When chosen iterate the relevant files for months,
+         *     using a binary search approach. 
+         *   • When a month-filter is chosen, use the info from the above month-list to know when to start and stop including lines.
+         *   • When using the day or hour up/down navigators, first use the file-info to see if the file is relevant, then use a
+         *     binary search to find the previous/next day or hour.
+         * * Mini-map:
+         *   • Move the generation of the map to the LogView
+         *   • Create a double resolution mini-map for AllLines and another for FilteredLines (if they differ).
+         *     Low-res: In the UI this will be about 3_000 pixels in height, and will contain all lines.
+         *     High-res: In the UI this will be a "fisheye", showing the higher resolution image at the same position as the
+         *       low-res version, giving the user a chance of seeing the actual log-levels.
+         *   • Each of the two above mentioned mini-maps are in reality to be composed by multiple images:
+         *   * First of all, we want them to be in two different resolutions:
+         *         Lo-res: In the UI this will be about 3_000 pixels in height, and will contain all lines.
+         *          
+         * * File changes:
+         *   • File appends (active file only): Already done
+         *   • File rollover:
+         *     - If a new file is created, which becomes the new active file, then we assume rollover:
+         *         This is an easy scenario to include, as it means that we just add the new file to the file-list and mark it as the
+         *         active file and start monitoring it.
+         *     - If the active file is renamed, then we assume rollover:
+         *         We need to modify the "active file"-lines to reference the renamed file (changed folder and or name)
+         *         The new file is then just added and monitored as the new active file.
+         *   • File deleted: We should be able to remove the associated lines.
+         *   • File changed (not active): Alert user about the change, allowing for refresh?
+         *   • File moved: Update the affected lines to reference the file
+         *   • File added (not becoming the new active): Alert user about the change, allowing for refresh?
+         */
+        // TODO: 
+        // TODO: Add list of months to be used in the log-view, to bind to UI-actions and to use to create the FilteredLines
+
         public readonly Dictionary<string, byte> LogLevelLookup = new Dictionary<string, byte>
         {
-            {"|VRB", 1},
-            {"|VERBOSE", 1},
-            {"|TRACE", 1},
-            {"|DBG", 2},
-            {"|DEBUG", 2},
-            {"|INF", 3},
-            //{"|INFORMATION", 3},
-            {"|WRN", 4},
-            {"|WARN", 4},
-            //|{"WARNING", 4},
-            {"|ERR", 5},
-            //{"ERROR", 5},
-            {"|FTL", 6},
-            {"|FATAL", 6}
+            {"VRB", 1},
+            {"DBG", 2},
+            {"INF", 3},
+            {"WRN", 4},
+            {"ERR", 5},
+            {"FTL", 6},
+            {"WARN", 4},
+            {"TRACE", 1},
+            {"DEBUG", 2},
+            {"FATAL", 6},
+            {"VERBOSE", 1},
         };
 
-        private Dictionary<byte, long> _logLevelStats;
+        private ObservableConcurrentDictionary<byte, long> _logLevelStats;
 
         private static readonly ILogger Logger = Log.ForContext<VirtualLogFile>();
 
         private bool _analyzeError;
-        private readonly ScopedFilesMonitor _fileMonitor;
+        private readonly ScopedFileMonitor _fileMonitor;
 
         private readonly IDisposable _fileMonitorSubscription;
         private bool _isAnalyzed = true;
         private readonly ReadOnlyObservableCollection<ScopedFile> _logFiles;
         private long _totalSize;
+        private LogFileFilter _logFileFilterSelected;
+        private int _yearFilterSelected;
+        private int _monthFilterSelected;
+        private int _levelFilterSelected;
 
         // Used to indicate the activeLogFile, as in the last file in the list (newest).
         // This file will have a separate change-check as opposed to monitoring it (which would potentially spam with changes)
@@ -128,9 +150,9 @@ namespace LogExpress.Services
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(x =>
                 {
-                    Lines = LinesInBgThread;
+                    AllLines = LinesInBgThread;
 
-                    if (Lines != null && Lines.Any())
+                    if (AllLines != null && AllLines.Any())
                     {
                         // Create LogLevelMap to show on the side of the scrollbar
                         CreateLogLevelMapImage();
@@ -139,22 +161,91 @@ namespace LogExpress.Services
                     Logger.Debug("Finished analyzing");
                 });
 
-            _fileMonitor = new ScopedFilesMonitor(BasePath, new List<string>{Filter}, recursive);
+            _fileMonitor = new ScopedFileMonitor(BasePath, new List<string>{Filter}, recursive);
 
             _fileMonitorSubscription = _fileMonitor.Connect()
                 .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
                 .Bind(out _logFiles)
                 .Subscribe(InitializeLines);
 
-            this.WhenAnyValue(x => x.LogFiles, x => x.IsAnalyzed)
+            this.WhenAnyValue(x => x.LogFiles, x => x.LogFiles.Count, x => x.IsAnalyzed)
+                .Where(((ReadOnlyObservableCollection<ScopedFile> logFiles, int count, bool isAnalyzed) obs) =>
+                {
+                    var (_, count, isAnalyzed) = obs;
+                    return isAnalyzed && count > 0;
+                })
                 .DistinctUntilChanged()
                 .Subscribe(MonitorActiveLogFile);
 
+            // This works because we always create the NewLines collection when there is changes
             this.WhenAnyValue(x => x.NewLines)
                 .Where(x => x != null && x.Any())
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(AddNewLinesExecute);
 
+            this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.LogFileFilterSelected, x => x.YearFilterSelected, x => x.MonthFilterSelected, x => x.LevelFilterSelected)
+                .Where((
+                    (bool isAnalyzed, ObservableCollection<LineItem> lines, LogFileFilter logFileFilterSelected, int
+                        yearFilterSelected, int monthFilterSelected, int levelFilterSelected) obs) =>
+                {
+                    var (isAnalyzed, lines, _, _, _, _) = obs;
+                    return isAnalyzed && lines != null;
+                })
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(((bool isAnalyzed, ObservableCollection<LineItem> lines, LogFileFilter logFileFilterSelected, int yearFilterSelected, int monthFilterSelected, int levelFilterSelected) obs) =>
+                {
+                    var (_, _, logFileFilterSelected, yearFilterSelected, monthFilterSelected, levelFilterSelected) = obs;
+
+                    if (logFileFilterSelected?.ScopedFile == null
+                        && levelFilterSelected == 0
+                        && yearFilterSelected == 0
+                        && monthFilterSelected == 0
+                    )
+                    {
+                        FilteredLines = AllLines;
+                    }
+                    else
+                    {
+                        // Used to give lines without its own date the same date as the last accepted date
+                        var lastTimestamp = DateTime.MinValue;
+
+                        FilteredLines = new ObservableCollection<LineItem>(AllLines
+                            .Where(item => DoFilter(item, logFileFilterSelected, yearFilterSelected, monthFilterSelected, levelFilterSelected, ref lastTimestamp)));
+
+                    }
+                });
+
+
+        }
+        private bool DoFilter(LineItem lineItem, LogFileFilter logFileFilterSelected, int yearFilterSelected, int monthFilterSelected, int levelFilterSelected, ref DateTime lastTimestamp)
+        {
+            // Check the logfile-filter
+            var logFileIncluded = logFileFilterSelected?.ScopedFile == null || lineItem.CreationTimeTicks == logFileFilterSelected.ScopedFile.LinesListCreationTime;
+            if (!logFileIncluded) return false;
+
+            // Check the log-level-filter (includes log-lines that has the default log-level (0)
+            var levelIncluded = levelFilterSelected == 0 || lineItem.LogLevel == 0 || lineItem.LogLevel >= levelFilterSelected;
+            if (!levelIncluded) return false;
+
+            // If no year-filter is selected then we can just return true (not necessary to check the month-filter)
+            if (yearFilterSelected == 0) return true;
+
+            // Check the year-filter
+            var timestamp = lineItem.Timestamp; // NB! Fetches the line timestamp from disk
+            lastTimestamp = timestamp ?? lastTimestamp;
+
+            var year = timestamp?.Year ?? lastTimestamp.Year;
+            var yearIncluded = yearFilterSelected == year;
+            if (!yearIncluded) return false;
+
+            // If no month-filter is selected then we can just return true
+            if (monthFilterSelected == 0) return true;
+
+            // Check the month-filter
+            var month = timestamp?.Month ?? lastTimestamp.Month;
+            var monthIncluded = monthFilterSelected == month;
+            // Last check
+            return monthIncluded;
         }
 
         private void AddNewLinesExecute(ObservableCollection<LineItem> newLines)
@@ -162,17 +253,17 @@ namespace LogExpress.Services
             foreach (var lineItem in newLines)
             {
                 var addPosition = -1;
-                for (var i = Lines.Count - 1; i >= 0; i--)
+                for (var i = AllLines.Count - 1; i >= 0; i--)
                 {
-                    if (Lines[i].CreationTimeTicks == lineItem.CreationTimeTicks 
-                        && Lines[i].Position == lineItem.Position)
+                    if (AllLines[i].CreationTimeTicks == lineItem.CreationTimeTicks 
+                        && AllLines[i].Position == lineItem.Position)
                     {
                         addPosition = i;
                         break;
                     }
 
-                    if (Lines[i].CreationTimeTicks < lineItem.CreationTimeTicks
-                        || Lines[i].Position < lineItem.Position)
+                    if (AllLines[i].CreationTimeTicks < lineItem.CreationTimeTicks
+                        || AllLines[i].Position < lineItem.Position)
                     {
                         addPosition = -1;
                         break;
@@ -181,44 +272,49 @@ namespace LogExpress.Services
 
                 if (addPosition == -1)
                 {
-                    Lines.Add(lineItem);
+                    AllLines.Add(lineItem);
                 }
                 else
                 {
-                    Lines[addPosition] = lineItem;
+                    LogLevelStats[AllLines[addPosition].LogLevel]--;
+                    AllLines[addPosition] = lineItem;
                 }
+                LogLevelStats[lineItem.LogLevel]++;
             }
+            TotalSize = LogFiles.Sum(l => l.Length);
 
             newLines.Clear();
         }
 
+        // TODO: Create log-map on the fly based on filter-changes in the Lines in the UI
+        // Which means perhaps move it from here to the UI as a responsibility?
         private void CreateLogLevelMapImage()
         {
             const int targetPartImageHeight = 500_000;
             const int logLevelMapHeight = 2_048;
 
-            var logLevelStats = new Dictionary<byte, long>();
+            var miniMapFolder = Path.Combine(App.DataFolder, "tmp");
+            Directory.CreateDirectory(miniMapFolder);
 
-            var tmpFolder = Path.Combine("tmp");
-            Directory.CreateDirectory(tmpFolder);
+            var numLines = AllLines.Count;
 
-            var parts = Lines.Count / targetPartImageHeight + 1;
-            var linesPerPart = (int) Math.Ceiling((double) Lines.Count / parts);
+            var parts = numLines / targetPartImageHeight + 1;
+            var linesPerPart = (int) Math.Ceiling((double) numLines / parts);
 
             var imgParts = new List<Image<Rgba32>>(parts);
 
             var linesDone = 0;
             for (var i = 0; i < parts; i++)
             {
-                var linesInThisPart = Math.Min(linesPerPart * (i + 1), Lines.Count) - linesDone;
+                var linesInThisPart = Math.Min(linesPerPart * (i + 1), numLines) - linesDone;
 
                 var image = new Image<Rgba32>(10, linesInThisPart);
 
                 for (var y = 0; y < linesInThisPart; y++)
                 {
-                    var lineItem = Lines[linesDone];
+                    var lineItem = AllLines[linesDone];
 
-                    LogLevelStatsIncrement(logLevelStats, lineItem.LogLevel);
+                    LogLevelStatsIncrement(LogLevelStats, lineItem.LogLevel);
 
                     var pixel = lineItem.LogLevel switch
                     {
@@ -248,8 +344,6 @@ namespace LogExpress.Services
                 imgParts.Add(image);
             }
 
-            LogLevelStats = logLevelStats;
-
             var combinedImage = parts == 1 ? imgParts[0] : new Image<Rgba32>(10, logLevelMapHeight);
             if (parts > 1)
             {
@@ -272,7 +366,7 @@ namespace LogExpress.Services
                 }
             }
 
-            var fileName = Path.Combine(tmpFolder, "logLevelMap.bmp");
+            var fileName = Path.Combine(miniMapFolder, "logLevelMap.bmp");
             combinedImage.Save(fileName, new BmpEncoder());
 
             LogLevelMapFile = fileName;
@@ -299,9 +393,45 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _logLevelMapFile, value);
         }
 
-        private void MonitorActiveLogFile((ReadOnlyObservableCollection<ScopedFile> scopedFiles, bool isAnalyzed) tuple)
+        private ObservableCollection<LineItem> _filteredLines;
+
+        public ObservableCollection<LineItem> FilteredLines
         {
-            var (scopedFiles, isAnalyzed) = tuple;
+            get => _filteredLines;
+            set => this.RaiseAndSetIfChanged(ref _filteredLines, value);
+        }
+
+        [UsedImplicitly]
+        public LogFileFilter LogFileFilterSelected
+        {
+            get => _logFileFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _logFileFilterSelected, value);
+        }
+
+        [UsedImplicitly]
+        public int YearFilterSelected
+        {
+            get => _yearFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _yearFilterSelected, value);
+        }
+
+        [UsedImplicitly]
+        public int MonthFilterSelected
+        {
+            get => _monthFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _monthFilterSelected, value);
+        }
+
+        [UsedImplicitly]
+        public int LevelFilterSelected
+        {
+            get => _levelFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _levelFilterSelected, value);
+        }
+
+        private void MonitorActiveLogFile((ReadOnlyObservableCollection<ScopedFile> scopedFiles, int count, bool isAnalyzed) tuple)
+        {
+            var (scopedFiles, _, isAnalyzed) = tuple;
 
             if (scopedFiles == null || !scopedFiles.Any() || !isAnalyzed)
             {
@@ -325,12 +455,12 @@ namespace LogExpress.Services
 
             var previousFileInfo = _logFiles.Last();
 
-            var currentFileInfo = new ScopedFile(previousFileInfo.FullName);
+            var currentFileInfo = new ScopedFile(previousFileInfo.FullName, BasePath);
             if (currentFileInfo.Length > previousFileInfo.Length)
             {
                 var newLines = new ObservableCollection<LineItem>();
                 ReadFileLinePositions(newLines, currentFileInfo, previousFileInfo);
-                NewLines = newLines;
+                if (newLines.Any()) NewLines = newLines;
 
                 previousFileInfo.Length = currentFileInfo.Length;
             }
@@ -355,7 +485,7 @@ namespace LogExpress.Services
 
         public string Filter { get; set; }
 
-        private ObservableCollection<LineItem> _lines = new ObservableCollection<LineItem>();
+        private ObservableCollection<LineItem> _allLines = new ObservableCollection<LineItem>();
 
         public bool IsAnalyzed
         {
@@ -377,7 +507,7 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _totalSize, value);
         }
 
-        public Dictionary<byte, long> LogLevelStats
+        public ObservableConcurrentDictionary<byte, long> LogLevelStats
         {
             get => _logLevelStats;
             set => this.RaiseAndSetIfChanged(ref _logLevelStats, value);
@@ -412,10 +542,10 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _logLevelMap, value);
         }
 
-        public ObservableCollection<LineItem> Lines
+        public ObservableCollection<LineItem> AllLines
         {
-            get => _lines;
-            set => this.RaiseAndSetIfChanged(ref _lines, value);
+            get => _allLines;
+            set => this.RaiseAndSetIfChanged(ref _allLines, value);
         }
 
         public void Dispose()
@@ -439,33 +569,7 @@ namespace LogExpress.Services
             var (logFiles, changes) =
                 ((ReadOnlyObservableCollection<ScopedFile>, IChangeSet<ScopedFile, ulong>)) arg;
 
-/*
-            foreach (var change in changes)
-            {
-                switch (change.Reason)
-                {
-                    case ChangeReason.Add:
-                        // Add the associated lines for this file
-                        AddLinesForFile(change.CurrentIndex, change.Current);
-                        break;
-                    case ChangeReason.Remove:
-                        // Remove the associated lines for this logfile
-                        RemoveLinesForFile(change.CurrentIndex, change.Current);
-                        break;
-                    case ChangeReason.Refresh: // Not sure what 
-                    case ChangeReason.Moved: // Items will never move in the virtual log file
-                    case ChangeReason.Update:
-                        // Ignore these changes. Updates to the ActiveLogFile is handled within the VirtualLogFile itself. Any other update is not expected for logs.
-                        continue;
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(change.Reason));
-                }
-            }
-            IsAnalyzed = true;
-*/
-
             LinesInBgThread = new ObservableCollection<LineItem>();
-            //var lines = new ObservableCollection<LineItem>();
 
             // Do the all 
             var iterator = logFiles.GetEnumerator();
@@ -475,17 +579,9 @@ namespace LogExpress.Services
                 {
                     var fileInfo = iterator.Current;
                     ReadFileLinePositions(LinesInBgThread, fileInfo);
-/*
-                    _linesOLD.Edit(async editLines =>
-                    {
-                        await ReadFileLinePositions(fileInfo, editLines);
-                    });
-*/                    
-                    //Debug.Assert(fileInfo != null, nameof(fileInfo) + " != null");
                 }
 
                 iterator.Dispose();
-                //Lines.AddRange(lines);
                 IsAnalyzed = true;
             }
             catch (Exception ex)
@@ -498,27 +594,6 @@ namespace LogExpress.Services
                 iterator.Dispose();
             }
         }
-/*
-        private void AddLinesForFile(int index, FileInfo fileInfo)
-        {
-            _linesOLD.Edit(async editLines =>
-            {
-                await ReadFileLinePositions(fileInfo, index, editLines);
-            });
-        }
-
-        private void RemoveLinesForFile(int index, FileInfo fileInfo)
-        {
-            _linesOLD.Edit(editLines =>
-            {
-                foreach (var item in _linesOLD.Items)
-                {
-                    if (item.LogFileIndex == index)
-                        editLines.RemoveKey(item.GlobalPosition);
-                }
-            });
-        }
-*/
 
         private void ReadFileLinePositions(ObservableCollection<LineItem> linesCollection, ScopedFile file,
             ScopedFile previousFileInfo = null)
@@ -536,62 +611,64 @@ namespace LogExpress.Services
             {
                 var buffer = new Span<char>(new char[1]);
 
-
-
-                var stopwatch = Stopwatch.StartNew();
                 // All files with length > 0 implicitly starts with a line
-                var lineNum = previousFileInfo == null ? 1 : _lines.Last().LineNumber;
+                int lineNum = previousFileInfo == null ? 1 : _allLines.Last().LineNumber;
                 uint filePosition = (uint) (previousFileInfo?.Length ?? 0);
-                uint lastNewLinePos = previousFileInfo == null ? 0 : _lines.Last().Position;
+                uint lastNewLinePos = previousFileInfo == null ? 0 : _allLines.Last().Position;
                 byte logLevel = 0;
+                byte lastLogLevel = 0;
+                int linePos = 0;
                 reader.BaseStream.Seek(filePosition, SeekOrigin.Begin);
                 while (!reader.EndOfStream)
                 {
                     var numRead = reader.Read(buffer);
                     if (numRead == -1) continue; // End of stream
                     filePosition++;
+                    linePos++;
 
                     // Check if the data read so far matches a logLevel indicator
-                    if (logLevel == 0)
+                    if (logLevel == 0 && linePos >= 25)
                     {
-                        foreach (var logLevelMatcher in _logLevelMatchers)
+                        foreach (var (wordMatcher, level) in _logLevelMatchers)
                         {
-                            if (logLevelMatcher.Key.IsMatch(buffer[0]))
-                            {
-                                logLevel = logLevelMatcher.Value;
-                                break;
-                            }
-                        }
-
-                        if (logLevel > 0)
-                        {
-                            foreach (var logLevelMatcher in _logLevelMatchers) logLevelMatcher.Key.Reset();
+                            if (!wordMatcher.IsMatch(buffer[0])) continue;
+                            logLevel = level;
+                            break;
                         }
                     }
 
                     if (buffer[0] == '\n')
                     {
-                        linesCollection.Add(new LineItem(file, lineNum, lastNewLinePos, logLevel));
+                        lastLogLevel = logLevel > 0 ? logLevel : lastLogLevel;
+                        linesCollection.Add(new LineItem(file, lineNum, lastNewLinePos, lastLogLevel));
                         lastNewLinePos = filePosition;
                         lineNum += 1;
                         logLevel = 0;
+                        linePos = 0;
+                        foreach (var (wordMatcher, _) in _logLevelMatchers)
+                        {
+                            wordMatcher.Reset();
+                        }
                     }
                 }
 
                 if (filePosition >= lastNewLinePos)
                 {
-                    linesCollection.Add(new LineItem(file, lineNum, lastNewLinePos, logLevel));
+                    linesCollection.Add(new LineItem(file, lineNum, lastNewLinePos, lastLogLevel));
                 }
-
-                stopwatch.Stop();
-                var duration = stopwatch.Elapsed;
-                //Logger.Debug("Time spent on analyzing lines in {LogFile}: {Duration}", file.FullName, duration);
             }
         }
 
         private void InitializeLines(IChangeSet<ScopedFile, ulong> changes = null)
         {
             IsAnalyzed = false;
+            LogLevelStats = new ObservableConcurrentDictionary<byte, long>();
+            // ReSharper disable once PossibleInvalidCastExceptionInForeachLoop
+            foreach (byte i in Enumerable.Range(0,6))
+            {
+                LogLevelStats[i] = 0;
+            };
+
             LineItem.LogFiles = LogFiles;
             TotalSize = LogFiles.Sum(l => l.Length);
 
@@ -608,6 +685,7 @@ namespace LogExpress.Services
     {
         private readonly string _wordToCheck;
         private int _matchCounter;
+        private bool _disqualified;
 
         public WordMatcher(string wordToCheck)
         {
@@ -616,18 +694,23 @@ namespace LogExpress.Services
 
         public bool IsMatch(char nextChar)
         {
-            if (_wordToCheck[_matchCounter].Equals(nextChar))
-            {
-                _matchCounter++;
-            }
-            else _matchCounter = 0;
+            // Already disqualified
+            if (_disqualified) return false;
+            
+            // Check if the character matches (negate to update _disqualified immediately)
+            _disqualified = !_wordToCheck[_matchCounter].Equals(nextChar);
+            
+            // No match
+            if (_disqualified) return false;
 
-            return _matchCounter == _wordToCheck.Length;
+            // Actual match!
+            return ++_matchCounter == _wordToCheck.Length;
         }
 
         public void Reset()
         {
             _matchCounter = 0;
+            _disqualified = false;
         }
     }
 }

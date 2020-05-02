@@ -1,7 +1,10 @@
-﻿using Avalonia;
+﻿using System;
+using System.IO;
+using Avalonia;
 using Avalonia.Dialogs;
 using Avalonia.Logging.Serilog;
 using Avalonia.ReactiveUI;
+using LogExpress.Views;
 using Serilog;
 
 namespace LogExpress
@@ -11,6 +14,7 @@ namespace LogExpress
         // Initialization code. Don't use any Avalonia, third-party APIs or any
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
         // yet and stuff might break.
+        [STAThread]
         public static void Main(string[] args)
         {
             const string outputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff}|{Level:u3}|{ThreadId}:{SourceContext}({FilePath})|{Message:lj}{NewLine}{Exception}";
@@ -23,7 +27,7 @@ namespace LogExpress
                 //.WriteTo.Trace(outputTemplate: "{Area}: {Message}")
                 //.WriteTo.Console(outputTemplate: outputTemplate)
                 .WriteTo.File(
-                    @"LogExpress.log", 
+                    Path.Combine(App.DataFolder, "log",  @"LogExpress.log"), 
                     rollingInterval: RollingInterval.Day,
                     outputTemplate: outputTemplate
                 )

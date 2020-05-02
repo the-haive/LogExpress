@@ -2,28 +2,136 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        Width="450"
-        Height="200"
+        Width="800"
+        MinWidth="650"
+        Height="850"
         WindowStartupLocation="CenterOwner"
         x:Class="LogExpress.Views.OpenLogSetView"
         Title="Open Log Set">
-  <StackPanel VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="20">
-    <DockPanel>
-      <TextBlock Text="Log folder:" VerticalAlignment="Center" Margin="5" DockPanel.Dock="Left"/>
-      <Button Name="SelectFolder" Content="Select folder" Margin="5" Padding="5" DockPanel.Dock="Right" Command="{Binding SelectFolderCommand}"/>
-      <TextBox Name="Folder" Watermark="Folder" Margin="5" Padding="5" Text="{Binding Folder}"/>
-    </DockPanel>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-      <TextBlock Text="Log pattern:" VerticalAlignment="Center" Margin="5"/>
-      <TextBox Name="Pattern" Watermark="*.log" Margin="5" Padding="5" Text="{Binding Pattern}"/>
-      <Separator Width="20"/>
-      <CheckBox Content="_Recursive:" Margin="5" Padding="5" HorizontalAlignment="Center" IsChecked="{Binding Recursive}"/>
+  <Window.Styles>
+    <Style Selector="#Info TextBlock">
+      <Setter Property="FontWeight" Value="Medium"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="#Supported TextBlock">
+      <Setter Property="Foreground" Value="DarkGreen"/>
+    </Style>
+    <Style Selector="#NotSupported TextBlock">
+      <Setter Property="Foreground" Value="DarkRed"/>
+    </Style>
+  </Window.Styles>
+  <DockPanel VerticalAlignment="Stretch" Margin="0 10" LastChildFill="True" HorizontalAlignment="Stretch">
+    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="800" Margin="0 0 0 20" Background="AliceBlue">
+      Open Set
+    </TextBlock>
+    <Border Name="Info"
+            Background="AliceBlue"
+            BorderBrush="Gray"
+            BorderThickness="1"
+            CornerRadius="3"
+            Padding="5"
+            DockPanel.Dock="Top" 
+            Width="750" Margin="0 0 0 20">
+      <StackPanel HorizontalAlignment="Center" Margin="10">
+        <TextBlock>
+          Bewware that LogExpress expects the opened log-files to have uniform layout. This in practice means that the position and width/format of the log-date and the position of and the list of expected Log-level indicators must be consistent. Finally, the dates within the files should be globally sqeuential - hence not overlap.
+        </TextBlock>
+        <Separator Height="10"/>
+        <StackPanel Name="Supported">
+          <TextBlock>
+            LogExpress was specifically designed to: 
+          </TextBlock>
+          <Separator Height="10"/>
+          <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto" Width="650" HorizontalAlignment="Left">
+            <TextBlock Grid.Row="0" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
+            <TextBlock Grid.Row="0" Grid.Column="1">Load a single log-file, and investigate/monitor the events logged to it.</TextBlock>
+            <TextBlock Grid.Row="1" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
+            <TextBlock Grid.Row="1" Grid.Column="1">Load multiple log-files, where the logfiles include rollover files as well as the "live" log-file.</TextBlock>
+          </Grid>
+        </StackPanel>
+        <Separator Height="10"/>
+        <StackPanel Name="NotSupported">
+          <TextBlock TextAlignment="Left">
+            LogExpress was specifically NOT designed to:
+          </TextBlock>
+          <Separator Height="10"/>
+          <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto,Auto" Width="650" HorizontalAlignment="Left">
+            <TextBlock Grid.Row="0" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
+            <TextBlock Grid.Row="0" Grid.Column="1">Open multiple log-files from different processes, as the layout and or date-time ranges would not be co-herent.</TextBlock>
+            <TextBlock Grid.Row="1" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
+            <TextBlock Grid.Row="1" Grid.Column="1">Open multiple log-files created in parallel by multiple instances of the same executable. Even though the layout would be consistent, the date-ranges in the files would overlap.</TextBlock>
+            <TextBlock Grid.Row="2" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
+            <TextBlock Grid.Row="2" Grid.Column="1">Open multiple log-files created in parallel by the same instance/executable. Even though the layout would be consistent, the date-ranges in the files would overlap. Open each of these separately (each of these will also have their own rollover files - if defined).</TextBlock>
+          </Grid>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <Grid ColumnDefinitions="100,200,100" RowDefinitions="Auto,Auto,Auto"  Margin="10" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="500">
+      <!-- Row 0 -->
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="Log folder:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+      <TextBox Grid.Row="0" Grid.Column="1" Name="Folder" Watermark="Folder" Margin="5" Padding="5" HorizontalAlignment="Left" Width="200" Text="{Binding Folder}" />
+      <Button Grid.Row="0" Grid.Column="2" Name="SelectFolder" Content="Select folder" Margin="5" Padding="5" HorizontalAlignment="Left" Command="{Binding SelectFolderCommand}"/>
+      <!-- Row 1 -->
+      <TextBlock Grid.Row="1" Grid.Column="0" Text="Log pattern:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+      <TextBox Grid.Row="1" Grid.Column="1" Name="Pattern" Watermark="*.log" Margin="5" Padding="5" HorizontalAlignment="Left" Width="200" Text="{Binding Pattern}"/>
+      <!-- Row 2 -->
+      <TextBlock Grid.Row="2" Grid.Column="0" Text="Recursive:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+      <CheckBox Grid.Row="2" Grid.Column="1" Margin="5" Padding="5" IsChecked="{Binding Recursive}"/>
+    </Grid>
+    <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+        <Button Margin="10 5 5 10" Padding="5" Width="140" 
+                Command="{Binding OpenSelectedCommand}"  
+                IsEnabled="{Binding SelectedLogFile, Converter={x:Static ObjectConverters.IsNotNull}}"
+                Content="Open Selected File"/>
+        <Button Margin="10 5 5 10" Padding="5" Width="140" 
+                Command="{Binding OpenCommand}" 
+                Content="Open Set" />
+        <Button Margin="10 5 5 10" Padding="5" Width="140" 
+                Command="{Binding CancelCommand}" 
+                Content="Cancel" />
+      </StackPanel>
     </StackPanel>
-    <Separator Height="20"/>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-      <Button Content="Open" Margin="5" Padding="5" HorizontalAlignment="Center" Command="{Binding OpenCommand}"/>
-      <Separator Width="20"/>
-      <Button Content="Cancel"  Margin="5" Padding="5"  HorizontalAlignment="Center" Command="{Binding CancelCommand}"/>
-    </StackPanel>
-  </StackPanel>
+    <Border Background="Cornsilk"
+            BorderBrush="Gray"
+            BorderThickness="1"
+            CornerRadius="3"
+            Padding="5"
+            IsVisible="{Binding !LogFiles.Count}" 
+            DockPanel.Dock="Top" 
+            Width="550">
+      <StackPanel HorizontalAlignment="Center" Margin="10">
+        <TextBlock TextWrapping="Wrap" TextAlignment="Center">
+          Your definition does not yield any files - at the moment.
+        </TextBlock>
+        <TextBlock TextWrapping="Wrap" FontWeight="Bold" FontStyle="Italic" TextAlignment="Center" Margin="10">
+          You can however still open the set. 
+        </TextBlock>
+        <TextBlock TextWrapping="Wrap" TextAlignment="Center">
+          LogExpress will monitor the defined scope and start tracking the files when/if they are created.
+        </TextBlock>
+      </StackPanel>
+    </Border>
+    <TextBlock FontWeight="Bold" Margin="0 20 0 0" HorizontalAlignment="Center" TextAlignment="Center" DockPanel.Dock="Top" Width="500">
+      Logfiles found (in creation-order):
+    </TextBlock>
+    <ListBox
+      Items="{Binding LogFiles}"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Stretch"
+      SelectionMode="Toggle"
+      SelectedItem="{Binding SelectedLogFile}"
+      Margin="20 0"
+      >
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Orientation="Horizontal" ToolTip.Tip="{Binding FullName}">
+            <TextBlock Text="{Binding CreationTime}" Margin="0 0 10 0" FontSize="10"/>
+            <TextBlock Text="{Binding LengthHuman}" Width="50" Margin="0 0 10 0" TextAlignment="Right" FontSize="10"/>
+            <TextBlock Text="{Binding RelativeFullName}" FontSize="10"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </DockPanel>
 </Window>
