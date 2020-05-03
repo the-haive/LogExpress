@@ -120,19 +120,19 @@ namespace LogExpress.Services
         ///     Setup the virtual log-file manager.
         /// </summary>
         /// <param name="basePath"></param>
-        /// <param name="filter"></param>
+        /// <param name="pattern"></param>
         /// <param name="recursive"></param>
-        public VirtualLogFile(string basePath, string filter, bool recursive)
+        public VirtualLogFile(string basePath, string pattern, bool recursive)
         {
             BasePath = basePath;
-            Filter = filter;
+            Pattern = pattern;
             LineItem.LogFiles = LogFiles;
 
             foreach (var pair in LogLevelLookup) _logLevelMatchers.Add(new WordMatcher(pair.Key), pair.Value);
 
             Logger.Debug(
                 "Creating instance for basePath={basePath} and filters={filters} with recurse={recurse}",
-                basePath, filter, recursive);
+                basePath, pattern, recursive);
 
             this.WhenAnyValue(x => x.AnalyzeError)
                 .Where(x => x)
@@ -158,7 +158,7 @@ namespace LogExpress.Services
                     Logger.Debug("Finished analyzing");
                 });
 
-            _fileMonitor = new ScopedFileMonitor(BasePath, new List<string> {Filter}, recursive);
+            _fileMonitor = new ScopedFileMonitor(BasePath, new List<string> {Pattern}, recursive);
 
             _fileMonitorSubscription = _fileMonitor.Connect()
                 .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
@@ -174,8 +174,11 @@ namespace LogExpress.Services
                 .DistinctUntilChanged()
                 .Subscribe(tuple =>
                 {
-                    _logFileFilterSource.Clear();
-                    _logFileFilterSource.AddOrUpdate(LogFiles);
+                    _fileFilterSource.Clear();
+                    var i = 1;
+                    var sortedFilterItems = LogFiles.OrderBy(l => l.CreationTime)
+                        .Select(l => new FilterItem(i++, l.RelativeFullName, l.FullName));
+                    _fileFilterSource.AddOrUpdate(sortedFilterItems);
                     MonitorActiveLogFile(tuple);
                 });
 
@@ -201,75 +204,14 @@ namespace LogExpress.Services
                         _levelFilterSource.AddOrUpdate(new FilterItem(level, $"TODO-{level}"));
 
                     _monthFilterSource.Clear();
-                    _monthFilterSource.AddOrUpdate(new FilterItem(0, "All"));
                     _monthFilterSource.AddOrUpdate(new FilterItem(6, "June"));
                     _monthFilterSource.AddOrUpdate(new FilterItem(8, "August"));
 
                     _yearFilterSource.Clear();
-                    _yearFilterSource.AddOrUpdate(new FilterItem(0, "All"));
                     _yearFilterSource.AddOrUpdate(new FilterItem(2019, "2019"));
                     _yearFilterSource.AddOrUpdate(new FilterItem(2020, "2020"));
                 });
 
-            ConnectLogFileFilterItems()
-                .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _logFileFilterItems)
-                .Subscribe();
-
-            ConnectYearFilterItems()
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _yearFilterItems)
-                .Subscribe();
-
-            ConnectMonthFilterItems()
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _monthFilterItems)
-                .Subscribe();
-
-            ConnectLevelFilterItems()
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _levelFilterItems)
-                .Subscribe();
-
-            _levelFilterEnabled = this.WhenAnyValue(x => x.LevelFilterItems.Count, x => x.IsFiltering)
-                .Select(obs =>
-                {
-                    var (levelCount, isFiltering) = obs;
-                    return !isFiltering && levelCount > 0;
-                })
-                .DistinctUntilChanged()
-                .ToProperty(this, x => x.LevelFilterEnabled);
-
-            _logFileFilterEnabled = this.WhenAnyValue(x => x.LogFileFilterItems.Count, x => x.IsFiltering)
-                .Select(obs =>
-                {
-                    var (logFileCount, isFiltering) = obs;
-                    return !isFiltering && logFileCount > 0;
-                })
-                .DistinctUntilChanged()
-                .ToProperty(this, x => x.LogFileFilterEnabled);
-
-            _monthFilterEnabled = this.WhenAnyValue(x => x.MonthFilterItems.Count, x => x.YearFilterSelected, x => x.IsFiltering)
-                .Select(obs =>
-                {
-                    var (monthFilterItemsCount, yearFilterSelected, isFiltering) = obs;
-                    return !isFiltering && yearFilterSelected?.Key > 0 && monthFilterItemsCount > 0;
-                })
-                .DistinctUntilChanged()
-                .ToProperty(this, x => x.MonthFilterEnabled);
-
-            _yearFilterEnabled = this.WhenAnyValue(x => x.YearFilterItems.Count, x => x.IsFiltering)
-                .Select(obs =>
-                {
-                    var (yearCount, isFiltering) = obs;
-                    return !isFiltering && yearCount > 0;
-                })
-                .DistinctUntilChanged()
-                .ToProperty(this, x => x.YearFilterEnabled);
 
             // This works because we always create the NewLines collection when there is changes
             this.WhenAnyValue(x => x.NewLines)
@@ -287,27 +229,27 @@ namespace LogExpress.Services
                 });
 
 
-            this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.LogFileFilterSelected,
+            this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.FileFilterSelected,
                     x => x.YearFilterSelected, x => x.MonthFilterSelected, x => x.LevelFilterSelected)
                 .Where((
-                    (bool isAnalyzed, ObservableCollection<LineItem> lines, ScopedFile logFileFilterSelected, FilterItem
-                        yearFilterSelected, int monthFilterSelected, int levelFilterSelected) obs) =>
+                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem fileFilterSelected, FilterItem
+                        yearFilterSelected, FilterItem monthFilterSelected, FilterItem levelFilterSelected) obs) =>
                 {
                     var (isAnalyzed, lines, _, _, _, _) = obs;
                     return isAnalyzed && lines != null;
                 })
                 //.ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe((
-                    (bool isAnalyzed, ObservableCollection<LineItem> lines, ScopedFile logFileFilterSelected, FilterItem
-                        yearFilterSelected, int monthFilterSelected, int levelFilterSelected) obs) =>
+                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem fileFilterSelected, FilterItem
+                        yearFilterSelected, FilterItem monthFilterSelected, FilterItem levelFilterSelected) obs) =>
                 {
-                    var (_, _, logFileFilterSelected, yearFilterSelected, monthFilterSelected, levelFilterSelected) =
+                    var (_, _, fileFilterSelected, yearFilterSelected, monthFilterSelected, levelFilterSelected) =
                         obs;
 
-                    if (logFileFilterSelected == null
-                        && levelFilterSelected == 0
+                    if ((fileFilterSelected == null || fileFilterSelected.Key == 0)
+                        && (levelFilterSelected == null || levelFilterSelected.Key == 0)
                         && (yearFilterSelected == null || yearFilterSelected.Key == 0)
-                        && monthFilterSelected == 0
+                        && (monthFilterSelected == null || monthFilterSelected.Key == 0)
                     )
                     {
                         FilteredLines = AllLines;
@@ -321,7 +263,7 @@ namespace LogExpress.Services
                             var lastTimestamp = DateTime.MinValue;
 
                             BackgroundFilteredLines = new ObservableCollection<LineItem>(AllLines
-                                .Where(item => DoFilter(item, logFileFilterSelected, yearFilterSelected,
+                                .Where(item => DoFilter(item, fileFilterSelected, yearFilterSelected,
                                     monthFilterSelected, levelFilterSelected, ref lastTimestamp)));
                         });
                     }
@@ -363,7 +305,7 @@ namespace LogExpress.Services
 
         public string BasePath { get; set; }
 
-        public string Filter { get; set; }
+        public string Pattern { get; set; }
 
         public ObservableCollection<LineItem> FilteredLines
         {
@@ -383,15 +325,6 @@ namespace LogExpress.Services
         }
 
         public ReadOnlyObservableCollection<ScopedFile> LogFiles => _logFiles;
-
-        /// <summary>
-        ///     Used to specify which logLevels to show
-        /// </summary>
-        public List<int> LogLevelFilter
-        {
-            get => _logLevelFilter;
-            set => this.RaiseAndSetIfChanged(ref _logLevelFilter, value);
-        }
 
         public Bitmap LogLevelMap
         {
@@ -616,17 +549,18 @@ namespace LogExpress.Services
             imgParts.ForEach(i => i.Dispose());
             combinedImage.Dispose();
         }
-        private bool DoFilter(LineItem lineItem, ScopedFile logFileFilterSelected, FilterItem yearFilterSelected,
-            int monthFilterSelected, int levelFilterSelected, ref DateTime lastTimestamp)
+        private bool DoFilter(LineItem lineItem, FilterItem fileFilterSelected, FilterItem yearFilterSelected,
+            FilterItem monthFilterSelected, FilterItem levelFilterSelected, ref DateTime lastTimestamp)
         {
-            // Check the logfile-filter
-            var logFileIncluded = logFileFilterSelected == null ||
-                                  lineItem.CreationTimeTicks == logFileFilterSelected.LinesListCreationTime;
-            if (!logFileIncluded) return false;
+            // Check the file-filter
+            var fileIncluded = fileFilterSelected == null 
+                                  || fileFilterSelected.Key == 0
+                                  || LogFiles?.FirstOrDefault(l => l.RelativeFullName.Equals(fileFilterSelected?.Name))?.LinesListCreationTime == lineItem.CreationTimeTicks;
+            if (!fileIncluded) return false;
 
             // Check the log-level-filter (includes log-lines that has the default log-level (0)
-            var levelIncluded = levelFilterSelected == 0 || lineItem.LogLevel == 0 ||
-                                lineItem.LogLevel >= levelFilterSelected;
+            var levelIncluded = levelFilterSelected == null || levelFilterSelected.Key == 0 || lineItem.LogLevel == 0 ||
+                                lineItem.LogLevel >= levelFilterSelected.Key;
             if (!levelIncluded) return false;
 
             // If no year-filter is selected then we can just return true (not necessary to check the month-filter)
@@ -641,11 +575,11 @@ namespace LogExpress.Services
             if (!yearIncluded) return false;
 
             // If no month-filter is selected then we can just return true
-            if (monthFilterSelected == 0) return true;
+            if (monthFilterSelected == null || monthFilterSelected.Key == 0) return true;
 
             // Check the month-filter
             var month = timestamp?.Month ?? lastTimestamp.Month;
-            var monthIncluded = monthFilterSelected == month;
+            var monthIncluded = monthFilterSelected?.Key == month;
             // Last check
             return monthIncluded;
         }
@@ -655,8 +589,7 @@ namespace LogExpress.Services
             IsAnalyzed = false;
             LogLevelStats = new ObservableConcurrentDictionary<byte, long>();
             // ReSharper disable once PossibleInvalidCastExceptionInForeachLoop
-            foreach (byte i in Enumerable.Range(0, 6)) LogLevelStats[i] = 0;
-            ;
+            foreach (byte i in Enumerable.Range(0, 7)) LogLevelStats[i] = 0;
 
             LineItem.LogFiles = LogFiles;
             TotalSize = LogFiles.Sum(l => l.Length);
@@ -748,15 +681,10 @@ namespace LogExpress.Services
 
         #region LevelFilter
         private readonly SourceCache<FilterItem, int> _levelFilterSource = new SourceCache<FilterItem, int>(t => t.Key);
-        private readonly ReadOnlyObservableCollection<FilterItem> _levelFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> LevelFilterItems => _levelFilterItems;
         
-        private readonly ObservableAsPropertyHelper<bool> _levelFilterEnabled;
-        [UsedImplicitly] public bool LevelFilterEnabled => _levelFilterEnabled.Value;
-        
-        private int _levelFilterSelected;
+        private FilterItem _levelFilterSelected;
         [UsedImplicitly]
-        public int LevelFilterSelected
+        public FilterItem LevelFilterSelected
         {
             get => _levelFilterSelected;
             set => this.RaiseAndSetIfChanged(ref _levelFilterSelected, value);
@@ -768,38 +696,28 @@ namespace LogExpress.Services
 
         #endregion
 
-        #region LogFileFilter
-        private readonly SourceCache<ScopedFile, string> _logFileFilterSource = new SourceCache<ScopedFile, string>(l => l.FullName);
-        private readonly ReadOnlyObservableCollection<ScopedFile> _logFileFilterItems;
-        public ReadOnlyObservableCollection<ScopedFile> LogFileFilterItems => _logFileFilterItems;
+        #region FileFilter
+        private readonly SourceCache<FilterItem, int> _fileFilterSource = new SourceCache<FilterItem, int>(t => t.Key);
 
-        private readonly ObservableAsPropertyHelper<bool> _logFileFilterEnabled;
-        [UsedImplicitly] public bool LogFileFilterEnabled => _logFileFilterEnabled.Value;
-
-        private ScopedFile _logFileFilterSelected;
+        private FilterItem _fileFilterSelected;
         [UsedImplicitly]
-        public ScopedFile LogFileFilterSelected
+        public FilterItem FileFilterSelected
         {
-            get => _logFileFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _logFileFilterSelected, value);
+            get => _fileFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _fileFilterSelected, value);
         }
-        public IObservable<IChangeSet<ScopedFile, string>> ConnectLogFileFilterItems()
+        public IObservable<IChangeSet<FilterItem, int>> ConnectFileFilterItems()
         {
-            return _logFileFilterSource.Connect();
+            return _fileFilterSource.Connect();
         }
         #endregion
         
         #region MonthFilter
         private readonly SourceCache<FilterItem, int> _monthFilterSource = new SourceCache<FilterItem, int>(t => t.Key);
-        private readonly ReadOnlyObservableCollection<FilterItem> _monthFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> MonthFilterItems => _monthFilterItems;
         
-        private readonly ObservableAsPropertyHelper<bool> _monthFilterEnabled;
-        [UsedImplicitly] public bool MonthFilterEnabled => _monthFilterEnabled.Value;
-
-        private int _monthFilterSelected;
+        private FilterItem _monthFilterSelected;
         [UsedImplicitly]
-        public int MonthFilterSelected
+        public FilterItem MonthFilterSelected
         {
             get => _monthFilterSelected;
             set => this.RaiseAndSetIfChanged(ref _monthFilterSelected, value);
@@ -812,11 +730,6 @@ namespace LogExpress.Services
         
         #region YearFilter
         private readonly SourceCache<FilterItem, int> _yearFilterSource = new SourceCache<FilterItem, int>(t => t.Key);
-        private readonly ReadOnlyObservableCollection<FilterItem> _yearFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> YearFilterItems => _yearFilterItems;
-
-        private readonly ObservableAsPropertyHelper<bool> _yearFilterEnabled;
-        [UsedImplicitly] public bool YearFilterEnabled => _yearFilterEnabled.Value;
 
         private FilterItem _yearFilterSelected;
         [UsedImplicitly]
@@ -831,8 +744,6 @@ namespace LogExpress.Services
         }
         #endregion
 
-        // OLD
-        private LogFileFilter _logFileFilterSelectedOld;
         private ObservableCollection<LineItem> _backgroundFilteredLines;
         private bool _isFiltering = false;
 
@@ -842,13 +753,7 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _backgroundFilteredLines, value);
         }
 
-        [UsedImplicitly]
-        public LogFileFilter LogFileFilterSelectedOLD
-        {
-            get => _logFileFilterSelectedOld;
-            set => this.RaiseAndSetIfChanged(ref _logFileFilterSelectedOld, value);
-        }
-        #endregion Public Filters
+        #endregion Filters
     }
 
     public class WordMatcher

@@ -56,10 +56,10 @@
     <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top" Height="52" Background="{DynamicResource ThemeControlMidBrush}">
       <DockPanel LastChildFill="True" Classes="item">
         <TextBlock Text="Files" DockPanel.Dock="Top"/>
-        <ComboBox Name="FilterFiles" Width="160" 
-                  SelectedItem="{Binding VirtualLogFile.LogFileFilterSelected}"
-                  IsEnabled="{Binding VirtualLogFile.LogFileFilterEnabled}"
-                  Items="{Binding VirtualLogFile.LogFileFilterItems}">
+        <ComboBox Name="FileFilter" Width="200" 
+                  SelectedItem="{Binding VirtualLogFile.FileFilterSelected}"
+                  IsEnabled="{Binding FileFilterEnabled}"
+                  Items="{Binding FileFilterItems}">
           <ComboBox.ItemTemplate>
             <DataTemplate>
               <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
@@ -69,11 +69,10 @@
       </DockPanel>
       <DockPanel LastChildFill="True" Classes="item">
         <TextBlock Text="Levels" DockPanel.Dock="Top"/>
-        <ComboBox Name="FilterLevels" Width="80" 
+        <ComboBox Name="LevelFilter" Width="80" 
                   SelectedIndex="{Binding VirtualLogFile.LevelFilterSelected}"
-                  IsEnabled="{Binding VirtualLogFile.LevelFilterEnabled}"
-                  Items="{Binding VirtualLogFile.LevelFilterItems}">
-                  >
+                  IsEnabled="{Binding LevelFilterEnabled}"
+                  Items="{Binding LevelFilterItems}">
           <ComboBox.ItemTemplate>
             <DataTemplate>
               <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
@@ -83,10 +82,10 @@
       </DockPanel>
       <DockPanel LastChildFill="True" Classes="item">
         <TextBlock Text="Years" DockPanel.Dock="Top"/>
-        <ComboBox Name="FilterYears" Width="60" 
+        <ComboBox Name="YearFilter" Width="60" 
                   SelectedItem="{Binding VirtualLogFile.YearFilterSelected}"
-                  IsEnabled="{Binding VirtualLogFile.YearFilterEnabled}"
-                  Items="{Binding VirtualLogFile.YearFilterItems}">
+                  IsEnabled="{Binding YearFilterEnabled}"
+                  Items="{Binding YearFilterItems}">
           <ComboBox.ItemTemplate>
             <DataTemplate>
               <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
@@ -96,13 +95,15 @@
       </DockPanel>
       <DockPanel LastChildFill="True" Classes="item">
         <TextBlock Text="Months" DockPanel.Dock="Top"/>
-        <ComboBox Name="FilterMonths" Width="80" 
+        <ComboBox Name="MonthFilter" Width="80" 
                   SelectedItem="{Binding VirtualLogFile.MonthFilterSelected}"
-                  IsEnabled="{Binding VirtualLogFile.MonthFilterEnabled}"
-                  Items="{Binding VirtualLogFile.MonthFilterItems}">
+                  IsEnabled="{Binding MonthFilterEnabled}"
+                  Items="{Binding MonthFilterItems}">
           <ComboBox.ItemTemplate>
             <DataTemplate>
-              <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+              <StackPanel Orientation="Horizontal" Spacing="2">
+                <TextBlock Text="{Binding Key}" IsVisible="{Binding Key}"/><TextBlock Text="-" IsVisible="{Binding Key}"/><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+              </StackPanel>
             </DataTemplate>
           </ComboBox.ItemTemplate>
         </ComboBox>

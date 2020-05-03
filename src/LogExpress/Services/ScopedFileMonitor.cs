@@ -18,7 +18,7 @@ namespace LogExpress.Services
         private static readonly ILogger Logger = Log.ForContext<ScopedFileMonitor>();
 
         private readonly string _basePath;
-        private readonly List<string> _filters;
+        private readonly List<string> _patterns;
         private readonly bool _includeSubdirectories;
 
         private readonly Dictionary<string, FileSystemWatcher> _watchers = new Dictionary<string, FileSystemWatcher>();
@@ -36,16 +36,16 @@ namespace LogExpress.Services
         public IObservable<IChangeSet<ScopedFile, ulong>> Connect() => _files.Connect().ObserveOn(RxApp.MainThreadScheduler);
 
         /// <summary>
-        ///     Creates an instance that monitors the filesystem for files that matches the basePath and filter.
+        ///     Creates an instance that monitors the filesystem for files that matches the basePath and pattern.
         /// </summary>
         /// <param name="basePath">The base folder where the files are expected to be</param>
-        /// <param name="filters">The wildcard patterns that defines which files to monitor</param>
+        /// <param name="patterns">The wildcard patterns that defines which files to monitor</param>
         /// <param name="includeSubdirectories">Whether or not to look for the same patterns also in sub-folders of the basePath</param>
-        public ScopedFileMonitor(string basePath, List<string> filters, bool includeSubdirectories)
+        public ScopedFileMonitor(string basePath, List<string> patterns, bool includeSubdirectories)
         {
             Logger.Debug("Creating instance");
             _basePath = basePath;
-            _filters = filters;
+            _patterns = patterns;
             _includeSubdirectories = includeSubdirectories;
 
             Initialize();
@@ -96,14 +96,14 @@ namespace LogExpress.Services
             // Setup new watchers
             if (Directory.Exists(_basePath))
             {
-                foreach (var filter in _filters)
+                foreach (var pattern in _patterns)
                 {
                     Logger.Debug(
-                        "Setting up watcher for basePath={basePath} and filter={filter} with includeSubDirectories={includeSubDirectories}",
-                        _basePath, filter, _includeSubdirectories);
-                    SetupWatcher(filter);
+                        "Setting up watcher for basePath={basePath} and pattern={pattern} with includeSubDirectories={includeSubDirectories}",
+                        _basePath, pattern, _includeSubdirectories);
+                    SetupWatcher(pattern);
 
-                    var alreadyExistingFiles = Directory.GetFiles(_basePath, filter, new EnumerationOptions{ RecurseSubdirectories = _includeSubdirectories});
+                    var alreadyExistingFiles = Directory.GetFiles(_basePath, pattern, new EnumerationOptions{ RecurseSubdirectories = _includeSubdirectories});
                     foreach (var file in alreadyExistingFiles)
                     {
                         var fi = new ScopedFile(file, _basePath);
@@ -173,9 +173,9 @@ namespace LogExpress.Services
             }
         }
 
-        private void SetupWatcher(string filter)
+        private void SetupWatcher(string pattern)
         {
-            var watcher = new FileSystemWatcher(_basePath, filter);
+            var watcher = new FileSystemWatcher(_basePath, pattern);
             watcher.IncludeSubdirectories = _includeSubdirectories;
             //watcher.NotifyFilter = NotifyFilters.Size; // | NotifyFilters.FileName | NotifyFilters.DirectoryName;
             watcher.Created += OnFileCreated;
@@ -183,7 +183,7 @@ namespace LogExpress.Services
             watcher.Deleted += OnFileDeleted;
             watcher.Error += OnError;
             watcher.EnableRaisingEvents = true;
-            _watchers.Add(filter, watcher);
+            _watchers.Add(pattern, watcher);
         }
     }
 }

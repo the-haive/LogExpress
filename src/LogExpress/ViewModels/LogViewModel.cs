@@ -190,18 +190,94 @@ namespace LogExpress.ViewModels
                     LineUpdateNeeded = false;
                 });
 
-
-/*            this.WhenAnyValue(x => x.LogFilesFilter)
-                .Subscribe(_ => { VirtualLogFile.LogFileFilterSelectedOLD = LogFilesFilter?.FirstOrDefault(); });
-
-            _logFilesFilter = VirtualLogFile.WhenAnyValue(x => x.LogFiles.Count)
-                .Select(scopedFiles =>
+            VirtualLogFile.ConnectFileFilterItems()
+                .Prepend(new ChangeSet<FilterItem, int>(){new Change<FilterItem, int>(ChangeReason.Add, 0, new FilterItem(0, "All"))})
+                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _fileFilterItems)
+                .Subscribe(_ =>
                 {
-                    var list = new List<LogFileFilter> {new LogFileFilter("All log-files")};
-                    list.AddRange(VirtualLogFile.LogFiles?.Select(scopedFile => new LogFileFilter(scopedFile)));
-                    return list;
-                }).ToProperty(this, x => x.LogFilesFilter);
-*/
+                    if (_logView.FileFilterCtrl.SelectedItem == null)
+                    {
+                        _logView.FileFilterCtrl.SelectedIndex = 0;
+                    }
+                });
+
+            VirtualLogFile.ConnectYearFilterItems()
+                .Prepend(new ChangeSet<FilterItem, int>(){new Change<FilterItem, int>(ChangeReason.Add, 0, new FilterItem(0, "All"))})
+                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _yearFilterItems)
+                .Subscribe(_ =>
+                {
+                    if (_logView.YearFilterCtrl.SelectedItem == null)
+                    {
+                        _logView.YearFilterCtrl.SelectedIndex = 0;
+                    }
+                });
+
+            VirtualLogFile.ConnectMonthFilterItems()
+                .Prepend(new ChangeSet<FilterItem, int>(){new Change<FilterItem, int>(ChangeReason.Add, 0, new FilterItem(0, "All"))})
+                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _monthFilterItems)
+                .Subscribe(_ =>
+                {
+                    if (_logView.MonthFilterCtrl.SelectedItem == null)
+                    {
+                        _logView.MonthFilterCtrl.SelectedIndex = 0;
+                    }
+                });
+
+            VirtualLogFile.ConnectLevelFilterItems()
+                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Bind(out _levelFilterItems)
+                .Subscribe(_ =>
+                {
+                    if (_logView.LevelFilterCtrl.SelectedItem == null)
+                    {
+                        _logView.LevelFilterCtrl.SelectedIndex = 0;
+                    }
+                });
+
+            _levelFilterEnabled = this.WhenAnyValue(x => x.LevelFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
+                .Select(obs =>
+                {
+                    var (levelCount, isFiltering) = obs;
+                    return !isFiltering && levelCount > 0;
+                })
+                .DistinctUntilChanged()
+                .ToProperty(this, x => x.LevelFilterEnabled);
+
+            _fileFilterEnabled = this.WhenAnyValue(x => x.FileFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
+                .Select(obs =>
+                {
+                    var (logFileCount, isFiltering) = obs;
+                    return !isFiltering && logFileCount > 0;
+                })
+                .DistinctUntilChanged()
+                .ToProperty(this, x => x.FileFilterEnabled);
+
+            _monthFilterEnabled = this.WhenAnyValue(x => x.MonthFilterItems.Count, x => x.VirtualLogFile.YearFilterSelected.Key, x => x.VirtualLogFile.IsFiltering)
+                .Select(obs =>
+                {
+                    var (monthFilterItemsCount, yearFilterSelected, isFiltering) = obs;
+                    return !isFiltering && yearFilterSelected > 0 && monthFilterItemsCount > 0;
+                })
+                .DistinctUntilChanged()
+                .ToProperty(this, x => x.MonthFilterEnabled);
+
+            _yearFilterEnabled = this.WhenAnyValue(x => x.YearFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
+                .Select(obs =>
+                {
+                    var (yearCount, isFiltering) = obs;
+                    return !isFiltering && yearCount > 0;
+                })
+                .DistinctUntilChanged()
+                .ToProperty(this, x => x.YearFilterEnabled);
+
+
             this.WhenAnyValue(x => x.VirtualLogFile.FilteredLines.Count, x => x.Tail)
                 .Where(((int lineCount, bool tail) tuple) =>
                 {
@@ -316,6 +392,74 @@ namespace LogExpress.ViewModels
         }
 
         #endregion Constructor / deconstructor
+
+        #region Filters
+
+        #region LevelFilter
+        private readonly ReadOnlyObservableCollection<FilterItem> _levelFilterItems;
+        public ReadOnlyObservableCollection<FilterItem> LevelFilterItems => _levelFilterItems;
+        
+        private readonly ObservableAsPropertyHelper<bool> _levelFilterEnabled;
+        [UsedImplicitly] public bool LevelFilterEnabled => _levelFilterEnabled.Value;
+        
+        private int _levelFilterSelected;
+        [UsedImplicitly]
+        public int LevelFilterSelected
+        {
+            get => _levelFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _levelFilterSelected, value);
+        }
+        #endregion
+
+        #region LogFileFilter
+        private readonly ReadOnlyObservableCollection<FilterItem> _fileFilterItems;
+        public ReadOnlyObservableCollection<FilterItem> FileFilterItems => _fileFilterItems;
+
+        private readonly ObservableAsPropertyHelper<bool> _fileFilterEnabled;
+        [UsedImplicitly] public bool FileFilterEnabled => _fileFilterEnabled.Value;
+
+        private ScopedFile _fileFilterSelected;
+        [UsedImplicitly]
+        public ScopedFile FileFilterSelected
+        {
+            get => _fileFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _fileFilterSelected, value);
+        }
+        #endregion
+        
+        #region MonthFilter
+        private readonly ReadOnlyObservableCollection<FilterItem> _monthFilterItems;
+        public ReadOnlyObservableCollection<FilterItem> MonthFilterItems => _monthFilterItems;
+        
+        private readonly ObservableAsPropertyHelper<bool> _monthFilterEnabled;
+        [UsedImplicitly] public bool MonthFilterEnabled => _monthFilterEnabled.Value;
+
+        private int _monthFilterSelected;
+        [UsedImplicitly]
+        public int MonthFilterSelected
+        {
+            get => _monthFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _monthFilterSelected, value);
+        }
+        #endregion
+        
+        #region YearFilter
+        private readonly ReadOnlyObservableCollection<FilterItem> _yearFilterItems;
+        public ReadOnlyObservableCollection<FilterItem> YearFilterItems => _yearFilterItems;
+
+        private readonly ObservableAsPropertyHelper<bool> _yearFilterEnabled;
+        [UsedImplicitly] public bool YearFilterEnabled => _yearFilterEnabled.Value;
+
+        private FilterItem _yearFilterSelected;
+        [UsedImplicitly]
+        public FilterItem YearFilterSelected
+        {
+            get => _yearFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _yearFilterSelected, value);
+        }
+        #endregion
+
+        #endregion Filters
 
         #region Toolbar
 
