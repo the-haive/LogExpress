@@ -9,6 +9,8 @@ using System.Reactive.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using DynamicData;
+using DynamicData.Binding;
 using JetBrains.Annotations;
 using LogExpress.Models;
 using LogExpress.Services;
@@ -23,7 +25,7 @@ namespace LogExpress.ViewModels
     {
         private static readonly ILogger Logger = Log.ForContext<LogViewModel>();
         private readonly IObservable<bool> _hasLineSelection;
-        private readonly ObservableAsPropertyHelper<List<LogFileFilter>> _logFilesFilter;
+        //private readonly ObservableAsPropertyHelper<List<LogFileFilter>> _logFilesFilter;
         private readonly LogView _logView;
         private readonly ObservableAsPropertyHelper<long> _totalSize;
 
@@ -64,7 +66,7 @@ namespace LogExpress.ViewModels
         }
 
 
-        [UsedImplicitly] public List<LogFileFilter> LogFilesFilter => _logFilesFilter?.Value;
+        //[UsedImplicitly] public List<LogFileFilter> LogFilesFilter => _logFilesFilter?.Value;
 
         public string LogLevelMapFile
         {
@@ -188,8 +190,9 @@ namespace LogExpress.ViewModels
                     LineUpdateNeeded = false;
                 });
 
-            this.WhenAnyValue(x => x.LogFilesFilter)
-                .Subscribe(_ => { VirtualLogFile.LogFileFilterSelected = LogFilesFilter?.FirstOrDefault(); });
+
+/*            this.WhenAnyValue(x => x.LogFilesFilter)
+                .Subscribe(_ => { VirtualLogFile.LogFileFilterSelectedOLD = LogFilesFilter?.FirstOrDefault(); });
 
             _logFilesFilter = VirtualLogFile.WhenAnyValue(x => x.LogFiles.Count)
                 .Select(scopedFiles =>
@@ -198,7 +201,7 @@ namespace LogExpress.ViewModels
                     list.AddRange(VirtualLogFile.LogFiles?.Select(scopedFile => new LogFileFilter(scopedFile)));
                     return list;
                 }).ToProperty(this, x => x.LogFilesFilter);
-
+*/
             this.WhenAnyValue(x => x.VirtualLogFile.FilteredLines.Count, x => x.Tail)
                 .Where(((int lineCount, bool tail) tuple) =>
                 {
@@ -293,7 +296,7 @@ namespace LogExpress.ViewModels
         }
 
         public bool _lineUpdateNeeded;
-
+        
         public bool LineUpdateNeeded
         {
             get => _lineUpdateNeeded;
@@ -307,7 +310,7 @@ namespace LogExpress.ViewModels
 
         ~LogViewModel()
         {
-            VirtualLogFile.AllLines.CollectionChanged -= LinesUpdated;
+            if (VirtualLogFile != null) VirtualLogFile.AllLines.CollectionChanged -= LinesUpdated;
             _totalSize?.Dispose();
             VirtualLogFile?.Dispose();
         }
