@@ -21,54 +21,88 @@
     <Style Selector="#InfoBar > Separator">
       <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
       <Setter Property="Width" Value="1"/>
-      <Setter Property="Margin" Value="5 3 10 3"/>
+      <Setter Property="Margin" Value="5 3"/>
     </Style>
-    <Style Selector="StackPanel#InfoBar TextBox">
+    <Style Selector="StackPanel#InfoBar StackPanel TextBox">
       <Setter Property="FontSize" Value="10"/>
       <Setter Property="IsReadOnly" Value="True"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Margin" Value="0 0 5 0"/>
-    </Style>            
-    <Style Selector="StackPanel#InfoBar TextBlock">
-      <Setter Property="FontSize" Value="10"/>
-      <Setter Property="VerticalAlignment" Value="Center"/>
-      <Setter Property="Margin" Value="0 0 5 0"/>
+      <Setter Property="Padding" Value="0 3"/>
     </Style>            
   </Window.Styles>
   <DockPanel>
     <Menu DockPanel.Dock="Top">
-      <MenuItem Header="Open _File" Command="{Binding OpenLogFileCommand}"/>
-      <MenuItem Header="Open _Set" Command="{Binding OpenLogSetCommand}"/>
-      <MenuItem Header="_Exit" Command="{Binding ExitCommand}"/>
+      <MenuItem Header="Open _File" Command="{Binding OpenFileCommand}" ToolTip.Tip="Click to open single logfile"/>
+      <MenuItem Header="Open _Set" Command="{Binding OpenSetCommand}" ToolTip.Tip="Click to open a set of logfiles"/>
+      <MenuItem Header="_Configure Set" Command="{Binding ConfigureSetCommand}" ToolTip.Tip="Click to configure the opened set of logfiles"/>
+      <MenuItem Header="_Exit" Command="{Binding ExitCommand}" ToolTip.Tip="Click to exit the application"/>
       <Separator/>
-      <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" />
+      <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" ToolTip.Tip="Toggle showing the advanced filter-pane"/>
       <CheckBox Name="Theme" Command="{Binding ToggleThemeCommand}" Content="Dark Theme"/>
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
     <TextBlock Text="Debugger" IsVisible="False"/>
-    <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="10 0 5 0">
-      <TextBox Text="{Binding InfoBarScope}" />
+    <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="0">
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="Filtered" IsEnabled="False" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="Totals" IsEnabled="False"/>
+      </StackPanel>
       <Separator />
-      <TextBlock Text="Size:" Margin="0 0 5 0"/>
-      <TextBlock Text="{Binding InfoBarByteSize}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarScopeFilter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarScope}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="Lines:" Margin="0 0 5 0"/>
-      <TextBlock Text="{Binding InfoBarLineCount}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarRangeFilter}" ToolTip.Tip="{Binding InfoBarRangeFilterToolTip}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarRange}" ToolTip.Tip="{Binding InfoBarRangeToolTip}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel1}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarByteSizeFilter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarByteSize}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel2}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLineCountFilter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLineCount}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel3}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel1Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel1}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel4}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel2Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel2}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel5}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel3Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel3}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel6}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel4Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel4}" />
+      </StackPanel>
       <Separator />
-      <TextBlock Text="{Binding InfoBarLogLevel0}" />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel5Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel5}" />
+      </StackPanel>
+      <Separator />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel6Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel6}" />
+      </StackPanel>
+      <Separator />
+      <StackPanel Orientation="Vertical">
+        <TextBox Text="{Binding InfoBarLogLevel0Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarLogLevel0}" />
+      </StackPanel>
     </StackPanel>
     
     <Grid ColumnDefinitions="*">

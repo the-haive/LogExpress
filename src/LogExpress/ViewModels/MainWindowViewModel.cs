@@ -26,48 +26,60 @@ namespace LogExpress.ViewModels
     {
         public static readonly ILogger Logger = Log.ForContext<MainWindowViewModel>();
 
-        private static readonly TimeSpan LogArgsChangeThreshold = new TimeSpan(0, 0, 0, 0, 100);
-
         private static readonly GridLength FilterGridCollapsed = new GridLength(0);
         private static readonly GridLength FilterGridExpanded = new GridLength(1, GridUnitType.Star);
+        private static readonly TimeSpan LogArgsChangeThreshold = new TimeSpan(0, 0, 0, 0, 100);
+        private readonly StyleInclude _darkTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog"))
+        {
+            Source = new Uri("resm:Avalonia.Themes.Default.Accents.BaseDark.xaml?assembly=Avalonia.Themes.Default")
+        };
+
+        private readonly StyleInclude _lightTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog"))
+        {
+            Source = new Uri("resm:Avalonia.Themes.Default.Accents.BaseLight.xaml?assembly=Avalonia.Themes.Default")
+        };
 
         private readonly IDisposable _logViewSubscription;
 
+        private readonly MainWindow _mainWindow;
+        private string _appTitle = "LogExpress";
+        private GridLength _filterPaneHeight = FilterGridCollapsed;
+        private FilterViewModel _filterViewModel;
         private string _folder = string.Empty;
 
-        private string _pattern = string.Empty;
-        private string _appTitle = "LogExpress";
-
-        private FilterViewModel _filterViewModel;
-
-        private string _infoBarScope;
-
         private ObservableAsPropertyHelper<string> _infoBarByteSize;
+        private ObservableAsPropertyHelper<string> _infoBarByteSizeFilter;
         private ObservableAsPropertyHelper<string> _infoBarLineCount;
-        private string _infoBarLogLevels;
+        private ObservableAsPropertyHelper<string> _infoBarLineCountFilter;
+        private string _infoBarLogLevel0;
+        private string _infoBarLogLevel0Filter;
+        private string _infoBarLogLevel1;
+        private string _infoBarLogLevel1Filter;
+        private string _infoBarLogLevel2;
+        private string _infoBarLogLevel2Filter;
+        private string _infoBarLogLevel3;
+        private string _infoBarLogLevel3Filter;
+        private string _infoBarLogLevel4;
+        private string _infoBarLogLevel4Filter;
+        private string _infoBarLogLevel5;
+        private string _infoBarLogLevel5Filter;
+        private string _infoBarLogLevel6;
+        private string _infoBarLogLevel6Filter;
+        private ObservableAsPropertyHelper<string> _infoBarRange;
+        private ObservableAsPropertyHelper<string> _infoBarRangeFilter;
+        private ObservableAsPropertyHelper<string> _infoBarRangeToolTip;
+        private ObservableAsPropertyHelper<string> _infoBarRangeToolTipFilter;
+        private string _infoBarScope;
+        private string _infoBarScopeFilter;
+        private GridLength _lastFilterPaneHeight = FilterGridExpanded;
+        private LogView _logView;
         private LogViewModel _logViewModel;
-
+        private string _pattern = string.Empty;
         private bool _recursive;
 
         private bool _showFilterPanel;
 
         private bool _showLogPanel;
-
-        private GridLength _filterPaneHeight = FilterGridCollapsed;
-        private GridLength _lastFilterPaneHeight = FilterGridExpanded;
-        private readonly MainWindow _mainWindow;
-
-        private readonly StyleInclude _lightTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog")) 
-        { 
-            Source = new Uri("resm:Avalonia.Themes.Default.Accents.BaseLight.xaml?assembly=Avalonia.Themes.Default") 
-        }; 
-        private readonly StyleInclude _darkTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog")) 
-        { 
-            Source = new Uri("resm:Avalonia.Themes.Default.Accents.BaseDark.xaml?assembly=Avalonia.Themes.Default") 
-        };
-
-        private LogView _logView;
-
         public MainWindowViewModel(MainWindow mainWindow)
         {
             AppTitle = App.TitleWithVersion;
@@ -76,8 +88,9 @@ namespace LogExpress.ViewModels
             _mainWindow = mainWindow;
             _logView = _mainWindow.LogView;
 
-            OpenLogFileCommand = ReactiveCommand.Create(OpenLogFileExecute);
-            OpenLogSetCommand = ReactiveCommand.Create(OpenLogSetExecute);
+            OpenFileCommand = ReactiveCommand.Create(OpenFileExecute);
+            OpenSetCommand = ReactiveCommand.Create(OpenSetExecute);
+            ConfigureSetCommand = ReactiveCommand.Create(ConfigureSetExecute);
             ToggleFilterPaneCommand = ReactiveCommand.Create(ToggleFilterPaneExecute);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplication);
@@ -115,6 +128,195 @@ namespace LogExpress.ViewModels
             mainWindow.AddHandler(DragDrop.DropEvent, Drop);
         }
 
+        ~MainWindowViewModel()
+        {
+            _logViewSubscription?.Dispose();
+            //_listBoxScrollViewerControl.ScrollChanged -= RefreshLineContentForVisibleChildren;
+        }
+
+        public string AppTitle
+        {
+            get => _appTitle;
+            set => this.RaiseAndSetIfChanged(ref _appTitle, value);
+        }
+
+        public ReactiveCommand<Unit, Unit> ConfigureSetCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+
+        public GridLength FilterPaneHeight
+        {
+            get => _filterPaneHeight;
+            set => this.RaiseAndSetIfChanged(ref _filterPaneHeight, value);
+        }
+
+        public FilterViewModel FilterViewModel
+        {
+            get => _filterViewModel;
+            set => this.RaiseAndSetIfChanged(ref _filterViewModel, value);
+        }
+
+        public string Folder
+        {
+            get => _folder;
+            set => this.RaiseAndSetIfChanged(ref _folder, value);
+        }
+
+        public string InfoBarByteSize => _infoBarByteSize?.Value;
+        public string InfoBarByteSizeFilter => _infoBarByteSizeFilter?.Value;
+
+        public string InfoBarLineCount => _infoBarLineCount?.Value;
+        public string InfoBarLineCountFilter => _infoBarLineCountFilter?.Value;
+
+        public string InfoBarLogLevel0
+        {
+            get => _infoBarLogLevel0;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel0, value);
+        }
+
+        public string InfoBarLogLevel0Filter
+        {
+            get => _infoBarLogLevel0Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel0Filter, value);
+        }
+
+        public string InfoBarLogLevel1
+        {
+            get => _infoBarLogLevel1;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel1, value);
+        }
+
+        public string InfoBarLogLevel1Filter
+        {
+            get => _infoBarLogLevel1Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel1Filter, value);
+        }
+
+        public string InfoBarLogLevel2
+        {
+            get => _infoBarLogLevel2;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel2, value);
+        }
+
+        public string InfoBarLogLevel2Filter
+        {
+            get => _infoBarLogLevel2Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel2Filter, value);
+        }
+
+        public string InfoBarLogLevel3
+        {
+            get => _infoBarLogLevel3;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel3, value);
+        }
+
+        public string InfoBarLogLevel3Filter
+        {
+            get => _infoBarLogLevel3Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel3Filter, value);
+        }
+
+        public string InfoBarLogLevel4
+        {
+            get => _infoBarLogLevel4;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel4, value);
+        }
+
+        public string InfoBarLogLevel4Filter
+        {
+            get => _infoBarLogLevel4Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel4Filter, value);
+        }
+
+        public string InfoBarLogLevel5
+        {
+            get => _infoBarLogLevel5;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel5, value);
+        }
+
+        public string InfoBarLogLevel5Filter
+        {
+            get => _infoBarLogLevel5Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel5Filter, value);
+        }
+
+        public string InfoBarLogLevel6
+        {
+            get => _infoBarLogLevel6;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel6, value);
+        }
+
+        public string InfoBarLogLevel6Filter
+        {
+            get => _infoBarLogLevel6Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel6Filter, value);
+        }
+
+        public string InfoBarRange => _infoBarRange?.Value;
+        public string InfoBarRangeFilter => _infoBarRangeFilter?.Value;
+
+        public string InfoBarRangeToolTip => _infoBarRangeToolTip?.Value;
+        public string InfoBarRangeToolTipFilter => _infoBarRangeToolTipFilter?.Value;
+
+        public string InfoBarScope
+        {
+            get => _infoBarScope;
+            set => this.RaiseAndSetIfChanged(ref _infoBarScope, value);
+        }
+
+        public string InfoBarScopeFilter
+        {
+            get => _infoBarScopeFilter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarScopeFilter, value);
+        }
+
+        public LogViewModel LogViewModel
+        {
+            get => _logViewModel;
+            set => this.RaiseAndSetIfChanged(ref _logViewModel, value);
+        }
+
+        public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> OpenSetCommand { get; }
+
+        public string Pattern
+        {
+            get => _pattern;
+            set => this.RaiseAndSetIfChanged(ref _pattern, value);
+        }
+
+        public bool Recursive
+        {
+            get => _recursive;
+            set => this.RaiseAndSetIfChanged(ref _recursive, value);
+        }
+
+        public bool ShowFilterPanel
+        {
+            get => _showFilterPanel;
+            set => this.RaiseAndSetIfChanged(ref _showFilterPanel, value);
+        }
+
+        public bool ShowLogPanel
+        {
+            get => _showLogPanel;
+            set => this.RaiseAndSetIfChanged(ref _showLogPanel, value);
+        }
+
+        public ReactiveCommand<Unit, Unit> ToggleFilterPaneCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
+
+        private async void ConfigureSetExecute()
+        {
+            var configureSetView = new ConfigureSetView();
+            configureSetView.DataContext = new ConfigureSetViewModel(configureSetView, Folder, Pattern, Recursive);
+            var configureSetResult = await configureSetView.ShowDialog<ConfigureSetViewModel.ConfigureSetResult>(App.MainWindow);
+
+            // TODO: Handle the configuration-options
+        }
+
         private void DragOver(object sender, DragEventArgs e)
         {
             // Only allow Copy or Link as Drop Operations.
@@ -138,127 +340,23 @@ namespace LogExpress.ViewModels
         }
 
 
-        private void ToggleThemeExecute()
-        {
-            // NB! Depends on the first Window.Styles StyleInclude to be the theme, and the third App.Styles to be the theme
-            if (_mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value)
-            {
-                _mainWindow.Styles[0] = Application.Current.Styles[2] = _darkTheme;
-            }
-            else
-            {
-                _mainWindow.Styles[0] = Application.Current.Styles[2] = _lightTheme;
-            }
-
-            Logger.Verbose("Switched theme to '{Theme}'",
-                _mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value
-                    ? "Dark"
-                    : "Light");
-        }
-
-        private void ToggleFilterPaneExecute()
-        {
-            if (ShowFilterPanel)
-            {
-                _lastFilterPaneHeight = FilterPaneHeight;
-                FilterPaneHeight = FilterGridCollapsed;
-            }
-            else
-            {
-                FilterPaneHeight = _lastFilterPaneHeight;
-            }
-
-            ShowFilterPanel = !ShowFilterPanel;
-        }
-
-        public string Folder
-        {
-            get => _folder;
-            set => this.RaiseAndSetIfChanged(ref _folder, value);
-        }
-
-        public ReactiveCommand<Unit, Unit> ExitCommand { get; }
-
-        public string Pattern
-        {
-            get => _pattern;
-            set => this.RaiseAndSetIfChanged(ref _pattern, value);
-        }
-
-        public string AppTitle
-        {
-            get => _appTitle;
-            set => this.RaiseAndSetIfChanged(ref _appTitle, value);
-        }
-
-        public FilterViewModel FilterViewModel
-        {
-            get => _filterViewModel;
-            set => this.RaiseAndSetIfChanged(ref _filterViewModel, value);
-        }
-
-        public string InfoBarScope
-        {
-            get => _infoBarScope;
-            set => this.RaiseAndSetIfChanged(ref _infoBarScope, value);
-        }
-
-        public string InfoBarByteSize => _infoBarByteSize?.Value;
-        public string InfoBarLineCount => _infoBarLineCount?.Value;
-        public string InfoBarLogLevels
-        {
-            get => _infoBarLogLevels;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevels, value);
-        }
-
-        public LogViewModel LogViewModel
-        {
-            get => _logViewModel;
-            set => this.RaiseAndSetIfChanged(ref _logViewModel, value);
-        }
-
-        public ReactiveCommand<Unit, Unit> OpenLogFileCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> OpenLogSetCommand { get; }
-        public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
-        public ReactiveCommand<Unit, Unit> ToggleFilterPaneCommand { get; }
-
-        public bool Recursive
-        {
-            get => _recursive;
-            set => this.RaiseAndSetIfChanged(ref _recursive, value);
-        }
-
-        public bool ShowFilterPanel
-        {
-            get => _showFilterPanel;
-            set => this.RaiseAndSetIfChanged(ref _showFilterPanel, value);
-        }
-
-        public bool ShowLogPanel
-        {
-            get => _showLogPanel;
-            set => this.RaiseAndSetIfChanged(ref _showLogPanel, value);
-        }
-        public GridLength FilterPaneHeight
-        {
-            get => _filterPaneHeight;
-            set => this.RaiseAndSetIfChanged(ref _filterPaneHeight, value);
-        }
-
         private void ExitApplication()
         {
             Logger.Information("Application exited from menu");
             (Application.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
         }
 
-        ~MainWindowViewModel()
+        private void OpenFile(string fileName)
         {
-            _logViewSubscription?.Dispose();
-            //_listBoxScrollViewerControl.ScrollChanged -= RefreshLineContentForVisibleChildren;
+            Logger.Information("Selected file {LogFile}", fileName);
+            var fileInfo = new FileInfo(fileName);
+            var dirInfo = Directory.GetParent(fileInfo.FullName);
+            Folder = dirInfo.FullName;
+            Pattern = fileInfo.Name;
+            Recursive = false;
         }
 
-        private async void OpenLogFileExecute()
+        private async void OpenFileExecute()
         {
             Logger.Verbose("OpenLogFile clicked");
             var openFileDialog = new OpenFileDialog
@@ -281,36 +379,29 @@ namespace LogExpress.ViewModels
             OpenFile(fileName);
         }
 
-        private void OpenFile(string fileName)
-        {
-            Logger.Information("Selected file {LogFile}", fileName);
-            var fileInfo = new FileInfo(fileName);
-            var dirInfo = Directory.GetParent(fileInfo.FullName);
-            Folder = dirInfo.FullName;
-            Pattern = fileInfo.Name;
-            Recursive = false;
-        }
-
-        private async void OpenLogSetExecute()
+        private async void OpenSetExecute()
         {
 
-            var openLogSetView = new OpenLogSetView();
-            openLogSetView.DataContext = new OpenLogSetViewModel(openLogSetView, _folder);
-            var result = await openLogSetView.ShowDialog<OpenLogSetViewModel.Result>(App.MainWindow);
-            if (result == null) return;
+            var openLogSetView = new OpenSetView();
+            openLogSetView.DataContext = new OpenSetViewModel(openLogSetView, _folder);
+            var openSetResult = await openLogSetView.ShowDialog<OpenSetViewModel.OpenSetResult>(App.MainWindow);
+            if (openSetResult == null) return;
 
-            if (result.SelectedFile != null)
+            // TODO: Check if the file/set opened already has a configuration in the settings.
+            // TODO: If not then run ConfigureSetExecute
+
+            // Open the file(s)
+            if (openSetResult.SelectedFile != null)
             {
-                OpenFile(result.SelectedFile.FullName);
+                OpenFile(openSetResult.SelectedFile.FullName);
             }
             else
             {
-                Folder = result.Folder;
-                Pattern = result.Pattern;
-                Recursive = result.Recursive;
+                Folder = openSetResult.Folder;
+                Pattern = openSetResult.Pattern;
+                Recursive = openSetResult.Recursive;
             }
         }
-
 
         private void ParseArgs(List<string> args)
         {
@@ -335,7 +426,7 @@ namespace LogExpress.ViewModels
 
             Recursive = args.Contains("-r");
 
-            args = args.Where(a => !new List<string>{"-r", "-d", "-w"}.Contains(a)).ToList();
+            args = args.Where(a => !new List<string> { "-r", "-d", "-w" }.Contains(a)).ToList();
 
             if (args.Count > 0)
             {
@@ -371,29 +462,49 @@ namespace LogExpress.ViewModels
 
             // TODO: Add info on number of files in the set
 
-/*
-            // Setup subscription for showing the selected line info in the InfoBar
-            _infoBarSelectedLine = _logViewModel.WhenAnyValue(x => x.LineSelected, x => x.LogFiles)
-                .Where(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
+            /*
+                        // Setup subscription for showing the selected line info in the InfoBar
+                        _infoBarSelectedLine = _logViewModel.WhenAnyValue(x => x.LineSelected, x => x.LogFiles)
+                            .Where(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
+                            {
+                                var (lineSelected, logFiles) = tuple;
+                                return lineSelected != null && logFiles != null && logFiles.Any();
+                            })
+                            .Select(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
+                            {
+                                var (lineSelected, _) = tuple;
+                                var fileInfo = lineSelected.LogFile;
+                                if (fileInfo == null) return "Error finding the file based on selected line";
+                                return $"Selected: [Line {lineSelected.LineNumber:n0}] [Pos {lineSelected.Position:n0}] [File {fileInfo.Name}] [Path {fileInfo.DirectoryName}] [LogLevel {lineSelected.LogLevel}]";
+                            })
+                            .ObserveOn(RxApp.MainThreadScheduler)
+                            .ToProperty(this, x => x.InfoBarSelectedLine);
+            */
+
+            // TODO: Add binding HasFilter
+
+            _infoBarRange = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.Range)
+                .Select(x =>
                 {
-                    var (lineSelected, logFiles) = tuple;
-                    return lineSelected != null && logFiles != null && logFiles.Any();
-                })
-                .Select(((LineItem lineSelected, ReadOnlyObservableCollection<ScopedFile> logFiles) tuple) =>
-                {
-                    var (lineSelected, _) = tuple;
-                    var fileInfo = lineSelected.LogFile;
-                    if (fileInfo == null) return "Error finding the file based on selected line";
-                    return $"Selected: [Line {lineSelected.LineNumber:n0}] [Pos {lineSelected.Position:n0}] [File {fileInfo.Name}] [Path {fileInfo.DirectoryName}] [LogLevel {lineSelected.LogLevel}]";
+                    var (startDate, endDate) = x;
+                    return $"Range: {startDate:yyyy MMMM dd} - {endDate:yyyy MMMM dd}";
                 })
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .ToProperty(this, x => x.InfoBarSelectedLine);
-*/
+                .ToProperty(this, x => x.InfoBarRange);
+
+            _infoBarRangeToolTip = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.Range)
+                .Select(x =>
+                {
+                    var (startDate, endDate) = x;
+                    return $"{startDate} - {endDate}";
+                })
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .ToProperty(this, x => x.InfoBarRangeToolTip);
 
             // Setup subscription for showing the total size in the InfoBar
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total size, i.e. 'Size: 4kb/21Mb'
             _infoBarByteSize = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.TotalSize)
-                .Select(x => ByteSize.FromBytes(x).ToString())
+                .Select(x => $"Size: {ByteSize.FromBytes(x)}")
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.InfoBarByteSize);
 
@@ -402,7 +513,7 @@ namespace LogExpress.ViewModels
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total no of lines, i.e. 'Lines: 12/931'
             _infoBarLineCount = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.FilteredLines.Count)
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Select(x => x.ToString("N0"))
+                .Select(x => $"Lines: {x:N0}")
                 .ToProperty(this, x => x.InfoBarLineCount);
 
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total count, i.e. 'Trace: 4/19'
@@ -462,59 +573,37 @@ namespace LogExpress.ViewModels
                 });
         }
 
-        private string _infoBarLogLevel0;
-
-        public string InfoBarLogLevel0
+        private void ToggleFilterPaneExecute()
         {
-            get => _infoBarLogLevel0;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel0, value);
+            if (ShowFilterPanel)
+            {
+                _lastFilterPaneHeight = FilterPaneHeight;
+                FilterPaneHeight = FilterGridCollapsed;
+            }
+            else
+            {
+                FilterPaneHeight = _lastFilterPaneHeight;
+            }
+
+            ShowFilterPanel = !ShowFilterPanel;
         }
 
-        private string _infoBarLogLevel1;
-
-        public string InfoBarLogLevel1
+        private void ToggleThemeExecute()
         {
-            get => _infoBarLogLevel1;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel1, value);
-        }
+            // NB! Depends on the first Window.Styles StyleInclude to be the theme, and the third App.Styles to be the theme
+            if (_mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value)
+            {
+                _mainWindow.Styles[0] = Application.Current.Styles[2] = _darkTheme;
+            }
+            else
+            {
+                _mainWindow.Styles[0] = Application.Current.Styles[2] = _lightTheme;
+            }
 
-        private string _infoBarLogLevel2;
-
-        public string InfoBarLogLevel2
-        {
-            get => _infoBarLogLevel2;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel2, value);
-        }
-
-        private string _infoBarLogLevel3;
-
-        public string InfoBarLogLevel3
-        {
-            get => _infoBarLogLevel3;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel3, value);
-        }
-
-        private string _infoBarLogLevel4;
-
-        public string InfoBarLogLevel4
-        {
-            get => _infoBarLogLevel4;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel4, value);
-        }
-
-        private string _infoBarLogLevel5;
-
-        public string InfoBarLogLevel5
-        {
-            get => _infoBarLogLevel5;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel5, value);
-        }
-
-        private string _infoBarLogLevel6;
-
-        public string InfoBarLogLevel6 { 
-            get => _infoBarLogLevel6;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel6, value);
+            Logger.Verbose("Switched theme to '{Theme}'",
+                _mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value
+                    ? "Dark"
+                    : "Light");
         }
     }
 }

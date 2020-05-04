@@ -18,6 +18,7 @@ using LogExpress.Views;
 using ReactiveUI;
 using Serilog;
 using TextCopy;
+using ScopedFile = LogExpress.Models.ScopedFile;
 
 namespace LogExpress.ViewModels
 {
@@ -191,8 +192,12 @@ namespace LogExpress.ViewModels
                 });
 
             VirtualLogFile.ConnectFileFilterItems()
-                .Prepend(new ChangeSet<FilterItem, int>(){new Change<FilterItem, int>(ChangeReason.Add, 0, new FilterItem(0, "All"))})
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .Prepend(new ChangeSet<FilterItem<ScopedFile>, int>
+                {
+                    new Change<FilterItem<ScopedFile>, int>(ChangeReason.Add, 0,
+                        new FilterItem<ScopedFile>(null, 0, "All"))
+                })
+                .Sort(SortExpressionComparer<FilterItem<ScopedFile>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Bind(out _fileFilterItems)
                 .Subscribe(_ =>
@@ -204,8 +209,9 @@ namespace LogExpress.ViewModels
                 });
 
             VirtualLogFile.ConnectYearFilterItems()
-                .Prepend(new ChangeSet<FilterItem, int>(){new Change<FilterItem, int>(ChangeReason.Add, 0, new FilterItem(0, "All"))})
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .Prepend(new ChangeSet<FilterItem<int>, int>
+                    {new Change<FilterItem<int>, int>(ChangeReason.Add, 0, new FilterItem<int>(0, 0, "All"))})
+                .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Bind(out _yearFilterItems)
                 .Subscribe(_ =>
@@ -217,8 +223,9 @@ namespace LogExpress.ViewModels
                 });
 
             VirtualLogFile.ConnectMonthFilterItems()
-                .Prepend(new ChangeSet<FilterItem, int>(){new Change<FilterItem, int>(ChangeReason.Add, 0, new FilterItem(0, "All"))})
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .Prepend(new ChangeSet<FilterItem<int>, int>
+                    {new Change<FilterItem<int>, int>(ChangeReason.Add, 0, new FilterItem<int>(0, 0, "All"))})
+                .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Bind(out _monthFilterItems)
                 .Subscribe(_ =>
@@ -230,7 +237,7 @@ namespace LogExpress.ViewModels
                 });
 
             VirtualLogFile.ConnectLevelFilterItems()
-                .Sort(SortExpressionComparer<FilterItem>.Ascending(t => t.Key))
+                .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Bind(out _levelFilterItems)
                 .Subscribe(_ =>
@@ -259,11 +266,11 @@ namespace LogExpress.ViewModels
                 .DistinctUntilChanged()
                 .ToProperty(this, x => x.FileFilterEnabled);
 
-            _monthFilterEnabled = this.WhenAnyValue(x => x.MonthFilterItems.Count, x => x.VirtualLogFile.YearFilterSelected.Key, x => x.VirtualLogFile.IsFiltering)
+            _monthFilterEnabled = this.WhenAnyValue(x => x.MonthFilterItems.Count, x => x.VirtualLogFile.YearFilterSelected, x => x.VirtualLogFile.IsFiltering)
                 .Select(obs =>
                 {
                     var (monthFilterItemsCount, yearFilterSelected, isFiltering) = obs;
-                    return !isFiltering && yearFilterSelected > 0 && monthFilterItemsCount > 0;
+                    return !isFiltering && yearFilterSelected?.Key > 0 && monthFilterItemsCount > 0;
                 })
                 .DistinctUntilChanged()
                 .ToProperty(this, x => x.MonthFilterEnabled);
@@ -396,8 +403,8 @@ namespace LogExpress.ViewModels
         #region Filters
 
         #region LevelFilter
-        private readonly ReadOnlyObservableCollection<FilterItem> _levelFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> LevelFilterItems => _levelFilterItems;
+        private readonly ReadOnlyObservableCollection<FilterItem<int>> _levelFilterItems;
+        public ReadOnlyObservableCollection<FilterItem<int>> LevelFilterItems => _levelFilterItems;
         
         private readonly ObservableAsPropertyHelper<bool> _levelFilterEnabled;
         [UsedImplicitly] public bool LevelFilterEnabled => _levelFilterEnabled.Value;
@@ -412,8 +419,8 @@ namespace LogExpress.ViewModels
         #endregion
 
         #region LogFileFilter
-        private readonly ReadOnlyObservableCollection<FilterItem> _fileFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> FileFilterItems => _fileFilterItems;
+        private readonly ReadOnlyObservableCollection<FilterItem<ScopedFile>> _fileFilterItems;
+        public ReadOnlyObservableCollection<FilterItem<ScopedFile>> FileFilterItems => _fileFilterItems;
 
         private readonly ObservableAsPropertyHelper<bool> _fileFilterEnabled;
         [UsedImplicitly] public bool FileFilterEnabled => _fileFilterEnabled.Value;
@@ -428,8 +435,8 @@ namespace LogExpress.ViewModels
         #endregion
         
         #region MonthFilter
-        private readonly ReadOnlyObservableCollection<FilterItem> _monthFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> MonthFilterItems => _monthFilterItems;
+        private readonly ReadOnlyObservableCollection<FilterItem<int>> _monthFilterItems;
+        public ReadOnlyObservableCollection<FilterItem<int>> MonthFilterItems => _monthFilterItems;
         
         private readonly ObservableAsPropertyHelper<bool> _monthFilterEnabled;
         [UsedImplicitly] public bool MonthFilterEnabled => _monthFilterEnabled.Value;
@@ -444,15 +451,15 @@ namespace LogExpress.ViewModels
         #endregion
         
         #region YearFilter
-        private readonly ReadOnlyObservableCollection<FilterItem> _yearFilterItems;
-        public ReadOnlyObservableCollection<FilterItem> YearFilterItems => _yearFilterItems;
+        private readonly ReadOnlyObservableCollection<FilterItem<int>> _yearFilterItems;
+        public ReadOnlyObservableCollection<FilterItem<int>> YearFilterItems => _yearFilterItems;
 
         private readonly ObservableAsPropertyHelper<bool> _yearFilterEnabled;
         [UsedImplicitly] public bool YearFilterEnabled => _yearFilterEnabled.Value;
 
-        private FilterItem _yearFilterSelected;
+        private FilterItem<int> _yearFilterSelected;
         [UsedImplicitly]
-        public FilterItem YearFilterSelected
+        public FilterItem<int> YearFilterSelected
         {
             get => _yearFilterSelected;
             set => this.RaiseAndSetIfChanged(ref _yearFilterSelected, value);

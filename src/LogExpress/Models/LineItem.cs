@@ -229,6 +229,7 @@ namespace LogExpress.Models
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream);
             reader.BaseStream.Seek(position, SeekOrigin.Begin);
+            reader.DiscardBufferedData();
             var buffer = new Span<char>(new char[1]);
             var line = new StringBuilder(300);
 
