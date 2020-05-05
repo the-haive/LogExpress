@@ -85,12 +85,14 @@
     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
         <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding OpenSelectedCommand}"  
+                Command="{Binding ConfigureFileCommand}"  
                 IsEnabled="{Binding SelectedLogFile, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Content="Open Selected File"/>
+                Content="Select File"
+                ToolTip.Tip="Choose just the selected log-file"/>
         <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding OpenCommand}" 
-                Content="Open Set" />
+                Command="{Binding ConfigureSetCommand}" 
+                Content="Select All"
+                ToolTip.Tip="Choose all matching log-files"/>
         <Button Margin="10 5 5 10" Padding="5" Width="140" 
                 Command="{Binding CancelCommand}" 
                 Content="Cancel" />

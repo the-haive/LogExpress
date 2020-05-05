@@ -32,8 +32,8 @@ namespace LogExpress.ViewModels
 
             SelectFolderCommand = ReactiveCommand.Create(SelectFolderExecute);
             CancelCommand = ReactiveCommand.Create(CancelExecute);
-            OpenCommand = ReactiveCommand.Create(OpenExecute);
-            OpenSelectedCommand = ReactiveCommand.Create(OpenSelectedExecute);
+            ConfigureSetCommand = ReactiveCommand.Create(ConfigureSetExecute);
+            ConfigureFileCommand = ReactiveCommand.Create(ConfigureFileExecute);
 
             _scopedFileMonitorSubscription = this.WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive)
                 .Subscribe(observer =>
@@ -60,9 +60,9 @@ namespace LogExpress.ViewModels
 
         public ObservableCollection<ScopedFile> LogFiles { get; set; } = new ObservableCollection<ScopedFile>();
 
-        public ReactiveCommand<Unit, Unit> OpenCommand { get; set; }
+        public ReactiveCommand<Unit, Unit> ConfigureSetCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> OpenSelectedCommand { get; set; }
+        public ReactiveCommand<Unit, Unit> ConfigureFileCommand { get; set; }
 
         public string Pattern
         {
@@ -119,13 +119,13 @@ namespace LogExpress.ViewModels
                 }
         }
 
-        private void OpenExecute()
+        private void ConfigureSetExecute()
         {
             View.Close(new OpenSetResult
                 {SelectedFile = null, Folder = Folder, Pattern = Pattern, Recursive = Recursive});
         }
 
-        private void OpenSelectedExecute()
+        private void ConfigureFileExecute()
         {
             View.Close(new OpenSetResult
                 {SelectedFile = SelectedLogFile, Folder = Folder, Pattern = Pattern, Recursive = Recursive});

@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reactive;
+using System.Reactive.Linq;
 using DynamicData;
 using DynamicData.Binding;
 using LogExpress.Models;
@@ -52,6 +53,7 @@ namespace LogExpress.ViewModels
                 .Subscribe(LogFilesReady);
 
             _parseFilesSubscription = this.WhenAnyValue(x => x.LogFiles, x => x.Layout)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => UpdateParseSamples());
         }
 
@@ -77,12 +79,12 @@ namespace LogExpress.ViewModels
 
         private void UpdateParseSamples()
         {
-            var parseSamples = new ObservableCollection<Sample>();
+            ParseSamples.Clear();
             foreach (var scopedFile in LogFiles)
             {
                 scopedFile.Layout = Layout;
 
-                parseSamples.Add(new Sample()
+                ParseSamples.Add(new Sample()
                 {
                     RelativeFullName = scopedFile.RelativeFullName,
                     CreationTime = $"{scopedFile.CreationTime}",
@@ -91,8 +93,6 @@ namespace LogExpress.ViewModels
                     Severities = ScopedFile.SampleSeverities
                 });
             }
-
-            ParseSamples = parseSamples;
         }
 
         public ReactiveCommand<Unit, Unit> CancelCommand { get; set; }
@@ -101,13 +101,13 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> OpenCommand { get; set; }
 
-        public ObservableCollection<Sample> ParseSamples { get; set; } = new ObservableCollection<Sample>();
+        public ObservableCollection<Sample> ParseSamples{ get; set; } = new ObservableCollection<Sample>();
 
         public ConfigureSetView View { get; }
 
         private void CancelExecute()
         {
-            View.Close();
+            View.Close(null);
         }
 
         private void LogFilesReady(IChangeSet<ScopedFile, ulong> changes = null)
@@ -140,16 +140,7 @@ namespace LogExpress.ViewModels
 
         private void OpenExecute()
         {
-            View.Close(new ConfigureSetResult());
-        }
-
-        public class ConfigureSetResult
-        {
-            public Dictionary<byte, string> Severities;
-            public int SeverityStart;
-            public string TimestampFormat;
-            public int TimestampLength;
-            public int TimestampStart;
+            View.Close(Layout);
         }
 
         private Layout _layout;

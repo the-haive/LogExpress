@@ -83,8 +83,14 @@
       </StackPanel>
     </StackPanel>
     <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold">Parse samples:</TextBlock>
+    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="25 0 0 0">
+      <TextBlock Width="162" FontWeight="Bold">Name</TextBlock>
+      <TextBlock Width="130" FontWeight="Bold">Start-date</TextBlock>
+      <TextBlock Width="130" FontWeight="Bold">End-date</TextBlock>
+      <TextBlock FontWeight="Bold">Sample Severities</TextBlock>
+    </StackPanel>
     <ListBox
-      Items="{Binding LogFiles}"
+      Items="{Binding ParseSamples}"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
       Margin="20 0"
@@ -92,10 +98,10 @@
       <ListBox.ItemTemplate>
         <DataTemplate>
           <StackPanel Orientation="Horizontal" ToolTip.Tip="{Binding FullName}">
-            <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0"/>
-            <TextBlock Text="{Binding StartDate}" Margin="0 0 10 0"/>
-            <TextBlock Text="{Binding EndDate}" Width="50" Margin="0 0 10 0"/>
-            <TextBlock Text="{Binding SampleSeverities}" Width="300" />
+            <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0" Width="150"/>
+            <TextBlock Text="{Binding StartDate}" Margin="0 0 10 0" Width="120"/>
+            <TextBlock Text="{Binding EndDate}" Margin="0 0 10 0" Width="120"/>
+            <TextBlock Text="{Binding Severities}" />
           </StackPanel>
         </DataTemplate>
       </ListBox.ItemTemplate>

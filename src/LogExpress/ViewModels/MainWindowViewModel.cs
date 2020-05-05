@@ -8,12 +8,14 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using ByteSizeLib;
+using LogExpress.Models;
 using LogExpress.Services;
 using LogExpress.Utils;
 using LogExpress.Views;
@@ -39,14 +41,14 @@ namespace LogExpress.ViewModels
             Source = new Uri("resm:Avalonia.Themes.Default.Accents.BaseLight.xaml?assembly=Avalonia.Themes.Default")
         };
 
-        private readonly IDisposable _logViewSubscription;
+        private IDisposable _logViewSubscription;
 
         private readonly MainWindow _mainWindow;
         private string _appTitle = "LogExpress";
         private GridLength _filterPaneHeight = FilterGridCollapsed;
         private FilterViewModel _filterViewModel;
         private string _folder = string.Empty;
-
+        private Layout _layout = null;
         private ObservableAsPropertyHelper<string> _infoBarByteSize;
         private ObservableAsPropertyHelper<string> _infoBarByteSizeFilter;
         private ObservableAsPropertyHelper<string> _infoBarLineCount;
@@ -88,13 +90,18 @@ namespace LogExpress.ViewModels
             _mainWindow = mainWindow;
             _logView = _mainWindow.LogView;
 
+            InitCommand = ReactiveCommand.Create(InitExecute);
             OpenFileCommand = ReactiveCommand.Create(OpenFileExecute);
             OpenSetCommand = ReactiveCommand.Create(OpenSetExecute);
-            ConfigureSetCommand = ReactiveCommand.Create(ConfigureSetExecute);
+            ConfigureSetCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSetExecute);
             ToggleFilterPaneCommand = ReactiveCommand.Create(ToggleFilterPaneExecute);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplication);
 
+        }
+
+        public async void Init()
+        {
             // Reactive trigger for when the basedir, filters and recursive has changed
             _logViewSubscription = this
                 .WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive)
@@ -107,26 +114,9 @@ namespace LogExpress.ViewModels
                 .ObserveOn(RxApp.TaskpoolScheduler)
                 .Subscribe(SetupLogView);
 
-            // TODO: Add trigger for open filter button
-
-            // TODO: Add handler for drag and drop of OS file to the main-window
-
-            // Parse args (this constructor should only be called once in the application lifespan
-            var args = Environment.GetCommandLineArgs().Skip(1).ToList();
-            if (args.Count > 0)
-                ParseArgs(args);
-            else
-            {
-                var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
-                    "No logfile passed as argument",
-                    "Use the OpenLog Or OpenSet menus to open log-files."
-                );
-                messageBoxStandardWindow.ShowDialog(_mainWindow);
-            }
-
-            mainWindow.AddHandler(DragDrop.DragOverEvent, DragOver);
-            mainWindow.AddHandler(DragDrop.DropEvent, Drop);
+            await InitCommand.Execute();
         }
+
 
         ~MainWindowViewModel()
         {
@@ -140,7 +130,9 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _appTitle, value);
         }
 
-        public ReactiveCommand<Unit, Unit> ConfigureSetCommand { get; }
+        public ReactiveCommand<Unit, Unit> InitCommand { get; set; }
+
+        public ReactiveCommand<(string, string, bool?), Unit> ConfigureSetCommand { get; }
 
         public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
@@ -160,6 +152,11 @@ namespace LogExpress.ViewModels
         {
             get => _folder;
             set => this.RaiseAndSetIfChanged(ref _folder, value);
+        }
+        public Layout Layout
+        {
+            get => _layout;
+            set => this.RaiseAndSetIfChanged(ref _layout, value);
         }
 
         public string InfoBarByteSize => _infoBarByteSize?.Value;
@@ -308,13 +305,36 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
 
-        private async void ConfigureSetExecute()
+        private async void ConfigureSetExecute((string folder, string pattern, bool? recursive) args)
         {
+            var (folder, pattern, recursive) = args;
+            folder ??= Folder;
+            pattern ??= Pattern;
+            recursive ??= Recursive;
             var configureSetView = new ConfigureSetView();
-            configureSetView.DataContext = new ConfigureSetViewModel(configureSetView, Folder, Pattern, Recursive);
-            var configureSetResult = await configureSetView.ShowDialog<ConfigureSetViewModel.ConfigureSetResult>(App.MainWindow);
-
-            // TODO: Handle the configuration-options
+            configureSetView.DataContext = new ConfigureSetViewModel(configureSetView, folder, pattern, recursive.Value);
+            var layout = await configureSetView.ShowDialog<Layout>(App.MainWindow);
+            if (layout != null)
+            {
+                Logger.Information("Layout set: TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampLeFormat='{TimestampFormat} SeverityStart={SeverityStart} Severities={Severities}", layout.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart, string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
+                Logger.Information("Opening Folder='{Folder}' Pattern='{Pattern}' Recursive={Recursive}", folder, pattern, recursive.Value);
+                Layout = layout;
+                Folder = folder;
+                Pattern = pattern;
+                Recursive = recursive.Value;
+            } 
+            else
+            {
+                Logger.Information("Open/configure was cancelled");
+                if (string.IsNullOrWhiteSpace(Folder) || string.IsNullOrWhiteSpace(Pattern))
+                {
+                    var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+                        "No logfile or set selected",
+                        "Use the Open File Or Open Set menus to open log-files."
+                    );
+                    await messageBoxStandardWindow.ShowDialog(App.MainWindow);
+                }
+            }
         }
 
         private void DragOver(object sender, DragEventArgs e)
@@ -346,14 +366,12 @@ namespace LogExpress.ViewModels
             (Application.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
         }
 
-        private void OpenFile(string fileName)
+        private (string, string, bool) DecodeFileName(string fileName)
         {
             Logger.Information("Selected file {LogFile}", fileName);
             var fileInfo = new FileInfo(fileName);
             var dirInfo = Directory.GetParent(fileInfo.FullName);
-            Folder = dirInfo.FullName;
-            Pattern = fileInfo.Name;
-            Recursive = false;
+            return (dirInfo.FullName, fileInfo.Name, false);
         }
 
         private async void OpenFileExecute()
@@ -371,12 +389,12 @@ namespace LogExpress.ViewModels
 
             if (file?.Length <= 0)
             {
-                Logger.Information("No file selected");
+                Logger.Information("OpenFile was cancelled");
                 return;
             }
 
-            var fileName = file.First();
-            OpenFile(fileName);
+            var fileName = file?.First();
+            await ConfigureSetCommand.Execute(DecodeFileName(fileName));
         }
 
         private async void OpenSetExecute()
@@ -385,26 +403,45 @@ namespace LogExpress.ViewModels
             var openLogSetView = new OpenSetView();
             openLogSetView.DataContext = new OpenSetViewModel(openLogSetView, _folder);
             var openSetResult = await openLogSetView.ShowDialog<OpenSetViewModel.OpenSetResult>(App.MainWindow);
-            if (openSetResult == null) return;
+            if (openSetResult == null)
+            {
+                Logger.Information("OpenSet was cancelled");
+                return;
+            }
 
             // TODO: Check if the file/set opened already has a configuration in the settings.
-            // TODO: If not then run ConfigureSetExecute
 
-            // Open the file(s)
-            if (openSetResult.SelectedFile != null)
+            var configureArgs = openSetResult.SelectedFile != null
+                ? DecodeFileName(openSetResult.SelectedFile.FullName)
+                : (openSetResult.Folder, openSetResult.Pattern, openSetResult.Recursive);
+            
+            await ConfigureSetCommand.Execute(configureArgs);
+        }
+
+        private async void InitExecute()
+        {
+            // Parse args (this constructor should only be called once in the application lifespan
+            var args = Environment.GetCommandLineArgs().Skip(1).ToList();
+            if (args.Count > 0)
             {
-                OpenFile(openSetResult.SelectedFile.FullName);
+                await ParseArgs(args);
             }
             else
             {
-                Folder = openSetResult.Folder;
-                Pattern = openSetResult.Pattern;
-                Recursive = openSetResult.Recursive;
+                var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+                    "No logfile passed as argument",
+                    "Use the OpenLog Or OpenSet menus to open log-files."
+                );
+                await messageBoxStandardWindow.ShowDialog(App.MainWindow);
             }
         }
 
-        private void ParseArgs(List<string> args)
+        private async Task ParseArgs(List<string> args)
         {
+
+            _mainWindow.AddHandler(DragDrop.DragOverEvent, DragOver);
+            _mainWindow.AddHandler(DragDrop.DropEvent, Drop);
+
             var optDebugger = args.Contains("-d");
             var optWaitForDebugger = args.Contains("-w");
 
@@ -424,24 +461,27 @@ namespace LogExpress.ViewModels
                 }
             }
 
-            Recursive = args.Contains("-r");
+            var recursive = args.Contains("-r");
 
             args = args.Where(a => !new List<string> { "-r", "-d", "-w" }.Contains(a)).ToList();
 
             if (args.Count > 0)
             {
                 Debugger.Launch();
+                string folder;
+                string pattern;
                 if (File.Exists(args[0]))
                 {
                     var dirInfo = Directory.GetParent(args[0]);
-                    Folder = dirInfo.FullName;
-                    Pattern = new FileInfo(args[0]).Name;
+                    folder = dirInfo.FullName;
+                    pattern = new FileInfo(args[0]).Name;
                 }
                 else
                 {
-                    Folder = args[0];
-                    Pattern = args.Count > 1 ? args[1] : "*.log";
+                    folder = args[0];
+                    pattern = args.Count > 1 ? args[1] : "*.log";
                 }
+                await ConfigureSetCommand.Execute((folder, pattern, recursive));
             }
         }
 

@@ -16,6 +16,7 @@ namespace LogExpress.Models
         private static readonly ILogger Logger = Log.ForContext<ScopedFile>();
         private DateTime? _startDate;
         private DateTime? _endDate;
+        private Layout _layout;
 
         public ScopedFile(string file, string basePath, Layout layout = null)
         {
@@ -30,7 +31,17 @@ namespace LogExpress.Models
             LinesListCreationTime = (ulong) (CreationTime.Ticks / LineItem.TicksPerSec);
         }
 
-        public Layout Layout { get; set; }
+        public Layout Layout
+        {
+            get => _layout;
+            set
+            {
+                _startDate = null;
+                _endDate = null;
+                _layout = value;
+            }
+        }
+
         public string BasePath { get; set; }
         public DateTime CreationTime { get; }
         public string Name{ get; }
@@ -48,13 +59,9 @@ namespace LogExpress.Models
             {
                 if (_startDate.HasValue) return _startDate.Value;
 
-                if (Layout == null) return CreationTime;
+                if (Layout == null) return DateTime.MinValue;
 
-                if (Length <= 0)
-                {
-                    _startDate = CreationTime;
-                    return _startDate.Value;
-                }
+                if (Length <= 0) return DateTime.MinValue;
 
                 // Try to fetch the date from the first log-entry
                 using var fileStream = new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -78,7 +85,7 @@ namespace LogExpress.Models
                     }
                 }
 
-                _startDate ??= CreationTime;
+                _startDate ??= DateTime.MinValue;
 
                 return _startDate.Value;
             }
@@ -92,6 +99,9 @@ namespace LogExpress.Models
 
                 if (Layout == null) return DateTime.MaxValue;
 
+                if (Length <= 0) return DateTime.MaxValue;
+
+                // Try to fetch the date from the last log-entry
                 using var fileStream = new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(fileStream);
 
