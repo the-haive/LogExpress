@@ -14,18 +14,18 @@ namespace LogExpress.Views
         {
             AvaloniaXamlLoader.Load(this);
 
-            //LogLevelMapImageControl = this.FindControl<Image>("LogLevelMap");
-            LogLevelMap = this.FindControl<Image>("LogLevelMap");
+            //LogLevelMapImageControl = this.FindControl<Image>("SeverityMap");
+            SeverityMap = this.FindControl<Image>("SeverityMap");
             LinesCtrl = this.FindControl<ListBox>("Lines");
             FileFilterCtrl = this.FindControl<ComboBox>("FileFilter");
-            LevelFilterCtrl = this.FindControl<ComboBox>("LevelFilter");
+            SeverityFilterCtrl = this.FindControl<ComboBox>("SeverityFilter");
             SearchQueryCtrl = this.FindControl<TextBox>("SearchQuery");
         }
 
-        public Image LogLevelMap { get; set; }
+        public Image SeverityMap { get; set; }
         public ListBox LinesCtrl { get; private set; }
         public ComboBox FileFilterCtrl { get; set; }
-        public ComboBox LevelFilterCtrl { get; set; }
+        public ComboBox SeverityFilterCtrl { get; set; }
         public TextBox SearchQueryCtrl { get; set; }
     }
 }

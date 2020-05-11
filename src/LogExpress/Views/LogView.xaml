@@ -93,11 +93,11 @@
             </ComboBox>    
           </DockPanel>
           <DockPanel LastChildFill="True" Classes="item">
-            <TextBlock Text="Level" DockPanel.Dock="Top"/>
-            <ComboBox Name="LevelFilter" Width="80" 
-                      SelectedItem="{Binding VirtualLogFile.LevelFilterSelected}"
-                      IsEnabled="{Binding LevelFilterEnabled}"
-                      Items="{Binding LevelFilterItems}">
+            <TextBlock Text="Severity" DockPanel.Dock="Top"/>
+            <ComboBox Name="SeverityFilter" Width="80" 
+                      SelectedItem="{Binding VirtualLogFile.SeverityFilterSelected}"
+                      IsEnabled="{Binding SeverityFilterEnabled}"
+                      Items="{Binding SeverityFilterItems}">
               <ComboBox.ItemTemplate>
                 <DataTemplate>
                   <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
@@ -203,33 +203,25 @@
       </Border>
       <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
         <StackPanel Name="Navigators" Orientation="Horizontal" Spacing="7">
-          <StackPanel Name="NavLevel4" Orientation="Vertical" Classes="item">
-            <TextBlock Text="WARN" HorizontalAlignment="Center"/>
-            <!--ComboBox DockPanel.Dock="Top" HorizontalAlignment="Stretch" Height="24" FontSize="10" VerticalAlignment = "Bottom" SelectedIndex="3">
-              <ComboBoxItem>Level: TRACE (1)</ComboBoxItem>
-              <ComboBoxItem>Level: DEBUG (2)</ComboBoxItem>
-              <ComboBoxItem>Level: INFO (3)</ComboBoxItem>
-              <ComboBoxItem>Level: WARNING (4)</ComboBoxItem>
-              <ComboBoxItem>Level: ERROR (5)</ComboBoxItem>
-              <ComboBoxItem>Level: FATAL (6)</ComboBoxItem>
-            </ComboBox-->
+          <StackPanel Name="Severity4" Orientation="Vertical" Classes="item">
+            <TextBlock Text="{Binding Severity4Name}" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseLevel4BackCommand}" />
-              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseLevel4FrwdCommand}" />
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseSeverity4BackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseSeverity4FrwdCommand}" />
             </StackPanel>
           </StackPanel>
-          <StackPanel Name="NavLevel5" Orientation="Vertical" Classes="item">
-            <TextBlock Text="ERROR" HorizontalAlignment="Center"/>
+          <StackPanel Name="Severity5" Orientation="Vertical" Classes="item">
+            <TextBlock Text="{Binding Severity5Name}" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseLevel5BackCommand}" />
-              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseLevel5FrwdCommand}" />
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseSeverity5BackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseSeverity5FrwdCommand}" />
             </StackPanel>
           </StackPanel>
-          <StackPanel Name="NavLevel6" Orientation="Vertical" Classes="item">
-            <TextBlock Text="FATAL" HorizontalAlignment="Center"/>
+          <StackPanel Name="Severity6" Orientation="Vertical" Classes="item">
+            <TextBlock Text="{Binding Severity6Name}" HorizontalAlignment="Center"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseLevel6BackCommand}" />
-              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseLevel6FrwdCommand}" />
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseSeverity6BackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseSeverity6FrwdCommand}" />
             </StackPanel>
           </StackPanel>
           <StackPanel Name="NavDay" Orientation="Vertical" Classes="item" >
@@ -276,7 +268,7 @@
         <TextBlock Text="Filtering..." Margin="30 0 20 20" IsVisible="{Binding VirtualLogFile.IsFiltering}"/>
       </StackPanel>
       <Image 
-        Name="LogLevelMap" 
+        Name="SeverityMap" 
         Margin="0 20 0 38"
         Width="10" 
         Stretch="Fill"

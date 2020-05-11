@@ -54,20 +54,20 @@ namespace LogExpress.ViewModels
         private ObservableAsPropertyHelper<string> _infoBarByteSizeFilter;
         private ObservableAsPropertyHelper<string> _infoBarLineCount;
         private ObservableAsPropertyHelper<string> _infoBarLineCountFilter;
-        private string _infoBarLogLevel0;
-        private string _infoBarLogLevel0Filter;
-        private string _infoBarLogLevel1;
-        private string _infoBarLogLevel1Filter;
-        private string _infoBarLogLevel2;
-        private string _infoBarLogLevel2Filter;
-        private string _infoBarLogLevel3;
-        private string _infoBarLogLevel3Filter;
-        private string _infoBarLogLevel4;
-        private string _infoBarLogLevel4Filter;
-        private string _infoBarLogLevel5;
-        private string _infoBarLogLevel5Filter;
-        private string _infoBarLogLevel6;
-        private string _infoBarLogLevel6Filter;
+        private string _infoBarSeverity0;
+        private string _infoBarSeverity0Filter;
+        private string _infoBarSeverity1;
+        private string _infoBarSeverity1Filter;
+        private string _infoBarSeverity2;
+        private string _infoBarSeverity2Filter;
+        private string _infoBarSeverity3;
+        private string _infoBarSeverity3Filter;
+        private string _infoBarSeverity4;
+        private string _infoBarSeverity4Filter;
+        private string _infoBarSeverity5;
+        private string _infoBarSeverity5Filter;
+        private string _infoBarSeverity6;
+        private string _infoBarSeverity6Filter;
         private ObservableAsPropertyHelper<string> _infoBarRange;
         private ObservableAsPropertyHelper<string> _infoBarRangeFilter;
         private ObservableAsPropertyHelper<string> _infoBarRangeToolTip;
@@ -187,88 +187,88 @@ namespace LogExpress.ViewModels
         public string InfoBarLineCount => _infoBarLineCount?.Value;
         public string InfoBarLineCountFilter => _infoBarLineCountFilter?.Value;
 
-        public string InfoBarLogLevel0
+        public string InfoBarSeverity0
         {
-            get => _infoBarLogLevel0;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel0, value);
+            get => _infoBarSeverity0;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity0, value);
         }
 
-        public string InfoBarLogLevel0Filter
+        public string InfoBarSeverity0Filter
         {
-            get => _infoBarLogLevel0Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel0Filter, value);
+            get => _infoBarSeverity0Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity0Filter, value);
         }
 
-        public string InfoBarLogLevel1
+        public string InfoBarSeverity1
         {
-            get => _infoBarLogLevel1;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel1, value);
+            get => _infoBarSeverity1;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity1, value);
         }
 
-        public string InfoBarLogLevel1Filter
+        public string InfoBarSeverity1Filter
         {
-            get => _infoBarLogLevel1Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel1Filter, value);
+            get => _infoBarSeverity1Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity1Filter, value);
         }
 
-        public string InfoBarLogLevel2
+        public string InfoBarSeverity2
         {
-            get => _infoBarLogLevel2;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel2, value);
+            get => _infoBarSeverity2;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity2, value);
         }
 
-        public string InfoBarLogLevel2Filter
+        public string InfoBarSeverity2Filter
         {
-            get => _infoBarLogLevel2Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel2Filter, value);
+            get => _infoBarSeverity2Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity2Filter, value);
         }
 
-        public string InfoBarLogLevel3
+        public string InfoBarSeverity3
         {
-            get => _infoBarLogLevel3;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel3, value);
+            get => _infoBarSeverity3;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity3, value);
         }
 
-        public string InfoBarLogLevel3Filter
+        public string InfoBarSeverity3Filter
         {
-            get => _infoBarLogLevel3Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel3Filter, value);
+            get => _infoBarSeverity3Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity3Filter, value);
         }
 
-        public string InfoBarLogLevel4
+        public string InfoBarSeverity4
         {
-            get => _infoBarLogLevel4;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel4, value);
+            get => _infoBarSeverity4;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity4, value);
         }
 
-        public string InfoBarLogLevel4Filter
+        public string InfoBarSeverity4Filter
         {
-            get => _infoBarLogLevel4Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel4Filter, value);
+            get => _infoBarSeverity4Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity4Filter, value);
         }
 
-        public string InfoBarLogLevel5
+        public string InfoBarSeverity5
         {
-            get => _infoBarLogLevel5;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel5, value);
+            get => _infoBarSeverity5;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity5, value);
         }
 
-        public string InfoBarLogLevel5Filter
+        public string InfoBarSeverity5Filter
         {
-            get => _infoBarLogLevel5Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel5Filter, value);
+            get => _infoBarSeverity5Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity5Filter, value);
         }
 
-        public string InfoBarLogLevel6
+        public string InfoBarSeverity6
         {
-            get => _infoBarLogLevel6;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel6, value);
+            get => _infoBarSeverity6;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity6, value);
         }
 
-        public string InfoBarLogLevel6Filter
+        public string InfoBarSeverity6Filter
         {
-            get => _infoBarLogLevel6Filter;
-            set => this.RaiseAndSetIfChanged(ref _infoBarLogLevel6Filter, value);
+            get => _infoBarSeverity6Filter;
+            set => this.RaiseAndSetIfChanged(ref _infoBarSeverity6Filter, value);
         }
 
         public string InfoBarRange => _infoBarRange?.Value;
@@ -350,6 +350,8 @@ namespace LogExpress.ViewModels
                 Logger.Information("Open/configure was cancelled");
                 if (string.IsNullOrWhiteSpace(Folder) || string.IsNullOrWhiteSpace(Pattern))
                 {
+                    _mainWindow.MenuConfigureLayout.IsEnabled = false;
+
                     var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
                         "No logfile or set selected",
                         "Use the Open File Or Open Set menus to open log-files."
@@ -622,7 +624,7 @@ namespace LogExpress.ViewModels
                                 var (lineSelected, _) = tuple;
                                 var fileInfo = lineSelected.LogFile;
                                 if (fileInfo == null) return "Error finding the file based on selected line";
-                                return $"Selected: [Line {lineSelected.LineNumber:n0}] [Pos {lineSelected.Position:n0}] [File {fileInfo.Name}] [Path {fileInfo.DirectoryName}] [LogLevel {lineSelected.LogLevel}]";
+                                return $"Selected: [Line {lineSelected.LineNumber:n0}] [Pos {lineSelected.Position:n0}] [File {fileInfo.Name}] [Path {fileInfo.DirectoryName}] [Severity {lineSelected.Severity}]";
                             })
                             .ObserveOn(RxApp.MainThreadScheduler)
                             .ToProperty(this, x => x.InfoBarSelectedLine);
@@ -651,8 +653,9 @@ namespace LogExpress.ViewModels
             // Setup subscription for showing the total size in the InfoBar
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total size, i.e. 'Size: 4kb/21Mb'
             _infoBarByteSize = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.TotalSize)
-                .Select(x => $"Size: {ByteSize.FromBytes(x)}")
                 .ObserveOn(RxApp.MainThreadScheduler)
+                .Do(size => _mainWindow.MenuConfigureLayout.IsEnabled = size > 0)
+                .Select(x => $"Size: {ByteSize.FromBytes(x)}")
                 .ToProperty(this, x => x.InfoBarByteSize);
 
             // TODO: Add info on oldest and newest date in the log-file
@@ -665,7 +668,7 @@ namespace LogExpress.ViewModels
 
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total count, i.e. 'Trace: 4/19'
             LogViewModel.VirtualLogFile
-                .WhenAnyValue(x => x.LogLevelStats)
+                .WhenAnyValue(x => x.SeverityStats)
                 .Where(x => x != null)
                 .Subscribe(obs =>
                 {
@@ -682,38 +685,38 @@ namespace LogExpress.ViewModels
                         .DistinctUntilChanged()
                         .Subscribe(_ =>
                     {
-                        var logLevelStats = LogViewModel.VirtualLogFile.LogLevelStats;
-                        if (logLevelStats == null || !logLevelStats.Any()) return;
+                        var severityStats = LogViewModel.VirtualLogFile.SeverityStats;
+                        if (severityStats == null || !severityStats.Any()) return;
 
-                        foreach (var (level, count) in logLevelStats)
+                        foreach (var (level, count) in severityStats)
                         {
                             if (level == 0)
                             {
-                                InfoBarLogLevel0 = $"No log-level: {count}";
+                                InfoBarSeverity0 = $"No severity: {count}";
                             }
                             else if (level == 1)
                             {
-                                InfoBarLogLevel1 = $"Trace: {count}";
+                                InfoBarSeverity1 = $"{_logViewModel.Severity1Name}: {count}";
                             }
                             else if (level == 2)
                             {
-                                InfoBarLogLevel2 = $"Debug: {count}";
+                                InfoBarSeverity2 = $"{_logViewModel.Severity2Name}: {count}";
                             }
                             else if (level == 3)
                             {
-                                InfoBarLogLevel3 = $"Info: {count}";
+                                InfoBarSeverity3 = $"{_logViewModel.Severity3Name}: {count}";
                             }
                             else if (level == 4)
                             {
-                                InfoBarLogLevel4 = $"Warn: {count}";
+                                InfoBarSeverity4 = $"{_logViewModel.Severity4Name}: {count}";
                             }
                             else if (level == 5)
                             {
-                                InfoBarLogLevel5 = $"Error: {count}";
+                                InfoBarSeverity5 = $"{_logViewModel.Severity5Name}: {count}";
                             }
                             else if (level == 6)
                             {
-                                InfoBarLogLevel6 = $"Fatal: {count}";
+                                InfoBarSeverity6 = $"{_logViewModel.Severity6Name}: {count}";
                             }
                         }
                     });

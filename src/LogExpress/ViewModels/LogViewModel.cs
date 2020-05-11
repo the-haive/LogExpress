@@ -37,9 +37,8 @@ namespace LogExpress.ViewModels
         private ObservableCollection<LineItem> _lines;
         private LineItem _lineSelected;
         private ObservableCollection<LineItem> _linesSelected = new ObservableCollection<LineItem>();
-        private string _logLevelMapFile;
+        private string _severityMapFile;
         private bool _selectedLast;
-        private bool _tail = true;
 
         [UsedImplicitly]
         public string BasePath
@@ -67,103 +66,13 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _linesSelected, value);
         }
 
-
-        //[UsedImplicitly] public List<LogFileFilter> LogFilesFilter => _logFilesFilter?.Value;
-
-        public string LogLevelMapFile
+        public string SeverityMapFile
         {
-            get => _logLevelMapFile;
-            set => this.RaiseAndSetIfChanged(ref _logLevelMapFile, value);
-        }
-
-        [UsedImplicitly]
-        public bool Tail
-        {
-            get => _tail;
-            set => this.RaiseAndSetIfChanged(ref _tail, value);
+            get => _severityMapFile;
+            set => this.RaiseAndSetIfChanged(ref _severityMapFile, value);
         }
 
         [UsedImplicitly] public long TotalSize => _totalSize.Value;
-
-        internal void BrowseSearchBack()
-        {
-            DoFindExecute(VirtualLogFile.FilteredLines.Last(), -1, 0);
-        }
-
-        internal void BrowseSearchFrwd()
-        {
-            DoFindExecute(VirtualLogFile.FilteredLines.First(), +1, VirtualLogFile.FilteredLines.Count);
-        }
-
-        private void BrowseLevelBack(int logLevel)
-        {
-            var match = _lineSelected != null
-                ? VirtualLogFile.FilteredLines.LastOrDefault(l =>
-                    l.LogLevel == logLevel && (l.CreationTimeTicks < _lineSelected.CreationTimeTicks ||
-                                               l.LineNumber < _lineSelected.LineNumber))
-                : VirtualLogFile.FilteredLines.LastOrDefault();
-
-            if (match == null) return;
-
-            _logView.LinesCtrl.SelectedItem = match;
-        }
-
-        private void BrowseLevelFrwd(int logLevel)
-        {
-            var match = _lineSelected != null
-                ? VirtualLogFile.FilteredLines.FirstOrDefault(l =>
-                    l.LogLevel == logLevel && (l.CreationTimeTicks > _lineSelected.CreationTimeTicks ||
-                                               l.LineNumber > _lineSelected.LineNumber))
-                : VirtualLogFile.FilteredLines.FirstOrDefault();
-
-            if (match == null) return;
-
-            _logView.LinesCtrl.SelectedItem = match;
-        }
-
-        private void BrowseTimeBack(Func<DateTime, long> maxTicksFactory)
-        {
-            if (_lineSelected == null) return;
-
-            var selIdx = _logView.LinesCtrl.SelectedIndex;
-            var content = VirtualLogFile.FilteredLines[selIdx].Content.Split('|').FirstOrDefault();
-
-            if (!DateTime.TryParse(content, out var contentTime)) contentTime = DateTime.MaxValue;
-
-            var maxTicks = maxTicksFactory(contentTime);
-
-            for (var i = selIdx - 1; i >= 0; i--)
-            {
-                var lineContent = VirtualLogFile.FilteredLines[i].Content.Split('|').FirstOrDefault();
-
-                if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
-                if (itemTime.Ticks >= maxTicks) continue;
-                _logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines[i];
-                break;
-            }
-        }
-
-        private void BrowseTimeFrwd(Func<DateTime, long> minTicksFactory)
-        {
-            if (_lineSelected == null) return;
-
-            var selIdx = _logView.LinesCtrl.SelectedIndex;
-            var content = VirtualLogFile.FilteredLines[selIdx].Content.Split('|').FirstOrDefault();
-
-            if (!DateTime.TryParse(content, out var contentTime)) contentTime = DateTime.MinValue;
-
-            var minTicks = minTicksFactory(contentTime);
-
-            for (var i = selIdx + 1; i < VirtualLogFile.FilteredLines.Count; i++)
-            {
-                var lineContent = VirtualLogFile.FilteredLines[i].Content.Split('|').FirstOrDefault();
-
-                if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
-                if (itemTime.Ticks <= minTicks) continue;
-                _logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines[i];
-                break;
-            }
-        }
 
         #region Constructor / deconstructor
 
@@ -173,19 +82,38 @@ namespace LogExpress.ViewModels
             Tail = true;
             _logView = logView;
 
+            Severity1Name = "TRACE";
+            Severity2Name = "DEBUG";
+            Severity3Name = "INFO";
+            Severity4Name = "WARN";
+            Severity4Name = "ERROR";
+            Severity4Name = "FATAL";
+
             VirtualLogFile = new VirtualLogFile(BasePath, filter, recursive, layout);
 
             _totalSize = VirtualLogFile.WhenAnyValue(x => x.TotalSize)
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.TotalSize);
 
-            VirtualLogFile.WhenAnyValue(x => x.LogLevelMapFile)
+            VirtualLogFile.WhenAnyValue(x => x.SeverityMapFile)
                 .Where(imgFileName => !string.IsNullOrWhiteSpace(imgFileName))
                 .Subscribe(imgFileName =>
                 {
                     var path = Path.Combine(Environment.CurrentDirectory, imgFileName);
                     var bitmap = new Bitmap(path);
-                    _logView.LogLevelMap.Source = bitmap;
+                    _logView.SeverityMap.Source = bitmap;
+                });
+
+            VirtualLogFile.WhenAnyValue(x => x.Layout)
+                .Where(obsLayout => obsLayout != null)
+                .Subscribe(obsLayout =>
+                {
+                    Severity1Name = obsLayout.Severities[1];
+                    Severity2Name = obsLayout.Severities[2];
+                    Severity3Name = obsLayout.Severities[3];
+                    Severity4Name = obsLayout.Severities[4];
+                    Severity5Name = obsLayout.Severities[5];
+                    Severity6Name = obsLayout.Severities[6];
                 });
 
             VirtualLogFile.WhenAnyValue(x => x.AllLines)
@@ -248,26 +176,26 @@ namespace LogExpress.ViewModels
                     }
 *//*                });
 */
-            VirtualLogFile.ConnectLevelFilterItems()
+            VirtualLogFile.ConnectSeverityFilterItems()
                 .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _levelFilterItems)
+                .Bind(out _severityFilterItems)
                 .Subscribe(_ =>
                 {
-                    if (_logView.LevelFilterCtrl.SelectedItem == null)
+                    if (_logView.SeverityFilterCtrl.SelectedItem == null)
                     {
-                        _logView.LevelFilterCtrl.SelectedIndex = 0;
+                        _logView.SeverityFilterCtrl.SelectedIndex = 0;
                     }
                 });
 
-            _levelFilterEnabled = this.WhenAnyValue(x => x.LevelFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
+            _severityFilterEnabled = this.WhenAnyValue(x => x.SeverityFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
                 .Select(obs =>
                 {
-                    var (levelCount, isFiltering) = obs;
-                    return !isFiltering && levelCount > 0;
+                    var (severityCount, isFiltering) = obs;
+                    return !isFiltering && severityCount > 0;
                 })
                 .DistinctUntilChanged()
-                .ToProperty(this, x => x.LevelFilterEnabled);
+                .ToProperty(this, x => x.SeverityFilterEnabled);
 
             _fileFilterEnabled = this.WhenAnyValue(x => x.FileFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
                 .Select(obs =>
@@ -370,23 +298,23 @@ namespace LogExpress.ViewModels
             BrowseTimeSecondFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
                 new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute,
                     contentTime.Second).AddSeconds(1).Ticks));
-            BrowseLevel1BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(1));
-            BrowseLevel1FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(1));
-            BrowseLevel2BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(2));
-            BrowseLevel2FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(2));
-            BrowseLevel3BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(3));
-            BrowseLevel3FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(3));
+            BrowseLevel1BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(1));
+            BrowseLevel1FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(1));
+            BrowseLevel2BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(2));
+            BrowseLevel2FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(2));
+            BrowseLevel3BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(3));
+            BrowseLevel3FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(3));
 */
 
             BrowseSearchBackCommand = ReactiveCommand.Create(BrowseSearchBack);
             BrowseSearchFrwdCommand = ReactiveCommand.Create(BrowseSearchFrwd);
 
-            BrowseLevel4BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(4));
-            BrowseLevel4FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(4));
-            BrowseLevel5BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(5));
-            BrowseLevel5FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(5));
-            BrowseLevel6BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(6));
-            BrowseLevel6FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(6));
+            BrowseSeverity4BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(4));
+            BrowseSeverity4FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(4));
+            BrowseSeverity5BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(5));
+            BrowseSeverity5FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(5));
+            BrowseSeverity6BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(6));
+            BrowseSeverity6FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(6));
             
             BrowseTimeDayBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
                 new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).Ticks - 1));
@@ -426,25 +354,7 @@ namespace LogExpress.ViewModels
 
         #endregion Constructor / deconstructor
 
-        #region Filters
-
-        #region LevelFilter
-        private readonly ReadOnlyObservableCollection<FilterItem<int>> _levelFilterItems;
-        public ReadOnlyObservableCollection<FilterItem<int>> LevelFilterItems => _levelFilterItems;
-        
-        private readonly ObservableAsPropertyHelper<bool> _levelFilterEnabled;
-        [UsedImplicitly] public bool LevelFilterEnabled => _levelFilterEnabled.Value;
-        
-        private int _levelFilterSelected;
-        [UsedImplicitly]
-        public int LevelFilterSelected
-        {
-            get => _levelFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _levelFilterSelected, value);
-        }
-        #endregion
-
-        #region LogFileFilter
+        #region FileFilter
         private readonly ReadOnlyObservableCollection<FilterItem<ScopedFile>> _fileFilterItems;
         public ReadOnlyObservableCollection<FilterItem<ScopedFile>> FileFilterItems => _fileFilterItems;
 
@@ -458,6 +368,79 @@ namespace LogExpress.ViewModels
             get => _fileFilterSelected;
             set => this.RaiseAndSetIfChanged(ref _fileFilterSelected, value);
         }
+
+        private void BrowseFileBack()
+        {
+            var match = _lineSelected != null
+                ? VirtualLogFile.FilteredLines.LastOrDefault(l => l.CreationTimeTicks < _lineSelected.CreationTimeTicks)
+                : VirtualLogFile.FilteredLines.LastOrDefault();
+
+            if (match == null) return;
+
+            _logView.LinesCtrl.SelectedItem = match;
+        }
+
+        private void BrowseFileFrwd()
+        {
+            var match = _lineSelected != null
+                ? VirtualLogFile.FilteredLines.FirstOrDefault(l => l.CreationTimeTicks > _lineSelected.CreationTimeTicks)
+                : VirtualLogFile.FilteredLines.FirstOrDefault();
+
+            if (match == null) return;
+
+            _logView.LinesCtrl.SelectedItem = match;
+        }
+
+        #endregion
+
+        #region SeverityFilter
+
+        private readonly ReadOnlyObservableCollection<FilterItem<int>> _severityFilterItems;
+        public ReadOnlyObservableCollection<FilterItem<int>> SeverityFilterItems => _severityFilterItems;
+        
+        private readonly ObservableAsPropertyHelper<bool> _severityFilterEnabled;
+        [UsedImplicitly] public bool SeverityFilterEnabled => _severityFilterEnabled.Value;
+        
+        private int _severityFilterSelected;
+        [UsedImplicitly]
+        public int SeverityFilterSelected
+        {
+            get => _severityFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _severityFilterSelected, value);
+        }
+
+
+
+        private void BrowseSeverityBack(int level)
+        {
+            var match = _lineSelected != null
+                ? VirtualLogFile.FilteredLines.LastOrDefault(l =>
+                    l.Severity == level && (l.CreationTimeTicks < _lineSelected.CreationTimeTicks ||
+                                               l.LineNumber < _lineSelected.LineNumber))
+                : VirtualLogFile.FilteredLines.LastOrDefault();
+
+            if (match == null) return;
+
+            _logView.LinesCtrl.SelectedItem = match;
+        }
+
+        private void BrowseSeverityFrwd(int level)
+        {
+            var match = _lineSelected != null
+                ? VirtualLogFile.FilteredLines.FirstOrDefault(l =>
+                    l.Severity == level && (l.CreationTimeTicks > _lineSelected.CreationTimeTicks ||
+                                               l.LineNumber > _lineSelected.LineNumber))
+                : VirtualLogFile.FilteredLines.FirstOrDefault();
+
+            if (match == null) return;
+
+            _logView.LinesCtrl.SelectedItem = match;
+        }
+        
+        #endregion
+
+
+        #region TODO TimeFilter
         #endregion
         
         #region MonthFilter
@@ -492,9 +475,8 @@ namespace LogExpress.ViewModels
         }
         #endregion
 
-        #endregion Filters
+        #region Search Filter & Browse
 
-        #region Search/browse
         private string _searchQuery;
         [UsedImplicitly] public string SearchQuery
         {
@@ -516,96 +498,20 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _searchIsRegex, value);
         }
 
-
         public ReactiveCommand<Unit, Unit> SearchFilter { get; }
         public ReactiveCommand<Unit, Unit> SearchFilterReset { get; }
         public ReactiveCommand<Unit, Unit> BrowseSearchBackCommand { get; }
 
         public ReactiveCommand<Unit, Unit> BrowseSearchFrwdCommand { get; }
 
-        #endregion
-
-        #region Toolbar
-
-/*
-        public ReactiveCommand<Unit, Unit> BrowseFileBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseFileFrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel1BackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel1FrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel2BackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel2FrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel3BackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel3FrwdCommand { get; }
-*/
-        public ReactiveCommand<Unit, Unit> BrowseLevel4BackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel4FrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel5BackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel5FrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel6BackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseLevel6FrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; }
-
-/*
-        public ReactiveCommand<Unit, Unit> BrowseTimeMinuteBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeMinuteFrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeMonthBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeMonthFrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeSecondBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeSecondFrwdCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeYearBackCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> BrowseTimeYearFrwdCommand { get; }
-*/
-        public ReactiveCommand<Unit, Unit> CopyCommand { get; }
-
-        public ReactiveCommand<Unit, Unit> TailCommand { get; }
-        public ReactiveCommand<Unit, Unit> DeselectCommand { get; }
-
-        private void BrowseFileBack()
+        internal void BrowseSearchBack()
         {
-            var match = _lineSelected != null
-                ? VirtualLogFile.FilteredLines.LastOrDefault(l => l.CreationTimeTicks < _lineSelected.CreationTimeTicks)
-                : VirtualLogFile.FilteredLines.LastOrDefault();
-
-            if (match == null) return;
-
-            _logView.LinesCtrl.SelectedItem = match;
+            DoFindExecute(VirtualLogFile.FilteredLines.Last(), -1, 0);
         }
 
-        private void BrowseFileFrwd()
+        internal void BrowseSearchFrwd()
         {
-            var match = _lineSelected != null
-                ? VirtualLogFile.FilteredLines.FirstOrDefault(l => l.CreationTimeTicks > _lineSelected.CreationTimeTicks)
-                : VirtualLogFile.FilteredLines.FirstOrDefault();
-
-            if (match == null) return;
-
-            _logView.LinesCtrl.SelectedItem = match;
+            DoFindExecute(VirtualLogFile.FilteredLines.First(), +1, VirtualLogFile.FilteredLines.Count);
         }
 
         private void DoFindExecute(LineItem noSelectionStart, int increment, int to)
@@ -656,6 +562,136 @@ namespace LogExpress.ViewModels
             }
         }
 
+
+        #endregion
+
+        #region SeverityBrowse
+
+        private string _severity1Name;
+
+        public string Severity1Name
+        {
+            get => _severity1Name;
+            set => this.RaiseAndSetIfChanged(ref _severity1Name, value);
+        }
+
+        private string _severity2Name;
+
+        public string Severity2Name
+        {
+            get => _severity2Name;
+            set => this.RaiseAndSetIfChanged(ref _severity2Name, value);
+        }
+
+        private string _severity3Name;
+
+        public string Severity3Name
+        {
+            get => _severity3Name;
+            set => this.RaiseAndSetIfChanged(ref _severity3Name, value);
+        }
+
+        private string _severity4Name;
+
+        public string Severity4Name
+        {
+            get => _severity4Name;
+            set => this.RaiseAndSetIfChanged(ref _severity4Name, value);
+        }
+
+        private string _severity5Name;
+
+        public string Severity5Name
+        {
+            get => _severity5Name;
+            set => this.RaiseAndSetIfChanged(ref _severity5Name, value);
+        }
+
+        private string _severity6Name;
+
+        public string Severity6Name
+        {
+            get => _severity6Name;
+            set => this.RaiseAndSetIfChanged(ref _severity6Name, value);
+        }
+
+        public ReactiveCommand<Unit, Unit> BrowseSeverity4BackCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseSeverity4FrwdCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseSeverity5BackCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseSeverity5FrwdCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseSeverity6BackCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseSeverity6FrwdCommand { get; }
+
+        #endregion
+
+        #region TimeBrowse
+
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; }
+
+        private void BrowseTimeBack(Func<DateTime, long> maxTicksFactory)
+        {
+            if (_lineSelected == null) return;
+
+            var selIdx = _logView.LinesCtrl.SelectedIndex;
+            var content = VirtualLogFile.FilteredLines[selIdx].Content.Split('|').FirstOrDefault();
+
+            if (!DateTime.TryParse(content, out var contentTime)) contentTime = DateTime.MaxValue;
+
+            var maxTicks = maxTicksFactory(contentTime);
+
+            for (var i = selIdx - 1; i >= 0; i--)
+            {
+                var lineContent = VirtualLogFile.FilteredLines[i].Content.Split('|').FirstOrDefault();
+
+                if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
+                if (itemTime.Ticks >= maxTicks) continue;
+                _logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines[i];
+                break;
+            }
+        }
+
+        private void BrowseTimeFrwd(Func<DateTime, long> minTicksFactory)
+        {
+            if (_lineSelected == null) return;
+
+            var selIdx = _logView.LinesCtrl.SelectedIndex;
+            var content = VirtualLogFile.FilteredLines[selIdx].Content.Split('|').FirstOrDefault();
+
+            if (!DateTime.TryParse(content, out var contentTime)) contentTime = DateTime.MinValue;
+
+            var minTicks = minTicksFactory(contentTime);
+
+            for (var i = selIdx + 1; i < VirtualLogFile.FilteredLines.Count; i++)
+            {
+                var lineContent = VirtualLogFile.FilteredLines[i].Content.Split('|').FirstOrDefault();
+
+                if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
+                if (itemTime.Ticks <= minTicks) continue;
+                _logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines[i];
+                break;
+            }
+        }
+
+        #endregion
+
+        #region Tools
+        private bool _tail = true;
+
+        public ReactiveCommand<Unit, Unit> CopyCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> TailCommand { get; }
+
         private async Task<Unit> CopyExecute()
         {
             await Task.Run(() =>
@@ -669,11 +705,23 @@ namespace LogExpress.ViewModels
             return default;
         }
 
+        [UsedImplicitly]
+        public bool Tail
+        {
+            get => _tail;
+            set => this.RaiseAndSetIfChanged(ref _tail, value);
+        }
+
         private void TailExecute()
         {
             Tail = !Tail;
         }
 
+        #endregion
+
+        public ReactiveCommand<Unit, Unit> DeselectCommand { get; }
+
+        
         private void DeselectExecute()
         {
             if (LineSelected != null)
@@ -682,6 +730,5 @@ namespace LogExpress.ViewModels
             }
         }
 
-        #endregion Toolbar
     }
 }

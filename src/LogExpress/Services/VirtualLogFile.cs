@@ -34,7 +34,7 @@ namespace LogExpress.Services
     /// </summary>
     public class VirtualLogFile : ReactiveObject, IDisposable
     {
-        public readonly Dictionary<string, byte> LogLevelLookup = new Dictionary<string, byte>
+        public readonly Dictionary<string, byte> SeverityLookup = new Dictionary<string, byte>
         {
             {"VRB", 1},
             {"DBG", 2},
@@ -55,7 +55,7 @@ namespace LogExpress.Services
         private readonly IDisposable _fileMonitorSubscription;
         private readonly ReadOnlyObservableCollection<ScopedFile> _logFiles;
 
-        private readonly Dictionary<WordMatcher, byte> _logLevelMatchers = new Dictionary<WordMatcher, byte>();
+        private readonly Dictionary<WordMatcher, byte> _severityMatchers = new Dictionary<WordMatcher, byte>();
         /**
          * TODO-list
          * * Filters:
@@ -75,7 +75,7 @@ namespace LogExpress.Services
          *   • Create a double resolution mini-map for AllLines and another for FilteredLines (if they differ).
          *     Low-res: In the UI this will be about 3_000 pixels in height, and will contain all lines.
          *     High-res: In the UI this will be a "fisheye", showing the higher resolution image at the same position as the
-         *       low-res version, giving the user a chance of seeing the actual log-levels.
+         *       low-res version, giving the user a chance of seeing the actual log-severities.
          *   • Each of the two above mentioned mini-maps are in reality to be composed by multiple images:
          *   * First of all, we want them to be in two different resolutions:
          *         Lo-res: In the UI this will be about 3_000 pixels in height, and will contain all lines.
@@ -106,12 +106,12 @@ namespace LogExpress.Services
         private bool _analyzeError;
         private ObservableCollection<LineItem> _filteredLines;
         private bool _isAnalyzed = false;
-        private List<int> _logLevelFilter = new List<int>();
-        private Bitmap _logLevelMap;
+        private List<int> _severityFilter = new List<int>();
+        private Bitmap _severityMap;
 
-        private string _logLevelMapFile;
+        private string _severityMapFile;
 
-        private ObservableConcurrentDictionary<byte, long> _logLevelStats;
+        private ObservableConcurrentDictionary<byte, long> _severityStats;
 
         private ObservableCollection<LineItem> _newLines;
 
@@ -132,7 +132,7 @@ namespace LogExpress.Services
             Layout = layout;
             LineItem.LogFiles = LogFiles;
 
-            foreach (var pair in LogLevelLookup) _logLevelMatchers.Add(new WordMatcher(pair.Key), pair.Value);
+            foreach (var pair in SeverityLookup) _severityMatchers.Add(new WordMatcher(pair.Key), pair.Value);
 
             Logger.Debug(
                 "Creating instance for basePath={basePath} and filters={filters} with recurse={recurse}",
@@ -156,8 +156,8 @@ namespace LogExpress.Services
                     AllLines = LinesInBgThread;
 
                     if (AllLines != null && AllLines.Any())
-                        // Create LogLevelMap to show on the side of the scrollbar
-                        CreateLogLevelMapImage();
+                        // Create SeverityMap to show on the side of the scrollbar
+                        CreateSeverityMapImage();
 
                     Logger.Debug("Finished analyzing");
                 });
@@ -201,17 +201,26 @@ namespace LogExpress.Services
                     ShowLines = !ShowProgress;
                 });
 
-            this.WhenAnyValue(x => x.LogLevelStats, x => x.IsAnalyzed)
+            this.WhenAnyValue(x => x.SeverityStats, x => x.IsAnalyzed)
                 .Where(obs =>
                 {
-                    var (logLevelStats, isAnalyzed) = obs;
-                    return logLevelStats != null && isAnalyzed;
+                    var (severityStats, isAnalyzed) = obs;
+                    return severityStats != null && isAnalyzed;
                 })
                 .Subscribe(_ =>
                 {
-                    _levelFilterSource.Clear();
-                    foreach (var (level, count) in LogLevelStats)
-                        _levelFilterSource.AddOrUpdate(new FilterItem<int>(level, level, $"TODO-{level}"));
+                    _severityFilterSource.Clear();
+                    foreach (var (severity, count) in SeverityStats)
+                    {
+                        var name = severity == 0 ? "Any" : $"{severity}-{Layout.Severities[severity]}";
+                        var toolTip = severity switch
+                        {
+                            0 => string.Empty,
+                            6 => "Show severity level 6",
+                            _ => $"Show severity level {severity} and higher"
+                        };
+                        _severityFilterSource.AddOrUpdate(new FilterItem<int>(severity, severity, name, toolTip));
+                    }
 
                     _monthFilterSource.Clear();
                     _monthFilterSource.AddOrUpdate(new FilterItem<int>(6,6, "June"));
@@ -241,10 +250,10 @@ namespace LogExpress.Services
 
 
             this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.FileFilterSelected,
-                    x => x.YearFilterSelected, x => x.MonthFilterSelected, x => x.LevelFilterSelected)
+                    x => x.YearFilterSelected, x => x.MonthFilterSelected, x => x.SeverityFilterSelected)
                 .Where((
                     (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int>
-                        yearFilterSelected, FilterItem<int> monthFilterSelected, FilterItem<int> levelFilterSelected) obs) =>
+                        yearFilterSelected, FilterItem<int> monthFilterSelected, FilterItem<int> severityFilterSelected) obs) =>
                 {
                     var (isAnalyzed, lines, _, _, _, _) = obs;
                     return isAnalyzed && lines != null;
@@ -252,13 +261,13 @@ namespace LogExpress.Services
                 //.ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe((
                     (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int>
-                        yearFilterSelected, FilterItem<int> monthFilterSelected, FilterItem<int> levelFilterSelected) obs) =>
+                        yearFilterSelected, FilterItem<int> monthFilterSelected, FilterItem<int> severityFilterSelected) obs) =>
                 {
-                    var (_, _, fileFilterSelected, yearFilterSelected, monthFilterSelected, levelFilterSelected) =
+                    var (_, _, fileFilterSelected, yearFilterSelected, monthFilterSelected, severityFilterSelected) =
                         obs;
 
                     if ((fileFilterSelected == null || fileFilterSelected.Key == 0)
-                        && (levelFilterSelected == null || levelFilterSelected.Key == 0)
+                        && (severityFilterSelected == null || severityFilterSelected.Key == 0)
                         && (yearFilterSelected == null || yearFilterSelected.Key == 0)
                         && (monthFilterSelected == null || monthFilterSelected.Key == 0)
                     )
@@ -276,7 +285,7 @@ namespace LogExpress.Services
 
                             BackgroundFilteredLines = new ObservableCollection<LineItem>(AllLines
                                 .Where(item => DoFilter(item, fileFilterSelected, yearFilterSelected,
-                                    monthFilterSelected, levelFilterSelected, ref lastTimestamp)));
+                                    monthFilterSelected, severityFilterSelected, ref lastTimestamp)));
                         });
                     }
                 });
@@ -318,7 +327,12 @@ namespace LogExpress.Services
         public string BasePath { get; set; }
 
         public string Pattern { get; set; }
-        public Layout Layout { get; set; }
+
+        public Layout Layout
+        {
+            get => _layout;
+            set => this.RaiseAndSetIfChanged(ref _layout, value);
+        }
 
         public ObservableCollection<LineItem> FilteredLines
         {
@@ -344,22 +358,22 @@ namespace LogExpress.Services
 
         public ReadOnlyObservableCollection<ScopedFile> LogFiles => _logFiles;
 
-        public Bitmap LogLevelMap
+        public Bitmap SeverityMap
         {
-            get => _logLevelMap;
-            set => this.RaiseAndSetIfChanged(ref _logLevelMap, value);
+            get => _severityMap;
+            set => this.RaiseAndSetIfChanged(ref _severityMap, value);
         }
 
-        public string LogLevelMapFile
+        public string SeverityMapFile
         {
-            get => _logLevelMapFile;
-            set => this.RaiseAndSetIfChanged(ref _logLevelMapFile, value);
+            get => _severityMapFile;
+            set => this.RaiseAndSetIfChanged(ref _severityMapFile, value);
         }
 
-        public ObservableConcurrentDictionary<byte, long> LogLevelStats
+        public ObservableConcurrentDictionary<byte, long> SeverityStats
         {
-            get => _logLevelStats;
-            set => this.RaiseAndSetIfChanged(ref _logLevelStats, value);
+            get => _severityStats;
+            set => this.RaiseAndSetIfChanged(ref _severityStats, value);
         }
 
         public ObservableCollection<LineItem> NewLines
@@ -396,17 +410,17 @@ namespace LogExpress.Services
         {
             if (!disposing) return;
 
-            _logLevelMap.Dispose();
+            _severityMap.Dispose();
             _fileMonitorSubscription?.Dispose();
             _fileMonitor?.Dispose();
             _activeLogFileMonitor?.Dispose();
         }
 
-        private static void LogLevelStatsIncrement(IDictionary<byte, long> logLevelStats, byte logLevel)
+        private static void SeverityStatsIncrement(IDictionary<byte, long> severityStats, byte severity)
         {
-            if (!logLevelStats.ContainsKey(logLevel)) logLevelStats.Add(logLevel, 0);
+            if (!severityStats.ContainsKey(severity)) severityStats.Add(severity, 0);
 
-            logLevelStats[logLevel] += 1;
+            severityStats[severity] += 1;
         }
 
         private void AddNewLinesExecute(ObservableCollection<LineItem> newLines)
@@ -437,11 +451,11 @@ namespace LogExpress.Services
                 }
                 else
                 {
-                    LogLevelStats[AllLines[addPosition].LogLevel]--;
+                    SeverityStats[AllLines[addPosition].Severity]--;
                     AllLines[addPosition] = lineItem;
                 }
 
-                LogLevelStats[lineItem.LogLevel]++;
+                SeverityStats[lineItem.Severity]++;
             }
 
             TotalSize = LogFiles.Sum(l => l.Length);
@@ -466,7 +480,7 @@ namespace LogExpress.Services
                     using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                     using var reader = new StreamReader(fileStream, scopedFile.Encoding);
 
-                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader, _logLevelMatchers, scopedFile);
+                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader, _severityMatchers, scopedFile);
                 }
 
                 iterator.Dispose();
@@ -496,7 +510,7 @@ namespace LogExpress.Services
                 using var fileStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(fileStream, scopedFile.Encoding);
                 var newLines = new ObservableCollection<LineItem>();
-                ScopedFile.ReadFileLinePositions(newLines, reader, _logLevelMatchers, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
+                ScopedFile.ReadFileLinePositions(newLines, reader, _severityMatchers, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
                 if (newLines.Any()) NewLines = newLines;
 
                 scopedFile.Length = (uint) fileInfo.Length;
@@ -507,10 +521,10 @@ namespace LogExpress.Services
 
         // TODO: Create log-map on the fly based on filter-changes in the Lines in the UI
         // Which means perhaps move it from here to the UI as a responsibility?
-        private void CreateLogLevelMapImage()
+        private void CreateSeverityMapImage()
         {
             const int targetPartImageHeight = 500_000;
-            const int logLevelMapHeight = 2_048;
+            const int severityMapHeight = 2_048;
 
             var miniMapFolder = Path.Combine(App.DataFolder, "tmp");
             Directory.CreateDirectory(miniMapFolder);
@@ -533,9 +547,9 @@ namespace LogExpress.Services
                 {
                     var lineItem = AllLines[linesDone];
 
-                    LogLevelStatsIncrement(LogLevelStats, lineItem.LogLevel);
+                    SeverityStatsIncrement(SeverityStats, lineItem.Severity);
 
-                    var pixel = lineItem.LogLevel switch
+                    var pixel = lineItem.Severity switch
                     {
                         6 => Rgba32.Red,
                         5 => Rgba32.Salmon,
@@ -552,12 +566,12 @@ namespace LogExpress.Services
                     linesDone++;
                 }
 
-                if (linesInThisPart > logLevelMapHeight) image.Mutate(x => x.Resize(10, logLevelMapHeight / parts));
+                if (linesInThisPart > severityMapHeight) image.Mutate(x => x.Resize(10, severityMapHeight / parts));
 
                 imgParts.Add(image);
             }
 
-            var combinedImage = parts == 1 ? imgParts[0] : new Image<Rgba32>(10, logLevelMapHeight);
+            var combinedImage = parts == 1 ? imgParts[0] : new Image<Rgba32>(10, severityMapHeight);
             if (parts > 1)
             {
                 var globalRow = 0;
@@ -565,7 +579,7 @@ namespace LogExpress.Services
                 {
                     var img = imgParts[i];
 
-                    for (var y = 0; y < logLevelMapHeight / parts; y++)
+                    for (var y = 0; y < severityMapHeight / parts; y++)
                     {
                         var combinedImageRowSpan = combinedImage.GetPixelRowSpan(globalRow);
 
@@ -576,16 +590,16 @@ namespace LogExpress.Services
                 }
             }
 
-            var fileName = Path.Combine(miniMapFolder, "logLevelMap.bmp");
+            var fileName = Path.Combine(miniMapFolder, "SeverityMap.bmp");
             combinedImage.Save(fileName, new BmpEncoder());
 
-            LogLevelMapFile = fileName;
+            SeverityMapFile = fileName;
 
             imgParts.ForEach(i => i.Dispose());
             combinedImage.Dispose();
         }
         private bool DoFilter(LineItem lineItem, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int> yearFilterSelected,
-            FilterItem<int> monthFilterSelected, FilterItem<int> levelFilterSelected, ref DateTime lastTimestamp)
+            FilterItem<int> monthFilterSelected, FilterItem<int> severityFilterSelected, ref DateTime lastTimestamp)
         {
             // Check the file-filter
             var fileIncluded = fileFilterSelected == null 
@@ -593,10 +607,10 @@ namespace LogExpress.Services
                                   || LogFiles?.FirstOrDefault(l => l.RelativeFullName.Equals(fileFilterSelected?.Name))?.LinesListCreationTime == lineItem.CreationTimeTicks;
             if (!fileIncluded) return false;
 
-            // Check the log-level-filter (includes log-lines that has the default log-level (0)
-            var levelIncluded = levelFilterSelected == null || levelFilterSelected.Key == 0 || lineItem.LogLevel == 0 ||
-                                lineItem.LogLevel >= levelFilterSelected.Key;
-            if (!levelIncluded) return false;
+            // Check the severity-filter (includes log-lines that has the default severity (0)
+            var severityIncluded = severityFilterSelected == null || severityFilterSelected.Key == 0 || lineItem.Severity == 0 ||
+                                lineItem.Severity >= severityFilterSelected.Key;
+            if (!severityIncluded) return false;
 
             // If no year-filter is selected then we can just return true (not necessary to check the month-filter)
             if (yearFilterSelected == null || yearFilterSelected.Key == 0) return true;
@@ -622,9 +636,9 @@ namespace LogExpress.Services
         private void InitializeLines(IChangeSet<ScopedFile, ulong> changes = null)
         {
             IsAnalyzed = false;
-            LogLevelStats = new ObservableConcurrentDictionary<byte, long>();
+            SeverityStats = new ObservableConcurrentDictionary<byte, long>();
             // ReSharper disable once PossibleInvalidCastExceptionInForeachLoop
-            foreach (byte i in Enumerable.Range(0, 7)) LogLevelStats[i] = 0;
+            foreach (byte i in Enumerable.Range(0, 7)) SeverityStats[i] = 0;
 
             LineItem.LogFiles = LogFiles;
             TotalSize = LogFiles.Sum(l => l.Length);
@@ -663,19 +677,19 @@ namespace LogExpress.Services
    
         #region Filters
 
-        #region LevelFilter
-        private readonly SourceCache<FilterItem<int>, int> _levelFilterSource = new SourceCache<FilterItem<int>, int>(t => t.Key);
+        #region SeverityFilter
+        private readonly SourceCache<FilterItem<int>, int> _severityFilterSource = new SourceCache<FilterItem<int>, int>(t => t.Key);
         
-        private FilterItem<int> _levelFilterSelected;
+        private FilterItem<int> _severityFilterSelected;
         [UsedImplicitly]
-        public FilterItem<int> LevelFilterSelected
+        public FilterItem<int> SeverityFilterSelected
         {
-            get => _levelFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _levelFilterSelected, value);
+            get => _severityFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _severityFilterSelected, value);
         }
-        public IObservable<IChangeSet<FilterItem<int>, int>> ConnectLevelFilterItems()
+        public IObservable<IChangeSet<FilterItem<int>, int>> ConnectSeverityFilterItems()
         {
-            return _levelFilterSource.Connect();
+            return _severityFilterSource.Connect();
         }
 
         #endregion
@@ -731,6 +745,7 @@ namespace LogExpress.Services
         private ObservableCollection<LineItem> _backgroundFilteredLines;
         private bool _isFiltering = false;
         private bool _isFiltered = false;
+        private Layout _layout;
 
         private ObservableCollection<LineItem> BackgroundFilteredLines
         {

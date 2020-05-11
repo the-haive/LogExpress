@@ -61,26 +61,6 @@
 	          </DrawingPresenter>	
           </MenuItem.Icon>
         </MenuItem>
-        <MenuItem Header="_Configure Opened Log" Command="{Binding ConfigureSetCommand}">
-          <MenuItem.Icon>
-            <DrawingPresenter Height="16" Width="16">
-              <DrawingPresenter.Drawing>
-                <DrawingGroup>
-                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M450,-550C463.80712890625,-550,475,-538.80712890625,475,-525L475,-345.5C504.893218994141,-334.931274414063 524.910888671875,-306.706359863281 525,-275 524.910888671875,-243.29362487793 504.893218994141,-215.068710327148 475,-204.5L475,-75C475,-61.1928787231445,463.80712890625,-50,450,-50C436.19287109375,-50,425,-61.1928787231445,425,-75L425,-204.5C395.338653564453,-215.265625,375.588073730469,-243.445388793945,375.588073730469,-275C375.588073730469,-306.554626464844,395.338653564453,-334.734375,425,-345.5L425,-525C425,-538.80712890625,436.19287109375,-550,450,-550z M150,-550C163.807113647461,-550,175,-538.80712890625,175,-525L175,-245.5C204.661331176758,-234.734375,224.411911010742,-206.554611206055,224.411911010742,-175C224.411911010742,-143.445388793945,204.661331176758,-115.265625,175,-104.5L175,-75C175,-61.1928787231445,163.807113647461,-50,150,-50C136.192886352539,-50,125,-61.1928787231445,125,-75L125,-104.5C95.3386688232422,-115.265625,75.5880889892578,-143.445388793945,75.5880889892578,-175C75.5880889892578,-206.554611206055,95.3386688232422,-234.734375,125,-245.5L125,-525C125,-538.80712890625,136.192886352539,-550,150,-550z M301.546661376953,-550.198364257813C303.889007568359,-550.148071289063,306.247955322266,-549.987976074219,308.617645263672,-549.7138671875C346.53271484375,-545.328491210938 375.107177734375,-513.167724609375 375,-475 374.910888671875,-443.293640136719 354.893218994141,-415.068725585938 325,-404.5L325,-75C325,-61.1928787231445,313.80712890625,-50,300,-50C286.19287109375,-50,275,-61.1928787231445,275,-75L275,-404.5C239.015060424805,-417.222778320313,218.324401855469,-454.941589355469,226.932754516602,-492.126007080078C235.003082275391,-526.986389160156,266.411102294922,-550.952209472656,301.546661376953,-550.198364257813z"   />
-                  <DrawingGroup.Transform>
-                    <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
-                  </DrawingGroup.Transform>
-                </DrawingGroup>
-              </DrawingPresenter.Drawing>
-	          </DrawingPresenter>	
-          </MenuItem.Icon>
-        </MenuItem>
-        <MenuItem Header="Dark _Theme" Command="{Binding ToggleThemeCommand}">
-          <MenuItem.Icon>
-            <CheckBox Name="Theme" BorderThickness="0" IsChecked="False" IsHitTestVisible="False"/>
-          </MenuItem.Icon>
-        </MenuItem>
-        <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
         <Separator/>
         <MenuItem Header="_Exit" Command="{Binding ExitCommand}">
           <MenuItem.Icon>
@@ -96,6 +76,30 @@
 	          </DrawingPresenter>	
           </MenuItem.Icon>
         </MenuItem>
+      </MenuItem>
+      <MenuItem Header="_Settings">
+        <MenuItem Header="_Configure Layout" Name="ConfigureLayout" Command="{Binding ConfigureSetCommand}">
+          <MenuItem.Icon>
+            <DrawingPresenter Height="16" Width="16">
+              <DrawingPresenter.Drawing>
+                <DrawingGroup>
+                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M450,-550C463.80712890625,-550,475,-538.80712890625,475,-525L475,-345.5C504.893218994141,-334.931274414063 524.910888671875,-306.706359863281 525,-275 524.910888671875,-243.29362487793 504.893218994141,-215.068710327148 475,-204.5L475,-75C475,-61.1928787231445,463.80712890625,-50,450,-50C436.19287109375,-50,425,-61.1928787231445,425,-75L425,-204.5C395.338653564453,-215.265625,375.588073730469,-243.445388793945,375.588073730469,-275C375.588073730469,-306.554626464844,395.338653564453,-334.734375,425,-345.5L425,-525C425,-538.80712890625,436.19287109375,-550,450,-550z M150,-550C163.807113647461,-550,175,-538.80712890625,175,-525L175,-245.5C204.661331176758,-234.734375,224.411911010742,-206.554611206055,224.411911010742,-175C224.411911010742,-143.445388793945,204.661331176758,-115.265625,175,-104.5L175,-75C175,-61.1928787231445,163.807113647461,-50,150,-50C136.192886352539,-50,125,-61.1928787231445,125,-75L125,-104.5C95.3386688232422,-115.265625,75.5880889892578,-143.445388793945,75.5880889892578,-175C75.5880889892578,-206.554611206055,95.3386688232422,-234.734375,125,-245.5L125,-525C125,-538.80712890625,136.192886352539,-550,150,-550z M301.546661376953,-550.198364257813C303.889007568359,-550.148071289063,306.247955322266,-549.987976074219,308.617645263672,-549.7138671875C346.53271484375,-545.328491210938 375.107177734375,-513.167724609375 375,-475 374.910888671875,-443.293640136719 354.893218994141,-415.068725585938 325,-404.5L325,-75C325,-61.1928787231445,313.80712890625,-50,300,-50C286.19287109375,-50,275,-61.1928787231445,275,-75L275,-404.5C239.015060424805,-417.222778320313,218.324401855469,-454.941589355469,226.932754516602,-492.126007080078C235.003082275391,-526.986389160156,266.411102294922,-550.952209472656,301.546661376953,-550.198364257813z"   />
+                  <DrawingGroup.Transform>
+                    <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                  </DrawingGroup.Transform>
+                </DrawingGroup>
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Dark Theme" Command="{Binding ToggleThemeCommand}">
+          <MenuItem.Icon>
+            <CheckBox Name="Theme" BorderThickness="0" IsChecked="False" IsHitTestVisible="False"/>
+          </MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
       </MenuItem>
       <!--MenuItem Header="Open _File" Command="{Binding OpenFileCommand}" ToolTip.Tip="Click to open single logfile"/-->
       <!--Separator/>
@@ -133,38 +137,38 @@
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel1Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel1}" />
+        <TextBox Text="{Binding InfoBarSeverity1Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity1}" />
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel2Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel2}" />
+        <TextBox Text="{Binding InfoBarSeverity2Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity2}" />
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel3Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel3}" />
+        <TextBox Text="{Binding InfoBarSeverity3Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity3}" />
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel4Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel4}" />
+        <TextBox Text="{Binding InfoBarSeverity4Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity4}" />
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel5Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel5}" />
+        <TextBox Text="{Binding InfoBarSeverity5Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity5}" />
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel6Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel6}" />
+        <TextBox Text="{Binding InfoBarSeverity6Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity6}" />
       </StackPanel>
       <Separator />
       <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLogLevel0Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
-        <TextBox Text="{Binding InfoBarLogLevel0}" />
+        <TextBox Text="{Binding InfoBarSeverity0Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+        <TextBox Text="{Binding InfoBarSeverity0}" />
       </StackPanel>
     </StackPanel>
     

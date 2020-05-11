@@ -220,7 +220,7 @@ namespace LogExpress.Models
             return newLinePos;
         }
 
-        // TODO: Move LogLevel-detection outside of this method
+        // TODO: Move Severity-detection outside of this method
         // TODO: Simplify method to only return newlines. The caller can then iterate those and create LineItem entries
         internal static void ReadFileLinePositions(ObservableCollection<LineItem> newLines,
             StreamReader reader,
@@ -287,7 +287,7 @@ namespace LogExpress.Models
             }
         }
 
-        // TODO: Create method to find all LogLevel dependent on a given start-position (from LineItem.Position, typically)
+        // TODO: Create method to find all Severity dependent on a given start-position (from LineItem.Position, typically)
         // TODO: The method should take a Reader and the Layout in order to not have to create the reader for every read.
         /// <summary>
         /// Find the logLevel for the logfile line given by the layout

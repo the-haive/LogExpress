@@ -41,7 +41,7 @@ namespace LogExpress.Models
     ///     combine log-files that aren't really in the same scope. This will be dealt with in different ways, as it is more
     ///     important
     ///     to reduce the memory footprint of the application - for the normal real life actual use.
-    ///     The uint Position and byte LogLevel are kept as separate variables.
+    ///     The uint Position and byte Severity are kept as separate variables.
     /// </summary>
     /// <remarks>
     ///     We only need 36 bits to store a DateTime with 1 second resolution. This leaves 28 bits for the line-number, while
@@ -64,7 +64,7 @@ namespace LogExpress.Models
     ///     This means that the largest supported log-file is 4_294_967_295 (~4 GB). Log-files really should be smaller than
     ///     that, so this should not pose any problems.
     /// 
-    ///     The LogLevel is normally 6 different levels. We create a byte for it, but it will use only 3 bits of those. This
+    ///     The Severity is normally 6 different levels. We create a byte for it, but it will use only 3 bits of those. This
     ///     allows us 5 bits for potential future purposes, without having to use more memory.
     ///
     ///     ----------------------------
@@ -72,7 +72,7 @@ namespace LogExpress.Models
     ///     ----------------------------
     ///        64 bits (Key)
     ///     +  32 bits (Position)
-    ///     +   8 bits (LogLevel)
+    ///     +   8 bits (Severity)
     ///     ----------------------------
     ///     = 104 bits = 13 bytes
     ///     ============================
@@ -103,14 +103,14 @@ namespace LogExpress.Models
         /// <param name="fileInfo">The file that the line was found in</param>
         /// <param name="lineNum">The lineNumber for this position</param>
         /// <param name="position">The actual position within the file (NB! Restricted to uint.MaxValue)</param>
-        /// <param name="logLevel">The detected LogLevel, if any (0 = None)</param>
-        public LineItem(ScopedFile fileInfo, int lineNum, uint position, byte logLevel)
+        /// <param name="severity">The detected Severity, if any (0 = None)</param>
+        public LineItem(ScopedFile fileInfo, int lineNum, uint position, byte severity)
         {
             Debug.Assert((ulong) lineNum <= LineNumberMaxAndMask);
             Debug.Assert(fileInfo.CreationTime.Ticks <= CreationDateTimeTicksMax);
             Key = (GetCreationTimeTicks(fileInfo) << LineNumberBitLength) + (ulong) lineNum;
             Position = position;
-            LogLevel = logLevel;
+            Severity = severity;
         }
 
 
@@ -143,10 +143,10 @@ namespace LogExpress.Models
         ///     Log-levels. Only need 3 bits, but since we have no other data that we want to add then we just assign
         ///     this with ordinary log-level values.
         /// </summary>
-        public byte LogLevel { get; }
+        public byte Severity { get; }
 
         /// <summary>
-        ///     Log-colors as given by the LogLevel
+        ///     Log-colors as given by the Severity
         /// 
         ///   Trace" foregroundColor="DarkGray"/>
         ///   Debug" foregroundColor="Gray"/>
@@ -158,7 +158,7 @@ namespace LogExpress.Models
         public Brush LogFgColor {
             get
             {
-                return LogLevel switch
+                return Severity switch
                 {
                     6 => LogColors.Black,
                     5 => LogColors.Black,
@@ -171,7 +171,7 @@ namespace LogExpress.Models
             }
         }
         /// <summary>
-        ///     Log-colors as given by the LogLevel
+        ///     Log-colors as given by the Severity
         /// 
         ///   Trace" foregroundColor="DarkGray"/>
         ///   Debug" foregroundColor="Gray"/>
@@ -183,7 +183,7 @@ namespace LogExpress.Models
         public Brush LogBgColor {
             get
             {
-                return LogLevel switch
+                return Severity switch
                 {
                     6 => LogColors.OrangeRedOpaque,
                     5 => LogColors.SalmonOpaque,

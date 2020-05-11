@@ -34,6 +34,7 @@ namespace LogExpress.Views
 
             ThemeControl = this.FindControl<CheckBox>("Theme");
             LogView = this.FindControl<LogView>("LogPanel");
+            MenuConfigureLayout = this.FindControl<MenuItem>("ConfigureLayout");
 
             this.DataContext = new MainWindowViewModel(this);
         }
@@ -41,5 +42,6 @@ namespace LogExpress.Views
 
         public CheckBox ThemeControl { get; set; }
         public LogView LogView { get; set; }
+        public MenuItem MenuConfigureLayout { get; set; }
     }
 }
