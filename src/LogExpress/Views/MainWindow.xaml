@@ -31,15 +31,78 @@
       <Setter Property="Padding" Value="0 3"/>
     </Style>            
   </Window.Styles>
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Home" Command="{Binding KeyGotoStartCommand}"/>
+    <KeyBinding Gesture="Ctrl+End" Command="{Binding KeyGotoEndCommand}"/>
+    <KeyBinding Gesture="Ctrl+F" Command="{Binding KeyFindCommand}"/>
+    <KeyBinding Gesture="F3" Command="{Binding KeyFindNextCommand}"/>
+    <KeyBinding Gesture="Shift+F3" Command="{Binding KeyFindPrevCommand}"/>
+    <KeyBinding Gesture="PageUp" Command="{Binding KeyGoPageUpCommand}"/>
+    <KeyBinding Gesture="PageDown" Command="{Binding KeyGoPageDownCommand}"/>
+    <KeyBinding Gesture="Up" Command="{Binding KeyGoUpCommand}"/>
+    <KeyBinding Gesture="Down" Command="{Binding KeyGoDownCommand}"/>
+    <KeyBinding Gesture="F1" Command="{Binding AboutCommand}"/>
+  </Window.KeyBindings>
+
   <DockPanel>
     <Menu DockPanel.Dock="Top">
-      <MenuItem Header="Open _File" Command="{Binding OpenFileCommand}" ToolTip.Tip="Click to open single logfile"/>
-      <MenuItem Header="Open _Set" Command="{Binding OpenSetCommand}" ToolTip.Tip="Click to open a set of logfiles"/>
-      <MenuItem Header="_Configure Set" Command="{Binding ConfigureSetCommand}" ToolTip.Tip="Click to configure the opened set of logfiles"/>
-      <MenuItem Header="_Exit" Command="{Binding ExitCommand}" ToolTip.Tip="Click to exit the application"/>
-      <Separator/>
-      <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" ToolTip.Tip="Toggle showing the advanced filter-pane"/>
-      <CheckBox Name="Theme" Command="{Binding ToggleThemeCommand}" Content="Dark Theme"/>
+      <MenuItem Header="_File">
+        <MenuItem Header="_Open Log" Command="{Binding OpenSetCommand}">
+          <MenuItem.Icon>
+            <DrawingPresenter Height="16" Width="16">
+              <DrawingPresenter.Drawing>
+                <DrawingGroup>
+                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M208,-383C206,-383 203.5,-382.166656494141 200.5,-380.5 197.5,-378.833343505859 196,-377 196,-375L117,-82.9999923706055C115,-75 114.5,-68.5 115.500007629395,-63.5000076293945 116.5,-58.5 118.333335876465,-55 121,-52.9999923706055L125.000007629395,-50 625,-50C641.666687011719,-50 658,-56.1666679382324 674,-68.5000076293945 690,-80.8333358764648 700,-95.3333358764648 704,-112L779,-383 208,-383z M125.000007629395,-550C112.333335876465,-550 102.166664123535,-546.166687011719 94.5000076293945,-538.5 86.8333358764648,-530.833312988281 83,-520.666687011719 82.9999923706055,-508L82.9999923706055,-121 150,-383C154,-395.666656494141 160.83332824707,-405.833343505859 170.5,-413.5 180.16667175293,-421.166656494141 191.33332824707,-425 204,-425L667,-425C667,-437.666656494141 663.166687011719,-447.833343505859 655.5,-455.5 647.833312988281,-463.166656494141 637.666687011719,-467 625,-467L375,-467C351.666656494141,-467 332,-475.166656494141 316,-491.5 300,-507.833343505859 292,-527.333312988281 292,-550L125.000007629395,-550z M125.000007629395,-633L296,-633C318.666656494141,-633 338.166656494141,-624.833312988281 354.5,-608.5 370.833343505859,-592.166687011719 379,-572.666687011719 379,-550L629,-550C655.666687011719,-550 679.666687011719,-542.5 701,-527.5 722.333312988281,-512.5 737.333312988281,-492.333343505859 746,-467L846,-467C856.666687011719,-467 864.666687011719,-463.166656494141 870,-455.5 875.333312988281,-447.833343505859 877,-437.666656494141 875,-425L783,-92C774.333312988281,-56.6666679382324 754.833312988281,-27 724.5,-3.000004529953 694.166687011719,21 661,33 625,32.9999961853027L125.000007629395,32.9999961853027C89.6666641235352,33 60,21 36,-3.000004529953 12,-27 0,-56.6666679382324 0,-92L0,-508C0,-543.333312988281 12,-573 36,-597 60,-621 89.6666641235352,-633 125.000007629395,-633z"   />
+                  <DrawingGroup.Transform>
+                    <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                  </DrawingGroup.Transform>
+                </DrawingGroup>
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_Configure Opened Log" Command="{Binding ConfigureSetCommand}">
+          <MenuItem.Icon>
+            <DrawingPresenter Height="16" Width="16">
+              <DrawingPresenter.Drawing>
+                <DrawingGroup>
+                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M450,-550C463.80712890625,-550,475,-538.80712890625,475,-525L475,-345.5C504.893218994141,-334.931274414063 524.910888671875,-306.706359863281 525,-275 524.910888671875,-243.29362487793 504.893218994141,-215.068710327148 475,-204.5L475,-75C475,-61.1928787231445,463.80712890625,-50,450,-50C436.19287109375,-50,425,-61.1928787231445,425,-75L425,-204.5C395.338653564453,-215.265625,375.588073730469,-243.445388793945,375.588073730469,-275C375.588073730469,-306.554626464844,395.338653564453,-334.734375,425,-345.5L425,-525C425,-538.80712890625,436.19287109375,-550,450,-550z M150,-550C163.807113647461,-550,175,-538.80712890625,175,-525L175,-245.5C204.661331176758,-234.734375,224.411911010742,-206.554611206055,224.411911010742,-175C224.411911010742,-143.445388793945,204.661331176758,-115.265625,175,-104.5L175,-75C175,-61.1928787231445,163.807113647461,-50,150,-50C136.192886352539,-50,125,-61.1928787231445,125,-75L125,-104.5C95.3386688232422,-115.265625,75.5880889892578,-143.445388793945,75.5880889892578,-175C75.5880889892578,-206.554611206055,95.3386688232422,-234.734375,125,-245.5L125,-525C125,-538.80712890625,136.192886352539,-550,150,-550z M301.546661376953,-550.198364257813C303.889007568359,-550.148071289063,306.247955322266,-549.987976074219,308.617645263672,-549.7138671875C346.53271484375,-545.328491210938 375.107177734375,-513.167724609375 375,-475 374.910888671875,-443.293640136719 354.893218994141,-415.068725585938 325,-404.5L325,-75C325,-61.1928787231445,313.80712890625,-50,300,-50C286.19287109375,-50,275,-61.1928787231445,275,-75L275,-404.5C239.015060424805,-417.222778320313,218.324401855469,-454.941589355469,226.932754516602,-492.126007080078C235.003082275391,-526.986389160156,266.411102294922,-550.952209472656,301.546661376953,-550.198364257813z"   />
+                  <DrawingGroup.Transform>
+                    <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                  </DrawingGroup.Transform>
+                </DrawingGroup>
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="Dark _Theme" Command="{Binding ToggleThemeCommand}">
+          <MenuItem.Icon>
+            <CheckBox Name="Theme" BorderThickness="0" IsChecked="False" IsHitTestVisible="False"/>
+          </MenuItem.Icon>
+        </MenuItem>
+        <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
+        <Separator/>
+        <MenuItem Header="_Exit" Command="{Binding ExitCommand}">
+          <MenuItem.Icon>
+            <DrawingPresenter Height="16" Width="16">
+              <DrawingPresenter.Drawing>
+                <DrawingGroup>
+                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M469.3330078125,-618.6669921875L682.666015625,-448 469.3330078125,-277.3330078125 469.3330078125,-405.290985107422 128,-405.290985107422 128,-490.623992919922 469.3330078125,-490.623992919922 469.3330078125,-618.6669921875z M213.419006347656,-832L810.752014160156,-832C857.77001953125,-832,896.085021972656,-793.72802734375,896.085021972656,-746.6669921875L896.085021972656,-149.333999633789C896.085021972656,-102.273002624512,857.81298828125,-64.0009994506836,810.752014160156,-64.0009994506836L213.419006347656,-64.0009994506836C166.358001708984,-64.0009994506836,128.085998535156,-102.273002624512,128.085998535156,-149.333999633789L128.085998535156,-320.001007080078 213.419006347656,-320.001007080078 213.419006347656,-149.333999633789 810.752014160156,-149.333999633789 810.752014160156,-746.6669921875 213.419006347656,-746.6669921875 213.419006347656,-576 128.085998535156,-576 128.085998535156,-746.6669921875C128.085998535156,-793.72802734375,166.358001708984,-832,213.419006347656,-832z"   />
+                  <DrawingGroup.Transform>
+                    <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                  </DrawingGroup.Transform>
+                </DrawingGroup>
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+          </MenuItem.Icon>
+        </MenuItem>
+      </MenuItem>
+      <!--MenuItem Header="Open _File" Command="{Binding OpenFileCommand}" ToolTip.Tip="Click to open single logfile"/-->
+      <!--Separator/>
+      <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" ToolTip.Tip="Toggle showing the advanced filter-pane"/-->
+      <!--MenuItem Header="O_ptions">
+        <CheckBox Name="Theme"  Width="100" Command="{Binding ToggleThemeCommand}" Content="Dark Theme" ToolTip.Tip="Click to toggle between dark and light theme" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+      </MenuItem-->
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
     <TextBlock Text="Debugger" IsVisible="False"/>

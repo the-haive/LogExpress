@@ -22,9 +22,22 @@ namespace LogExpress.ViewModels
         private readonly IDisposable _severitySubscription;
         private readonly IDisposable _timestampSubscription;
 
-        public ConfigureSetViewModel(ConfigureSetView view, string folder, string pattern, bool recursive)
+        public ConfigureSetViewModel(ConfigureSetView view, string folder, string pattern, bool recursive, Layout layout = null)
         {
             View = view;
+            if (layout != null)
+            {
+                TimestampStart = layout.TimestampStart;
+                TimestampLength = layout.TimestampLength;
+                TimestampFormat = layout.TimestampFormat;
+                SeverityStart = layout.SeverityStart;
+                SeverityName1 = layout.Severities[1];
+                SeverityName2 = layout.Severities[2];
+                SeverityName3 = layout.Severities[3];
+                SeverityName4 = layout.Severities[4];
+                SeverityName5 = layout.Severities[5];
+                SeverityName6 = layout.Severities[6];
+            }
 
             CancelCommand = ReactiveCommand.Create(CancelExecute);
             OpenCommand = ReactiveCommand.Create(OpenExecute);
@@ -151,9 +164,16 @@ namespace LogExpress.ViewModels
 
         #region Timestamp
 
+        private string _timestampLine = string.Empty;
         private string _timestampFormat = string.Empty;
         private int _timestampLength = 23;
         private int _timestampStart = 1;
+
+        public string TimestampLine
+        {
+            get => _timestampLine;
+            set => this.RaiseAndSetIfChanged(ref _timestampLine, value);
+        }
 
         public string TimestampFormat
         {
@@ -177,6 +197,7 @@ namespace LogExpress.ViewModels
 
         #region Severity
 
+        private string _severityLine = string.Empty;
         private string _severityName1 = "TRC"; // "TRACE";
         private string _severityName2 = "DBG"; // "DEBUG";
         private string _severityName3 = "INF"; // "INFO";
@@ -184,6 +205,12 @@ namespace LogExpress.ViewModels
         private string _severityName5 = "ERR"; // "ERROR";
         private string _severityName6 = "FTL"; // "FATAL";
         private int _severityStart = 25;
+
+        public string SeverityLine
+        {
+            get => _severityLine;
+            set => this.RaiseAndSetIfChanged(ref _severityLine, value);
+        }
 
         public string SeverityName1
         {

@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.29509.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LogExpress", "LogExpress\LogExpress.csproj", "{45189EB1-6CCA-455F-A108-7D28872CA1D8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LogExpressTests", "LogExpressTests\LogExpressTests.csproj", "{DBB689E1-6396-43EA-BD35-2EFBC2033406}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LogExpressTests", "LogExpressTests\LogExpressTests.csproj", "{DBB689E1-6396-43EA-BD35-2EFBC2033406}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UTF-unknown", "UTF.Unknown\UTF-unknown.csproj", "{8F9F83F4-24D1-4292-B4C0-D8694FC828E7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{DBB689E1-6396-43EA-BD35-2EFBC2033406}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DBB689E1-6396-43EA-BD35-2EFBC2033406}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DBB689E1-6396-43EA-BD35-2EFBC2033406}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8F9F83F4-24D1-4292-B4C0-D8694FC828E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8F9F83F4-24D1-4292-B4C0-D8694FC828E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8F9F83F4-24D1-4292-B4C0-D8694FC828E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8F9F83F4-24D1-4292-B4C0-D8694FC828E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

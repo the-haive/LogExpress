@@ -6,7 +6,13 @@
              mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
              x:Class="LogExpress.Views.LogView">
   <UserControl.Styles>
-    <Style Selector="TextBox">
+    <Style Selector="StackPanel#Filters TextBlock">
+      <Setter Property="Height" Value="20"/>
+    </Style>
+    <Style Selector="StackPanel#Navigators TextBlock">
+      <Setter Property="Height" Value="22"/>
+    </Style>
+    <Style Selector="ListBox#Lines TextBox">
       <Setter Property="IsReadOnly" Value="True" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Background" Value="Transparent" />
@@ -46,105 +52,214 @@
       <Setter Property="FontWeight" Value="Normal"/>
     </Style>
     <Style Selector="#Toolbar RepeatButton.spinner">
-      <Setter Property="Padding" Value="6 0 6 0"/>
+      <Setter Property="Padding" Value="6 4 6 0"/>
+      <Setter Property="Width" Value="26"/>
+      <Setter Property="Height" Value="26"/>
       <Setter Property="VerticalAlignment" Value="Stretch"/>
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeControlHighBrush}"/>
       <Setter Property="Background" Value="{DynamicResource ThemeBorderMidBrush}"/>
     </Style>
   </UserControl.Styles>
   <DockPanel>
-    <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top" Height="52" Background="{DynamicResource ThemeControlMidBrush}">
-      <DockPanel LastChildFill="True" Classes="item">
-        <TextBlock Text="Files" DockPanel.Dock="Top"/>
-        <ComboBox Name="FileFilter" Width="200" 
-                  SelectedItem="{Binding VirtualLogFile.FileFilterSelected}"
-                  IsEnabled="{Binding FileFilterEnabled}"
-                  Items="{Binding FileFilterItems}">
-          <ComboBox.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Text="{Binding Name}">
-                <ToolTip.Tip>
-                  <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,Auto">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Directory:" TextAlignment="Right" Margin="0 0 5 0"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Object.DirectoryName}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Filename:" TextAlignment="Right" Margin="0 0 5 0"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Object.Name}"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Start-date:" TextAlignment="Right" Margin="0 0 5 0"/>
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Object.StartDate}"/>
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="End-date:" TextAlignment="Right" Margin="0 0 5 0"/>
-                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Object.EndDate}"/>
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Size:" TextAlignment="Right" Margin="0 0 5 0"/>
-                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Object.LengthHuman}"/>
-                  </Grid>
-                </ToolTip.Tip>
-              </TextBlock>
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>    
-      </DockPanel>
-      <DockPanel LastChildFill="True" Classes="item">
-        <TextBlock Text="Levels" DockPanel.Dock="Top"/>
-        <ComboBox Name="LevelFilter" Width="80" 
-                  SelectedItem="{Binding VirtualLogFile.LevelFilterSelected}"
-                  IsEnabled="{Binding LevelFilterEnabled}"
-                  Items="{Binding LevelFilterItems}">
-          <ComboBox.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-      </DockPanel>
-      <DockPanel LastChildFill="True" Classes="item">
-        <TextBlock Text="Years" DockPanel.Dock="Top"/>
-        <ComboBox Name="YearFilter" Width="60" 
-                  SelectedItem="{Binding VirtualLogFile.YearFilterSelected}"
-                  IsEnabled="{Binding YearFilterEnabled}"
-                  Items="{Binding YearFilterItems}">
-          <ComboBox.ItemTemplate>
-            <DataTemplate>
-              <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-      </DockPanel>
-      <DockPanel LastChildFill="True" Classes="item">
-        <TextBlock Text="Months" DockPanel.Dock="Top"/>
-        <ComboBox Name="MonthFilter" Width="80" 
-                  SelectedItem="{Binding VirtualLogFile.MonthFilterSelected}"
-                  IsEnabled="{Binding MonthFilterEnabled}"
-                  Items="{Binding MonthFilterItems}">
-          <ComboBox.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="2">
-                <TextBlock Text="{Binding Key}" IsVisible="{Binding !!Key}"/><TextBlock Text="-" IsVisible="{Binding !!Key}}"/><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+    <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top" Height="70" Background="{DynamicResource ThemeAccentBrush4}" >
+      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+        <StackPanel Name="Filters" Orientation="Horizontal">
+          <DockPanel LastChildFill="True" Classes="item">
+            <TextBlock Text="File" DockPanel.Dock="Top"/>
+            <ComboBox Name="FileFilter" Width="120" 
+                      SelectedItem="{Binding VirtualLogFile.FileFilterSelected}"
+                      IsEnabled="{Binding FileFilterEnabled}"
+                      Items="{Binding FileFilterItems}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}" TextAlignment="Right">
+                    <ToolTip.Tip>
+                      <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,Auto">
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Directory:" TextAlignment="Right" Margin="0 0 5 0"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Object.DirectoryName}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Filename:" TextAlignment="Right" Margin="0 0 5 0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Object.Name}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Start-date:" TextAlignment="Right" Margin="0 0 5 0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Object.StartDate}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="End-date:" TextAlignment="Right" Margin="0 0 5 0"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Object.EndDate}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Size:" TextAlignment="Right" Margin="0 0 5 0"/>
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Object.LengthHuman}"/>
+                      </Grid>
+                    </ToolTip.Tip>
+                  </TextBlock>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>    
+          </DockPanel>
+          <DockPanel LastChildFill="True" Classes="item">
+            <TextBlock Text="Level" DockPanel.Dock="Top"/>
+            <ComboBox Name="LevelFilter" Width="80" 
+                      SelectedItem="{Binding VirtualLogFile.LevelFilterSelected}"
+                      IsEnabled="{Binding LevelFilterEnabled}"
+                      Items="{Binding LevelFilterItems}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </DockPanel>
+          <DockPanel LastChildFill="True" Classes="item">
+            <TextBlock Text="Time" DockPanel.Dock="Top"/>
+            <!--ComboBox Name="TimeFilter" Width="80" 
+                      SelectedItem="{Binding VirtualLogFile.TimeFilterSelected}"
+                      IsEnabled="{Binding TimeFilterEnabled}"
+                      Items="{Binding TimeFilterItems}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox-->
+            <ComboBox Name="TimeFilter" Width="80" SelectedIndex="0">
+              <ComboBoxItem>Anytime</ComboBoxItem>
+              <ComboBoxItem>Last Hour</ComboBoxItem>
+              <ComboBoxItem>Last Day</ComboBoxItem>
+              <ComboBoxItem>Last Week</ComboBoxItem>
+              <ComboBoxItem>Last Month</ComboBoxItem>
+              <ComboBoxItem>Custom range...</ComboBoxItem>
+            </ComboBox>
+          </DockPanel>
+          <!--DockPanel LastChildFill="True" Classes="item">
+            <TextBlock Text="Years" DockPanel.Dock="Top"/>
+            <ComboBox Name="YearFilter" Width="60" 
+                      SelectedItem="{Binding VirtualLogFile.YearFilterSelected}"
+                      IsEnabled="{Binding YearFilterEnabled}"
+                      Items="{Binding YearFilterItems}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </DockPanel>
+          <DockPanel LastChildFill="True" Classes="item">
+            <TextBlock Text="Months" DockPanel.Dock="Top"/>
+            <ComboBox Name="MonthFilter" Width="80" 
+                      SelectedItem="{Binding VirtualLogFile.MonthFilterSelected}"
+                      IsEnabled="{Binding MonthFilterEnabled}"
+                      Items="{Binding MonthFilterItems}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <TextBlock Text="{Binding Key}" IsVisible="{Binding !!Key}"/><TextBlock Text="-" IsVisible="{Binding !!Key}}"/><TextBlock Text="{Binding Name}" ToolTip.Tip="{Binding ToolTip}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </DockPanel-->
+        </StackPanel>
+      </Border>
+      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <StackPanel Name="Search" Orientation="Vertical">
+            <TextBox Name="SearchQuery" Watermark="Search" HorizontalAlignment="Stretch" Margin="0" Padding="5 3 5 3" FontSize="10" Text="{Binding SearchQuery}" AcceptsReturn="False"/>
+            <StackPanel Orientation="Horizontal">
+              <Button Command="{Binding SearchFilter}" Classes="item" ToolTip.Tip="Click to apply the search as a filter" Margin="0 0 0 0" Width="65">
+                <DockPanel LastChildFill="True" >
+                  <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Left">
+                    <DrawingPresenter.Drawing>
+                      <DrawingGroup>
+                        <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="M14,12V19.88C14.04,20.18 13.94,20.5 13.71,20.71C13.32,21.1 12.69,21.1 12.3,20.71L10.29,18.7C10.06,18.47 9.96,18.16 10,17.87V12H9.97L4.21,4.62C3.87,4.19 3.95,3.56 4.38,3.22C4.57,3.08 4.78,3 5,3V3H19V3C19.22,3 19.43,3.08 19.62,3.22C20.05,3.56 20.13,4.19 19.79,4.62L14.03,12H14Z"/>
+                        <DrawingGroup.Transform>
+                          <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                        </DrawingGroup.Transform>
+                      </DrawingGroup>
+                    </DrawingPresenter.Drawing>
+	                </DrawingPresenter>	
+                  <TextBlock Text="Filter" Margin="5 0" HorizontalAlignment="Left"/>
+                </DockPanel>
+              </Button>
+              <Button Command="{Binding SearchFilterReset}" Classes="item" Margin="0 0 0 0" >
+                <DrawingPresenter Height="12" Width="12">
+                  <DrawingPresenter.Drawing>
+                    <DrawingGroup>
+                      <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"   />
+                      <DrawingGroup.Transform>
+                        <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
+                      </DrawingGroup.Transform>
+                    </DrawingGroup>
+                  </DrawingPresenter.Drawing>
+	              </DrawingPresenter>	
+              </Button>
+              <Separator Width="5"/>
+              <StackPanel Orientation="Horizontal">
+                <RepeatButton Content="▲" Classes="spinner" Padding="6 0"  Command="{Binding BrowseSearchBackCommand}" ToolTip.Tip="Find the previous occurence of the search-string"/>
+                <RepeatButton Content="▼" Classes="spinner" Padding="6 0" Command="{Binding BrowseSearchFrwdCommand}" ToolTip.Tip="Find the next occurence of the search-string"/>
               </StackPanel>
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-      </DockPanel>
-      <DockPanel Name="NavDay" Classes="item" LastChildFill="True">
-        <TextBlock Text="Day" HorizontalAlignment="Center" TextAlignment="Center" DockPanel.Dock="Top"/>
-        <StackPanel Orientation="Horizontal">
-          <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseTimeDayBackCommand}" />
-          <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseTimeDayFrwdCommand}" Margin="-1 0 0 0" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Orientation="Vertical" VerticalAlignment="Center" Spacing="8">
+            <CheckBox Content="Case sensitive" IsChecked="{Binding SearchIsCaseSensitive}" FontSize="10"/>
+            <CheckBox Content="Regex" FontSize="10" IsChecked="{Binding SearchIsRegex}"/>
+          </StackPanel>
         </StackPanel>
-      </DockPanel>
-      <DockPanel Name="NavHour" Classes="item" LastChildFill="True">
-        <TextBlock Text="Hour" HorizontalAlignment="Center" TextAlignment="Center" DockPanel.Dock="Top"/>
+      </Border>
+      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+        <StackPanel Name="Navigators" Orientation="Horizontal" Spacing="7">
+          <StackPanel Name="NavLevel4" Orientation="Vertical" Classes="item">
+            <TextBlock Text="WARN" HorizontalAlignment="Center"/>
+            <!--ComboBox DockPanel.Dock="Top" HorizontalAlignment="Stretch" Height="24" FontSize="10" VerticalAlignment = "Bottom" SelectedIndex="3">
+              <ComboBoxItem>Level: TRACE (1)</ComboBoxItem>
+              <ComboBoxItem>Level: DEBUG (2)</ComboBoxItem>
+              <ComboBoxItem>Level: INFO (3)</ComboBoxItem>
+              <ComboBoxItem>Level: WARNING (4)</ComboBoxItem>
+              <ComboBoxItem>Level: ERROR (5)</ComboBoxItem>
+              <ComboBoxItem>Level: FATAL (6)</ComboBoxItem>
+            </ComboBox-->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseLevel4BackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseLevel4FrwdCommand}" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Name="NavLevel5" Orientation="Vertical" Classes="item">
+            <TextBlock Text="ERROR" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseLevel5BackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseLevel5FrwdCommand}" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Name="NavLevel6" Orientation="Vertical" Classes="item">
+            <TextBlock Text="FATAL" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseLevel6BackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseLevel6FrwdCommand}" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Name="NavDay" Orientation="Vertical" Classes="item" >
+            <TextBlock Text="Day" HorizontalAlignment="Center" TextAlignment="Center" DockPanel.Dock="Top"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseTimeDayBackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseTimeDayFrwdCommand}" />
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Name="NavHour" Orientation="Vertical" Classes="item">
+            <TextBlock Text="Hour" HorizontalAlignment="Center" TextAlignment="Center" DockPanel.Dock="Top"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom">
+              <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseTimeHourBackCommand}" />
+              <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseTimeHourFrwdCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>        
+      </Border>
+      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
         <StackPanel Orientation="Horizontal">
-          <RepeatButton Content="▲" Classes="spinner" Command="{Binding BrowseTimeHourBackCommand}" />
-          <RepeatButton Content="▼" Classes="spinner" Command="{Binding BrowseTimeHourFrwdCommand}" Margin="-1 0 0 0" />
+          <Button Width="40" Command="{Binding CopyCommand}" Classes="item" ToolTip.Tip="Copy selected line(s)">
+            <DrawingPresenter>
+              <DrawingPresenter.Drawing>
+                <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+          </Button>
+          <CheckBox Content="Tail" Command="{Binding TailCommand}" IsChecked="True" Classes="item"/>
         </StackPanel>
-      </DockPanel>
-      <Button Width="100" Command="{Binding CopyCommand}" Classes="item">
-        <TextBlock 
-          HorizontalAlignment="Stretch" 
-          TextAlignment="Center" 
-          TextWrapping="Wrap"
-          >Copy selected line(s)</TextBlock>
-      </Button>
-      <CheckBox Content="Tail" Command="{Binding TailCommand}" IsChecked="True" Classes="item"/>
+      </Border>
     </StackPanel>
     <DockPanel LastChildFill="True">
       <StackPanel Orientation="Vertical" IsVisible="{Binding VirtualLogFile.ShowProgress}">
@@ -179,6 +294,9 @@
         VerticalAlignment="Stretch"
         ScrollViewer.HorizontalScrollBarVisibility="Visible"
         ScrollViewer.VerticalScrollBarVisibility="Visible">
+        <ListBox.KeyBindings>
+          <KeyBinding Gesture="Escape" Command="{Binding DeselectCommand}"/>
+        </ListBox.KeyBindings>
         <ListBox.ItemTemplate>
           <DataTemplate>
             <StackPanel>

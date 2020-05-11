@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Text;
 using DynamicData;
 using LogExpress.Models;
 using ReactiveUI;
 using Serilog;
+using UtfUnknown;
 
 namespace LogExpress.Services
 {
@@ -106,9 +108,9 @@ namespace LogExpress.Services
                     var alreadyExistingFiles = Directory.GetFiles(_basePath, pattern, new EnumerationOptions{ RecurseSubdirectories = _includeSubdirectories});
                     foreach (var file in alreadyExistingFiles)
                     {
-                        var fi = new ScopedFile(file, _basePath);
-                        _files.AddOrUpdate(fi);
-                        Logger.Debug("Added file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
+                        var scopedFile = new ScopedFile(file, _basePath);
+                        _files.AddOrUpdate(scopedFile);
+                        Logger.Debug("Added file {FileName}. _files.Length={FileCount}", scopedFile.FullName, _files.Count);
                     }
                 }
             }
@@ -131,9 +133,9 @@ namespace LogExpress.Services
         {
             Logger.Debug("File ChangeType={ChangeType}: Name={Name} FullPath={FullPath}", e.ChangeType,
                 e.Name, e.FullPath);
-            var fi = new ScopedFile(e.FullPath, _basePath);
-            _files.AddOrUpdate(fi);
-            Logger.Debug("Added file {FileName}. _files.Length={FileCount}", fi.FullName, _files.Count);
+            var scopedFile = new ScopedFile(e.FullPath, _basePath);
+            _files.AddOrUpdate(scopedFile);
+            Logger.Debug("Added file {FileName}. _files.Length={FileCount}", scopedFile.FullName, _files.Count);
         }
 
         private void OnFileDeleted(object _, FileSystemEventArgs e)

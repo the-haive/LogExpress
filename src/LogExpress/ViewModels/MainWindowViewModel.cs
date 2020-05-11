@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -96,18 +97,29 @@ namespace LogExpress.ViewModels
             ConfigureSetCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSetExecute);
             ToggleFilterPaneCommand = ReactiveCommand.Create(ToggleFilterPaneExecute);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
-            ExitCommand = ReactiveCommand.Create(ExitApplication);
-
+            ExitCommand = ReactiveCommand.Create(ExitApplicationExecute);
+            AboutCommand = ReactiveCommand.Create(AboutExecute);
+            
+            // Hot-keys
+            KeyGotoStartCommand = ReactiveCommand.Create(KeyGotoStartExecute);
+            KeyGotoEndCommand = ReactiveCommand.Create(KeyGotoEndExecute);
+            KeyFindCommand = ReactiveCommand.Create(KeyFindExecute);
+            KeyFindPrevCommand = ReactiveCommand.Create(KeyFindPrevExecute);
+            KeyFindNextCommand = ReactiveCommand.Create(KeyFindNextExecute);
+            KeyGoPageUpCommand = ReactiveCommand.Create(KeyGoPageUpExecute);
+            KeyGoPageDownCommand = ReactiveCommand.Create(KeyGoPageDownExecute);
+            KeyGoUpCommand = ReactiveCommand.Create(KeyGoUpExecute);
+            KeyGoDownCommand = ReactiveCommand.Create(KeyGoDownExecute);
         }
 
         public async void Init()
         {
             // Reactive trigger for when the basedir, filters and recursive has changed
             _logViewSubscription = this
-                .WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive)
-                .Where(((string baseDir, string filter, bool recursive) observerTuple) =>
+                .WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive, x => x.Layout)
+                .Where(((string baseDir, string filter, bool recursive, Layout layout) observerTuple) =>
                 {
-                    var (baseDir, filter, _) = observerTuple;
+                    var (baseDir, filter, _, _) = observerTuple;
                     return !string.IsNullOrWhiteSpace(baseDir) && !string.IsNullOrWhiteSpace(filter);
                 })
                 .Throttle(LogArgsChangeThreshold)
@@ -135,6 +147,16 @@ namespace LogExpress.ViewModels
         public ReactiveCommand<(string, string, bool?), Unit> ConfigureSetCommand { get; }
 
         public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+        public ReactiveCommand<Unit, Unit> AboutCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyGotoStartCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyGotoEndCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyFindCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyFindPrevCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyFindNextCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyGoPageUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyGoPageDownCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyGoUpCommand { get; }
+        public ReactiveCommand<Unit, Unit> KeyGoDownCommand { get; }
 
         public GridLength FilterPaneHeight
         {
@@ -312,8 +334,8 @@ namespace LogExpress.ViewModels
             pattern ??= Pattern;
             recursive ??= Recursive;
             var configureSetView = new ConfigureSetView();
-            configureSetView.DataContext = new ConfigureSetViewModel(configureSetView, folder, pattern, recursive.Value);
-            var layout = await configureSetView.ShowDialog<Layout>(App.MainWindow);
+            configureSetView.DataContext = new ConfigureSetViewModel(configureSetView, folder, pattern, recursive.Value, Layout);
+            var layout = await configureSetView?.ShowDialog<Layout>(_mainWindow);
             if (layout != null)
             {
                 Logger.Information("Layout set: TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampLeFormat='{TimestampFormat} SeverityStart={SeverityStart} Severities={Severities}", layout.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart, string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
@@ -332,7 +354,7 @@ namespace LogExpress.ViewModels
                         "No logfile or set selected",
                         "Use the Open File Or Open Set menus to open log-files."
                     );
-                    await messageBoxStandardWindow.ShowDialog(App.MainWindow);
+                    await messageBoxStandardWindow.ShowDialog(_mainWindow);
                 }
             }
         }
@@ -359,11 +381,96 @@ namespace LogExpress.ViewModels
             }
         }
 
+        private void KeyGotoStartExecute()
+        {
+            _logView.LinesCtrl.ScrollIntoView(_logViewModel.VirtualLogFile.FilteredLines.First());
+        }
 
-        private void ExitApplication()
+        private void KeyGotoEndExecute()
+        {
+            _logView.LinesCtrl.ScrollIntoView(_logViewModel.VirtualLogFile.FilteredLines.Last());
+        }
+
+        private void KeyFindExecute()
+        {
+            _logView.SearchQueryCtrl.Focus();
+            _logView.SearchQueryCtrl.SelectionStart = 0;
+            _logView.SearchQueryCtrl.SelectionEnd = _logView.SearchQueryCtrl.Text?.Length ?? 0;
+        }
+
+        private void KeyFindNextExecute()
+        {
+            _logViewModel.BrowseSearchFrwd();
+        }
+
+
+        private void KeyFindPrevExecute()
+        {
+            _logViewModel.BrowseSearchBack();
+        }
+
+        private void KeyGoPageUpExecute()
+        {
+            Logger.Information("Go One Page Up ([PageUp]) is not implemented yet");
+        }
+
+        private void KeyGoPageDownExecute()
+        {
+            Logger.Information("Go One Page Down ([PageDown]) is not implemented yet");
+        }
+
+        private void KeyGoUpExecute()
+        {
+            if (_logViewModel.LineSelected == null)
+            {
+                Logger.Information("No line selected");
+                return;
+            }
+            var current = _logViewModel.VirtualLogFile.FilteredLines.IndexOf(_logViewModel.LineSelected);
+            if (current < 0)
+            {
+                Logger.Information("No line selected");
+                return;
+            }
+            if (current < 1)
+            {
+                Logger.Information("Already at the top");
+                return;
+            }
+            _logView.LinesCtrl.SelectedIndex = current - 1;
+        }
+
+        private void KeyGoDownExecute()
+        {
+            if (_logViewModel.LineSelected == null)
+            {
+                Logger.Information("No line selected");
+                return;
+            }
+            var current =_logViewModel.VirtualLogFile.FilteredLines.IndexOf(_logViewModel.LineSelected);
+            if (current < 0)
+            {
+                Logger.Information("No line selected");
+                return;
+            }
+            if (current >= _logViewModel.VirtualLogFile.FilteredLines.Count-1)
+            {
+                Logger.Information("Already at the bottom");
+                return;
+            }
+            _logView.LinesCtrl.SelectedIndex = current + 1;
+        }
+
+        private void ExitApplicationExecute()
         {
             Logger.Information("Application exited from menu");
             (Application.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+        }
+
+        private void AboutExecute()
+        {
+            var aboutView = new AboutView();
+            aboutView.ShowDialog(_mainWindow);
         }
 
         private (string, string, bool) DecodeFileName(string fileName)
@@ -385,7 +492,7 @@ namespace LogExpress.ViewModels
                 Directory = Folder
             };
 
-            var file = await openFileDialog.ShowAsync(App.MainWindow);
+            var file = await openFileDialog.ShowAsync(_mainWindow);
 
             if (file?.Length <= 0)
             {
@@ -402,7 +509,7 @@ namespace LogExpress.ViewModels
 
             var openLogSetView = new OpenSetView();
             openLogSetView.DataContext = new OpenSetViewModel(openLogSetView, _folder);
-            var openSetResult = await openLogSetView.ShowDialog<OpenSetViewModel.OpenSetResult>(App.MainWindow);
+            var openSetResult = await openLogSetView.ShowDialog<OpenSetViewModel.OpenSetResult>(_mainWindow);
             if (openSetResult == null)
             {
                 Logger.Information("OpenSet was cancelled");
@@ -432,7 +539,7 @@ namespace LogExpress.ViewModels
                     "No logfile passed as argument",
                     "Use the OpenLog Or OpenSet menus to open log-files."
                 );
-                await messageBoxStandardWindow.ShowDialog(App.MainWindow);
+                await messageBoxStandardWindow.ShowDialog(_mainWindow);
             }
         }
 
@@ -490,12 +597,12 @@ namespace LogExpress.ViewModels
             FilterViewModel = new FilterViewModel();
         }
 
-        private void SetupLogView((string baseDir, string filter, bool recursive) observerTuple)
+        private void SetupLogView((string baseDir, string filter, bool recursive, Layout layout) observerTuple)
         {
-            var (baseDir, filter, recursive) = observerTuple;
+            var (baseDir, filter, recursive, layout) = observerTuple;
             Logger.Debug("Scope changed, setting up the LogView DataContext");
             ShowLogPanel = true;
-            LogViewModel = new LogViewModel(baseDir, filter, recursive, _logView);
+            LogViewModel = new LogViewModel(baseDir, filter, recursive, layout, _logView);
 
             // Set the InfoBar property for the scope selected
             InfoBarScope = $"Scope: {Folder}{Path.DirectorySeparatorChar}{Pattern} {(Recursive ? "(recursive)" : "")}";
@@ -631,12 +738,14 @@ namespace LogExpress.ViewModels
         private void ToggleThemeExecute()
         {
             // NB! Depends on the first Window.Styles StyleInclude to be the theme, and the third App.Styles to be the theme
-            if (_mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value)
+            if (_mainWindow.ThemeControl.IsChecked == null || !_mainWindow.ThemeControl.IsChecked.Value)
             {
+                _mainWindow.ThemeControl.IsChecked = true;
                 _mainWindow.Styles[0] = Application.Current.Styles[2] = _darkTheme;
             }
             else
             {
+                _mainWindow.ThemeControl.IsChecked = false;
                 _mainWindow.Styles[0] = Application.Current.Styles[2] = _lightTheme;
             }
 

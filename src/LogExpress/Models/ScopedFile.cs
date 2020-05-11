@@ -4,10 +4,12 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using ByteSizeLib;
 using LogExpress.Services;
 using Serilog;
-using SixLabors.Memory;
+using UtfUnknown;
+using Encoding = System.Text.Encoding;
 
 namespace LogExpress.Models
 {
@@ -17,6 +19,7 @@ namespace LogExpress.Models
         private DateTime? _startDate;
         private DateTime? _endDate;
         private Layout _layout;
+        private Encoding _encoding;
 
         public ScopedFile(string file, string basePath, Layout layout = null)
         {
@@ -26,7 +29,7 @@ namespace LogExpress.Models
             CreationTime = fi.CreationTime;
             Name = fi.Name;
             FullName = fi.FullName;
-            Length = fi.Length;
+            Length = (uint) fi.Length;
             DirectoryName = fi.DirectoryName;
             LinesListCreationTime = (ulong) (CreationTime.Ticks / LineItem.TicksPerSec);
         }
@@ -42,6 +45,25 @@ namespace LogExpress.Models
             }
         }
 
+        public Encoding Encoding
+        {
+            get
+            {
+                if (_encoding == null)
+                {
+                    var result = CharsetDetector.DetectFromFile(FullName);
+                    // If we detect ASCII, then we read as UTF-8, as the log *could* contain only ASCII characters *so far*
+                    // - but could end up with UTF-8 characters later. It is safe to use UTF-8 for ASCII, as ASCII is a subset of
+                    // UTF-8. If the file is UTF-8 (which is not unlikely) then we are safer choosing that over ASCII.
+                    _encoding = Equals(result.Detected.Encoding, Encoding.ASCII) ? Encoding.UTF8 : result.Detected.Encoding;
+                    var encodingName = Equals(result.Detected.Encoding, Encoding.ASCII) ? "UTF-8 (ASCII)" : result.Detected.EncodingName;
+                    Logger.Debug("Set encoding '{Encoding}' (confidence: {Confidence}%) for file {File}",
+                        encodingName, (result.Detected.Confidence*100).ToString("F2"), FullName);
+                }
+                return _encoding;
+            }
+        }
+
         public string BasePath { get; set; }
         public DateTime CreationTime { get; }
         public string Name{ get; }
@@ -49,7 +71,7 @@ namespace LogExpress.Models
         public string RelativeFullName => $"...{FullName.Remove(0, BasePath.Length)}";
         public string DirectoryName { get; }
         public string RelativeDirectoryName => $"...{DirectoryName.Remove(0, BasePath.Length)}";
-        public long Length { get; set; }
+        public uint Length { get; set; }
         public string LengthHuman => ByteSize.FromBytes(Length).ToString();
         public ulong LinesListCreationTime{ get; }
 
@@ -65,7 +87,7 @@ namespace LogExpress.Models
 
                 // Try to fetch the date from the first log-entry
                 using var fileStream = new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(fileStream);
+                using var reader = new StreamReader(fileStream, Encoding);
 
                 var buffer = new Span<char>(new char[Layout.TimestampLength]);
 
@@ -78,7 +100,7 @@ namespace LogExpress.Models
                 }
                 else
                 {
-                    _startDate = GetTimestamp(Layout.TimestampFormat, buffer);
+                    _startDate = GetTimestamp(buffer);
                     if (!_startDate.HasValue)
                     {
                         Logger.Warning("The log-file's first timestamp could not be parsed. Set to the file CreationTime. File={File}", FullName);
@@ -103,7 +125,7 @@ namespace LogExpress.Models
 
                 // Try to fetch the date from the last log-entry
                 using var fileStream = new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(fileStream);
+                using var reader = new StreamReader(fileStream, Encoding);
 
                 var buffer = new Span<char>(new char[Layout.TimestampLength]);
 
@@ -124,7 +146,7 @@ namespace LogExpress.Models
                     var numRead = reader.Read(buffer);
                     if (numRead != -1)
                     {
-                        endDate = GetTimestamp(Layout.TimestampFormat, buffer);
+                        endDate = GetTimestamp(buffer);
                         if (!endDate.HasValue)
                         {
                             Logger.Warning("The log-file's last timestamp could not be parsed. Set to MaxValue. File={File}", FullName);
@@ -156,9 +178,9 @@ namespace LogExpress.Models
             get { return ""; }
         }
 
-        private static DateTime? GetTimestamp(string timestampFormat, Span<char> buffer)
+        public DateTime? GetTimestamp(Span<char> buffer)
         {
-            if (string.IsNullOrWhiteSpace(timestampFormat))
+            if (string.IsNullOrWhiteSpace(Layout.TimestampFormat))
             {
                 if (DateTime.TryParse(buffer, out var dateTime))
                 {
@@ -167,7 +189,7 @@ namespace LogExpress.Models
             }
             else
             {
-                if (DateTime.TryParseExact(buffer, timestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateTime))
+                if (DateTime.TryParseExact(buffer, Layout.TimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateTime))
                 {
                     return dateTime;
                 }
@@ -204,8 +226,8 @@ namespace LogExpress.Models
             StreamReader reader,
             Dictionary<WordMatcher, byte> logLevelMatchers,
             ScopedFile file,
-            ScopedFile previousFileInfo = null,
-            int lastLineNumber = 0,
+            uint lastLength = 0,
+            int lastLineNumber = 1,
             uint lastPosition = 0
         )
         {
@@ -219,9 +241,14 @@ namespace LogExpress.Models
                 var buffer = new Span<char>(new char[1]);
 
                 // All files with length > 0 implicitly starts with a line
+/*
                 var lineNum = previousFileInfo == null ? 1 : lastLineNumber;
                 var filePosition = (uint) (previousFileInfo?.Length ?? 0);
                 var lastNewLinePos = previousFileInfo == null ? 0 : lastPosition;
+*/
+                var lineNum = lastLineNumber;
+                var filePosition = lastLength;
+                var lastNewLinePos = lastPosition;
                 byte logLevel = 0;
                 byte lastLogLevel = 0;
                 var linePos = 0;

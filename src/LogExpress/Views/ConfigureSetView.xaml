@@ -4,14 +4,23 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         Width="800"
         MinWidth="650"
-        Height="700"
+        Height="850"
         WindowStartupLocation="CenterOwner"
         x:Class="LogExpress.Views.ConfigureSetView"
         Title="ConfigureSetView">
   <Window.Styles>
+    <Style Selector="TextBlock">
+       <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="StackPanel#Timestamp TextBlock">
+      <Setter Property="Foreground" Value="Black"/>
+    </Style>
+    <Style Selector="StackPanel#Severity TextBlock">
+      <Setter Property="Foreground" Value="Black"/>
+    </Style>
     <Style Selector="Border.info">
       <Setter Property="Background" Value="AliceBlue"/>
-      <Setter Property="BorderBrush" Value="Gray"/>
+      <Setter Property="BorderBrush" Value="Black"/>
       <Setter Property="BorderThickness" Value="1"/>
       <Setter Property="CornerRadius" Value="3"/>
       <Setter Property="Padding" Value="5"/>
@@ -20,13 +29,14 @@
     <Style Selector="Border.info TextBlock">
       <Setter Property="TextWrapping" Value="Wrap"/>
       <Setter Property="Margin" Value="0 0 0 5"/>
+      <Setter Property="Foreground" Value="Black"/>
     </Style>
     <Style Selector="Border.info TextBlock.header">
       <Setter Property="FontWeight" Value="Bold"/>
     </Style>
   </Window.Styles>
   <DockPanel VerticalAlignment="Stretch" Margin="0 10" LastChildFill="True" HorizontalAlignment="Stretch">
-    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="800" Margin="0 0 0 20" Background="AliceBlue">
+    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="800" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
       Configure Set
     </TextBlock>
     <Border Classes="info" DockPanel.Dock="Top" Width="750">
@@ -42,9 +52,57 @@
         </TextBlock>
       </StackPanel>
     </Border>
-    <StackPanel DockPanel.Dock="Top" Margin="20" Width="750">
+    <StackPanel DockPanel.Dock="Top" Spacing="10" Width="600" HorizontalAlignment="Stretch">
+      <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
+        <StackPanel Name="Timestamp" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
+          <TextBlock FontSize="16" FontWeight="Bold" HorizontalAlignment="Center">Timestamp</TextBlock>
+          <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+            <TextBlock Text="Select the date/time in this line:" FontWeight="Bold"/>
+            <TextBox Text="{Binding TimestampLine}" Width="400" IsReadOnly="True">
+              <ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                  <TextBlock Text="Start column:" FontWeight="Bold"/>
+                  <TextBlock Text="{Binding TimestampStart}"/>
+                  <TextBlock Text="Length:" FontWeight="Bold"/>
+                  <TextBlock Text="{Binding TimestampStart}"/>
+                </StackPanel>
+              </ToolTip.Tip>
+            </TextBox>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center" ToolTip.Tip="Expects format according to .Net DateTime.ParseExact API">
+            <TextBlock Text="Date format:" FontWeight="Bold"/>
+            <TextBox Name="TimestampFormat" Text="{Binding TimestampFormat}" Width="200"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
+        <StackPanel Name="Severity" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
+          <TextBlock FontSize="16" FontWeight="Bold" HorizontalAlignment="Center">Severity</TextBlock>
+          <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+            <TextBlock Text="Select the severity in this line:" FontWeight="Bold"/>
+            <TextBox Text="{Binding SeverityLine}" Width="400" IsReadOnly="True">
+              <ToolTip.Tip>
+                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
+                  <TextBlock Text="Start column:" FontWeight="Bold"/>
+                  <TextBlock Text="{Binding SeverityStart}"/>
+                </StackPanel>
+              </ToolTip.Tip>
+            </TextBox>
+          </StackPanel>
+          <TextBlock Text="Please define the actual log-levels along with their levels below. Note: The casing does matter!" HorizontalAlignment="Center"/>
+          <Grid ColumnDefinitions="Auto,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
+            <TextBlock Grid.Row="0" Grid.Column="0" Margin="5" FontWeight="Bold">Level</TextBlock><TextBlock Grid.Row="0" Grid.Column="1" Margin="5" FontWeight="Bold">Severity</TextBlock>
+            <TextBlock Grid.Row="1" Grid.Column="0" Margin="5" TextAlignment="Center">1</TextBlock><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SeverityName1, Mode=TwoWay}"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Margin="5" TextAlignment="Center">2</TextBlock><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SeverityName2, Mode=TwoWay}"/>
+            <TextBlock Grid.Row="3" Grid.Column="0" Margin="5" TextAlignment="Center">3</TextBlock><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SeverityName3, Mode=TwoWay}"/>
+            <TextBlock Grid.Row="4" Grid.Column="0" Margin="5" TextAlignment="Center">4</TextBlock><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SeverityName4, Mode=TwoWay}"/>
+            <TextBlock Grid.Row="5" Grid.Column="0" Margin="5" TextAlignment="Center">5</TextBlock><TextBox Grid.Row="5" Grid.Column="1" Text="{Binding SeverityName5, Mode=TwoWay}"/>
+            <TextBlock Grid.Row="6" Grid.Column="0" Margin="5" TextAlignment="Center">6</TextBlock><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SeverityName6, Mode=TwoWay}"/>
+          </Grid>
+        </StackPanel>
+      </Border>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-        <StackPanel Orientation="Vertical">
+        <!--StackPanel Orientation="Vertical">
           <Grid ColumnDefinitions="100,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Left">
             <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontWeight="Bold">Timestamp</TextBlock>
             <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 10 0">Start column</TextBlock>
@@ -57,18 +115,9 @@
             <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 10 0">Start column:</TextBlock>
             <TextBox Grid.Row="5" Grid.Column="1" Name="SeverityStart" HorizontalAlignment="Left" Width="30" MaxLength="3" Text="{Binding SeverityStart}" />
           </Grid>
-        </StackPanel>
+        </StackPanel-->
         <Separator Width="20"/>
         <StackPanel Orientation="Vertical" Spacing="10" >
-          <Grid ColumnDefinitions="Auto,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" >
-            <TextBlock Grid.Row="0" Grid.Column="0" Margin="5" FontWeight="Bold">Level</TextBlock><TextBlock Grid.Row="0" Grid.Column="1" Margin="5" FontWeight="Bold">Severity</TextBlock>
-            <TextBlock Grid.Row="1" Grid.Column="0" Margin="5" TextAlignment="Right">1</TextBlock><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SeverityName1, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="2" Grid.Column="0" Margin="5" TextAlignment="Right">2</TextBlock><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SeverityName2, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="3" Grid.Column="0" Margin="5" TextAlignment="Right">3</TextBlock><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SeverityName3, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="4" Grid.Column="0" Margin="5" TextAlignment="Right">4</TextBlock><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SeverityName4, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="5" Grid.Column="0" Margin="5" TextAlignment="Right">5</TextBlock><TextBox Grid.Row="5" Grid.Column="1" Text="{Binding SeverityName5, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="6" Grid.Column="0" Margin="5" TextAlignment="Right">6</TextBlock><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SeverityName6, Mode=TwoWay}"/>
-          </Grid>
         </StackPanel>
       </StackPanel>
     </StackPanel>
@@ -76,10 +125,12 @@
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
         <Button Margin="10 5 5 10" Padding="5" Width="140" 
                 Command="{Binding OpenCommand}" 
-                Content="Open" />
+                Content="Open" 
+                IsDefault="True"/>
         <Button Margin="10 5 5 10" Padding="5" Width="140" 
                 Command="{Binding CancelCommand}" 
-                Content="Cancel" />
+                Content="Cancel" 
+                IsCancel="True"/>
       </StackPanel>
     </StackPanel>
     <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold">Parse samples:</TextBlock>

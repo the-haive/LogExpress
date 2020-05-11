@@ -124,10 +124,12 @@ namespace LogExpress.Services
         /// <param name="basePath"></param>
         /// <param name="pattern"></param>
         /// <param name="recursive"></param>
-        public VirtualLogFile(string basePath, string pattern, bool recursive)
+        /// <param name="layout"></param>
+        public VirtualLogFile(string basePath, string pattern, bool recursive, Layout layout)
         {
             BasePath = basePath;
             Pattern = pattern;
+            Layout = layout;
             LineItem.LogFiles = LogFiles;
 
             foreach (var pair in LogLevelLookup) _logLevelMatchers.Add(new WordMatcher(pair.Key), pair.Value);
@@ -316,6 +318,7 @@ namespace LogExpress.Services
         public string BasePath { get; set; }
 
         public string Pattern { get; set; }
+        public Layout Layout { get; set; }
 
         public ObservableCollection<LineItem> FilteredLines
         {
@@ -459,11 +462,11 @@ namespace LogExpress.Services
             {
                 while (iterator.MoveNext())
                 {
-                    var fileInfo = iterator.Current;
-                    using var fileStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var reader = new StreamReader(fileStream);
+                    var scopedFile = iterator.Current;
+                    using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var reader = new StreamReader(fileStream, scopedFile.Encoding);
 
-                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader, _logLevelMatchers, fileInfo);
+                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader, _logLevelMatchers, scopedFile);
                 }
 
                 iterator.Dispose();
@@ -485,18 +488,18 @@ namespace LogExpress.Services
             if (!_logFiles.Any()) return;
             _activeLogFileMonitor.Stop();
 
-            var previousFileInfo = _logFiles.Last();
+            var scopedFile = _logFiles.Last();
 
-            var currentFileInfo = new ScopedFile(previousFileInfo.FullName, BasePath);
-            if (currentFileInfo.Length > previousFileInfo.Length)
+            var fileInfo = new FileInfo(scopedFile.FullName);
+            if (fileInfo.Length > scopedFile.Length)
             {
-                using var fileStream = new FileStream(currentFileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(fileStream);
+                using var fileStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(fileStream, scopedFile.Encoding);
                 var newLines = new ObservableCollection<LineItem>();
-                ScopedFile.ReadFileLinePositions(newLines, reader, _logLevelMatchers, currentFileInfo, previousFileInfo, _allLines.Last().LineNumber, _allLines.Last().Position);
+                ScopedFile.ReadFileLinePositions(newLines, reader, _logLevelMatchers, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
                 if (newLines.Any()) NewLines = newLines;
 
-                previousFileInfo.Length = currentFileInfo.Length;
+                scopedFile.Length = (uint) fileInfo.Length;
             }
 
             _activeLogFileMonitor.Start();
@@ -625,6 +628,11 @@ namespace LogExpress.Services
 
             LineItem.LogFiles = LogFiles;
             TotalSize = LogFiles.Sum(l => l.Length);
+
+            foreach (var scopedFile in LogFiles)
+            {
+                scopedFile.Layout = Layout;
+            }
 
             // TODO: Use a normal async task for this instead, or is this ok?
             new Thread(AnalyzeLinesInLogFile)

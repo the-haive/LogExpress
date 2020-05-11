@@ -212,22 +212,28 @@ namespace LogExpress.Models
         private static DateTime? ReadDateFromFilePosition(ScopedFile file, long position)
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var reader = new StreamReader(fileStream);
-            reader.BaseStream.Seek(position, SeekOrigin.Begin);
+            var reader = new StreamReader(fileStream, file.Encoding);
+            reader.BaseStream.Seek(position + file.Layout.TimestampStart - 1, SeekOrigin.Begin);
             
             // TODO: Make the date-length configurable
-            var buffer = new Span<char>(new char[23]);
+            var buffer = new Span<char>(new char[file.Layout.TimestampLength]);
 
             var numRead = reader.Read(buffer);
+            
             if (numRead == -1) return null;
-            if (DateTime.TryParse(buffer, out var dateTime)) return dateTime;
-            return null;
+            var timestamp = file.GetTimestamp(buffer);
+            if (!timestamp.HasValue)
+            {
+                Logger.Warning("The log-file's first timestamp could not be parsed. File={File} Position={Position}", file.FullName, position);
+            }
+
+            return timestamp;
         }
 
         private static string ReadLineFromFilePosition(ScopedFile file, long position)
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var reader = new StreamReader(fileStream);
+            var reader = new StreamReader(fileStream, file.Encoding);
             reader.BaseStream.Seek(position, SeekOrigin.Begin);
             reader.DiscardBufferedData();
             var buffer = new Span<char>(new char[1]);

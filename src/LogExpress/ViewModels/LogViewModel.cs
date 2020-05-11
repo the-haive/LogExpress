@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Binding;
@@ -18,6 +18,7 @@ using LogExpress.Views;
 using ReactiveUI;
 using Serilog;
 using TextCopy;
+using Path = System.IO.Path;
 using ScopedFile = LogExpress.Models.ScopedFile;
 
 namespace LogExpress.ViewModels
@@ -84,6 +85,16 @@ namespace LogExpress.ViewModels
 
         [UsedImplicitly] public long TotalSize => _totalSize.Value;
 
+        internal void BrowseSearchBack()
+        {
+            DoFindExecute(VirtualLogFile.FilteredLines.Last(), -1, 0);
+        }
+
+        internal void BrowseSearchFrwd()
+        {
+            DoFindExecute(VirtualLogFile.FilteredLines.First(), +1, VirtualLogFile.FilteredLines.Count);
+        }
+
         private void BrowseLevelBack(int logLevel)
         {
             var match = _lineSelected != null
@@ -94,7 +105,7 @@ namespace LogExpress.ViewModels
 
             if (match == null) return;
 
-            _logView.ListBoxControl.SelectedItem = match;
+            _logView.LinesCtrl.SelectedItem = match;
         }
 
         private void BrowseLevelFrwd(int logLevel)
@@ -107,14 +118,14 @@ namespace LogExpress.ViewModels
 
             if (match == null) return;
 
-            _logView.ListBoxControl.SelectedItem = match;
+            _logView.LinesCtrl.SelectedItem = match;
         }
 
         private void BrowseTimeBack(Func<DateTime, long> maxTicksFactory)
         {
             if (_lineSelected == null) return;
 
-            var selIdx = _logView.ListBoxControl.SelectedIndex;
+            var selIdx = _logView.LinesCtrl.SelectedIndex;
             var content = VirtualLogFile.FilteredLines[selIdx].Content.Split('|').FirstOrDefault();
 
             if (!DateTime.TryParse(content, out var contentTime)) contentTime = DateTime.MaxValue;
@@ -127,7 +138,7 @@ namespace LogExpress.ViewModels
 
                 if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
                 if (itemTime.Ticks >= maxTicks) continue;
-                _logView.ListBoxControl.SelectedItem = VirtualLogFile.FilteredLines[i];
+                _logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines[i];
                 break;
             }
         }
@@ -136,7 +147,7 @@ namespace LogExpress.ViewModels
         {
             if (_lineSelected == null) return;
 
-            var selIdx = _logView.ListBoxControl.SelectedIndex;
+            var selIdx = _logView.LinesCtrl.SelectedIndex;
             var content = VirtualLogFile.FilteredLines[selIdx].Content.Split('|').FirstOrDefault();
 
             if (!DateTime.TryParse(content, out var contentTime)) contentTime = DateTime.MinValue;
@@ -149,20 +160,20 @@ namespace LogExpress.ViewModels
 
                 if (!DateTime.TryParse(lineContent, out var itemTime)) continue;
                 if (itemTime.Ticks <= minTicks) continue;
-                _logView.ListBoxControl.SelectedItem = VirtualLogFile.FilteredLines[i];
+                _logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines[i];
                 break;
             }
         }
 
         #region Constructor / deconstructor
 
-        public LogViewModel(string basePath, string filter, in bool recursive, LogView logView)
+        public LogViewModel(string basePath, string filter, in bool recursive, Layout layout, LogView logView)
         {
             BasePath = basePath;
             Tail = true;
             _logView = logView;
 
-            VirtualLogFile = new VirtualLogFile(BasePath, filter, recursive);
+            VirtualLogFile = new VirtualLogFile(BasePath, filter, recursive, layout);
 
             _totalSize = VirtualLogFile.WhenAnyValue(x => x.TotalSize)
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -207,7 +218,7 @@ namespace LogExpress.ViewModels
                         _logView.FileFilterCtrl.SelectedIndex = 0;
                     }
                 });
-
+/*
             VirtualLogFile.ConnectYearFilterItems()
                 .Prepend(new ChangeSet<FilterItem<int>, int>
                     {new Change<FilterItem<int>, int>(ChangeReason.Add, 0, new FilterItem<int>(0, 0, "All"))})
@@ -216,12 +227,13 @@ namespace LogExpress.ViewModels
                 .Bind(out _yearFilterItems)
                 .Subscribe(_ =>
                 {
-                    if (_logView.YearFilterCtrl.SelectedItem == null)
+*//*                    if (_logView.YearFilterCtrl.SelectedItem == null)
                     {
                         _logView.YearFilterCtrl.SelectedIndex = 0;
                     }
-                });
-
+*//*                });
+*/
+/*
             VirtualLogFile.ConnectMonthFilterItems()
                 .Prepend(new ChangeSet<FilterItem<int>, int>
                     {new Change<FilterItem<int>, int>(ChangeReason.Add, 0, new FilterItem<int>(0, 0, "All"))})
@@ -230,12 +242,12 @@ namespace LogExpress.ViewModels
                 .Bind(out _monthFilterItems)
                 .Subscribe(_ =>
                 {
-                    if (_logView.MonthFilterCtrl.SelectedItem == null)
+*//*                    if (_logView.MonthFilterCtrl.SelectedItem == null)
                     {
                         _logView.MonthFilterCtrl.SelectedIndex = 0;
                     }
-                });
-
+*//*                });
+*/
             VirtualLogFile.ConnectLevelFilterItems()
                 .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -265,7 +277,7 @@ namespace LogExpress.ViewModels
                 })
                 .DistinctUntilChanged()
                 .ToProperty(this, x => x.FileFilterEnabled);
-
+/*
             _monthFilterEnabled = this.WhenAnyValue(x => x.MonthFilterItems.Count, x => x.VirtualLogFile.YearFilterSelected, x => x.VirtualLogFile.IsFiltering)
                 .Select(obs =>
                 {
@@ -283,19 +295,20 @@ namespace LogExpress.ViewModels
                 })
                 .DistinctUntilChanged()
                 .ToProperty(this, x => x.YearFilterEnabled);
+*/
 
-
-            this.WhenAnyValue(x => x.VirtualLogFile.FilteredLines.Count, x => x.Tail)
-                .Where(((int lineCount, bool tail) tuple) =>
+            this.WhenAnyValue(x => x.VirtualLogFile.FilteredLines.Count, x => x.Tail, x => x.LineSelected)
+                .Where(((int lineCount, bool tail, LineItem lineSelected) tuple) =>
                 {
-                    var (lineCount, tail) = tuple;
-                    return lineCount > 0 && tail;
+                    var (lineCount, tail, lineSelected) = tuple;
+                    // Only scrollToLast when there is content and we are tailing and no line is selected
+                    return lineCount > 0 && tail && lineSelected == null;
                 })
                 .Delay(new TimeSpan(100))
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
-                    _logView.ListBoxControl.ScrollIntoView(VirtualLogFile.FilteredLines.Last());
+                    _logView.LinesCtrl.ScrollIntoView(VirtualLogFile.FilteredLines.Last());
                 });
 
             // TODO: Check if the listBox is overflowing, and only show the minimap if it is. If it is not overflowing then the colorinformation is redundant as you can already see everything in the list.
@@ -317,8 +330,9 @@ namespace LogExpress.ViewModels
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
-                    _logView.ListBoxControl.SelectedItem = VirtualLogFile.FilteredLines.Last();
-                    _selectedLast = true;
+                    _logView.LinesCtrl.ScrollIntoView(VirtualLogFile.FilteredLines.Last());
+                    //_logView.LinesCtrl.SelectedItem = VirtualLogFile.FilteredLines.Last();
+                    //_selectedLast = true;
                 });
 
             _hasLineSelection = this
@@ -331,6 +345,7 @@ namespace LogExpress.ViewModels
                             .Throttle(new TimeSpan(0,0,0,0, 100))
                             .Subscribe(_ => CopySelectedLinesToClipBoard());
             */
+/*
             BrowseFileBackCommand = ReactiveCommand.Create(BrowseFileBack);
             BrowseFileFrwdCommand = ReactiveCommand.Create(BrowseFileFrwd);
             BrowseTimeYearBackCommand = ReactiveCommand.Create(() =>
@@ -341,15 +356,8 @@ namespace LogExpress.ViewModels
                 BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, 1).Ticks - 1));
             BrowseTimeMonthFrwdCommand = ReactiveCommand.Create(() =>
                 BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, 1).AddMonths(1).Ticks));
-            BrowseTimeDayBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).Ticks - 1));
-            BrowseTimeDayFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).AddDays(1).Ticks));
-            BrowseTimeHourBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, 0, 0).Ticks - 1));
-            BrowseTimeHourFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, 0, 0).AddHours(1)
-                    .Ticks));
+*/
+/*
             BrowseTimeMinuteBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
                 new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute,
                     0).Ticks - 1));
@@ -368,14 +376,32 @@ namespace LogExpress.ViewModels
             BrowseLevel2FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(2));
             BrowseLevel3BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(3));
             BrowseLevel3FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(3));
+*/
+
+            BrowseSearchBackCommand = ReactiveCommand.Create(BrowseSearchBack);
+            BrowseSearchFrwdCommand = ReactiveCommand.Create(BrowseSearchFrwd);
+
             BrowseLevel4BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(4));
             BrowseLevel4FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(4));
             BrowseLevel5BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(5));
             BrowseLevel5FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(5));
             BrowseLevel6BackCommand = ReactiveCommand.Create(() => BrowseLevelBack(6));
             BrowseLevel6FrwdCommand = ReactiveCommand.Create(() => BrowseLevelFrwd(6));
+            
+            BrowseTimeDayBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
+                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).Ticks - 1));
+            BrowseTimeDayFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
+                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day).AddDays(1).Ticks));
+            BrowseTimeHourBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
+                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, 0, 0).Ticks - 1));
+            BrowseTimeHourFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
+                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, 0, 0).AddHours(1)
+                    .Ticks));
+            
             CopyCommand = ReactiveCommand.CreateFromTask(CopyExecute, _hasLineSelection);
             TailCommand = ReactiveCommand.Create(TailExecute);
+
+            DeselectCommand = ReactiveCommand.Create(DeselectExecute);
         }
 
         public bool _lineUpdateNeeded;
@@ -468,63 +494,97 @@ namespace LogExpress.ViewModels
 
         #endregion Filters
 
+        #region Search/browse
+        private string _searchQuery;
+        [UsedImplicitly] public string SearchQuery
+        {
+            get => _searchQuery;
+            set => this.RaiseAndSetIfChanged(ref _searchQuery, value);
+        }
+
+        private bool _searchIsCaseSensitive = true;
+        [UsedImplicitly] public bool SearchIsCaseSensitive
+        {
+            get => _searchIsCaseSensitive;
+            set => this.RaiseAndSetIfChanged(ref _searchIsCaseSensitive, value);
+        }
+
+        private bool _searchIsRegex = false;
+        [UsedImplicitly] public bool SearchIsRegex
+        {
+            get => _searchIsRegex;
+            set => this.RaiseAndSetIfChanged(ref _searchIsRegex, value);
+        }
+
+
+        public ReactiveCommand<Unit, Unit> SearchFilter { get; }
+        public ReactiveCommand<Unit, Unit> SearchFilterReset { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSearchBackCommand { get; }
+
+        public ReactiveCommand<Unit, Unit> BrowseSearchFrwdCommand { get; }
+
+        #endregion
+
         #region Toolbar
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseFileBackCommand { get; }
+/*
+        public ReactiveCommand<Unit, Unit> BrowseFileBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseFileFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseFileFrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel1BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel1BackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel1FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel1FrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel2BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel2BackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel2FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel2FrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel3BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel3BackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel3FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel3FrwdCommand { get; }
+*/
+        public ReactiveCommand<Unit, Unit> BrowseLevel4BackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel4BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel4FrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel4FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel5BackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel5BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel5FrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel5FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel6BackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel6BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseLevel6FrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseLevel6FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; }
+/*
+        public ReactiveCommand<Unit, Unit> BrowseTimeMinuteBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeMinuteBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMinuteFrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeMinuteFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMonthBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeMonthBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeMonthFrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeMonthFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeSecondBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeSecondBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeSecondFrwdCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeSecondFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeYearBackCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeYearBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeYearFrwdCommand { get; }
+*/
+        public ReactiveCommand<Unit, Unit> CopyCommand { get; }
 
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> BrowseTimeYearFrwdCommand { get; }
-
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> CopyCommand { get; }
-
-        [UsedImplicitly] public ReactiveCommand<Unit, Unit> TailCommand { get; }
+        public ReactiveCommand<Unit, Unit> TailCommand { get; }
+        public ReactiveCommand<Unit, Unit> DeselectCommand { get; }
 
         private void BrowseFileBack()
         {
@@ -534,7 +594,7 @@ namespace LogExpress.ViewModels
 
             if (match == null) return;
 
-            _logView.ListBoxControl.SelectedItem = match;
+            _logView.LinesCtrl.SelectedItem = match;
         }
 
         private void BrowseFileFrwd()
@@ -545,7 +605,55 @@ namespace LogExpress.ViewModels
 
             if (match == null) return;
 
-            _logView.ListBoxControl.SelectedItem = match;
+            _logView.LinesCtrl.SelectedItem = match;
+        }
+
+        private void DoFindExecute(LineItem noSelectionStart, int increment, int to)
+        {
+            // TODO: Run the find in the background, showing a progress-bar in the UI.
+            // TODO: Should allow UI to be responsive.
+            // TODO: If the filter changes or another search is executed then cancel this one.
+            var query = SearchQuery;
+            if (string.IsNullOrWhiteSpace(query)) return;
+            var isCaseSensitive = SearchIsCaseSensitive;
+            var isRegex = SearchIsRegex;
+            var startLine = LineSelected ?? noSelectionStart;
+            var current = VirtualLogFile.FilteredLines.IndexOf(startLine);
+            if (startLine == LineSelected) current += increment;
+
+            var stringComparison = isCaseSensitive ? StringComparison.InvariantCulture : StringComparison.CurrentCultureIgnoreCase;
+            
+            var regexOptions = RegexOptions.Compiled;
+            if (!isCaseSensitive) regexOptions |= RegexOptions.IgnoreCase;
+            var regex = new Regex(query, regexOptions);
+
+            var found = -1;
+            string content = string.Empty;
+            var line = -1;
+            // Linear slow search
+            for (var i = current; increment > 0 ? i < to : i >= to; i += increment)
+            {
+                line = i;
+                content = VirtualLogFile.FilteredLines[i].Content;
+                if (isRegex)
+                {
+                    var match = regex.Match(content);
+                    if (match.Success) found = match.Index;
+                }
+                else
+                {
+                    found = content.IndexOf(query, stringComparison);
+                }
+                if (found >= 0) break;
+            }
+
+            if (found >= 0)
+            {
+                _logView.LinesCtrl.SelectedIndex = line;
+                _logView.LinesCtrl.ScrollIntoView(line);
+
+                // TODO: Mark the first occurrences of the word in the found line
+            }
         }
 
         private async Task<Unit> CopyExecute()
@@ -564,6 +672,14 @@ namespace LogExpress.ViewModels
         private void TailExecute()
         {
             Tail = !Tail;
+        }
+
+        private void DeselectExecute()
+        {
+            if (LineSelected != null)
+            {
+                _logView.LinesCtrl.SelectedItems = null;
+            }
         }
 
         #endregion Toolbar

@@ -1,0 +1,104 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Width="800"
+        Height="820"
+        WindowStartupLocation="CenterOwner"
+        x:Class="LogExpress.Views.AboutView"
+        Title="AboutView">
+  <Window.Styles>
+    <Style Selector="TextBlock">
+       <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="StackPanel#Timestamp TextBlock">
+      <Setter Property="Foreground" Value="Black"/>
+    </Style>
+    <Style Selector="StackPanel#Severity TextBlock">
+      <Setter Property="Foreground" Value="Black"/>
+    </Style>
+    <Style Selector="Border.info">
+      <Setter Property="Background" Value="AliceBlue"/>
+      <Setter Property="BorderBrush" Value="Black"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="3"/>
+      <Setter Property="Padding" Value="5"/>
+      <Setter Property="Margin" Value="0 0 0 20"/>
+    </Style>
+    <Style Selector="Border.info TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="Margin" Value="0 0 0 5"/>
+      <Setter Property="Foreground" Value="Black"/>
+    </Style>
+    <Style Selector="Border.info TextBlock.header">
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="Border.info #NotSupported TextBlock">
+      <Setter Property="Foreground" Value="DarkRed"/>
+    </Style>
+    <Style Selector="Border.info TextBlock.header">
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+  </Window.Styles>
+  <DockPanel Margin="10" HorizontalAlignment="Stretch"  Width="780" LastChildFill="False">
+    <TextBlock DockPanel.Dock="Top" FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
+      About LogExpress
+    </TextBlock>
+    <Border DockPanel.Dock="Top" Classes="info" HorizontalAlignment="Stretch">
+      <StackPanel HorizontalAlignment="Left" Margin="10">
+        <TextBlock>
+          A log-file is something that most software write to using a "logging" tool, i.e: NLog, SeriLog, log4net, EntLib. LogExpress is designed to help navigate logs created by any of these libraries, but it does expect eash log-entry to contain a timestamp and a severity. 
+        </TextBlock>
+        <TextBlock>
+          It is not unusual for a log-entry to contain newline characters. LogExpert deals with these lines by giving them the same timestamp and severity as the last logged entry. If the first file in the set starts with no timestamp or severity, then it is given the same timestamp as the file itself, and the severity is set to 0 (although this might not necessarily be correct. We believe that the scenarios for a log-file to start with empty lines to be extremely unusual though, as the loggers writing the log-entries normally flush after a full entry.
+        </TextBlock>
+        <TextBlock FontWeight="Bold" FontStyle="Italic">
+          LogExpert expects the timstamp start-column, length and format as well as the severity-list and start-column to be consistent in all files that are part in the set to be opened.
+        </TextBlock>
+      </StackPanel>
+    </Border>
+    <Border DockPanel.Dock="Top" Classes="info" HorizontalAlignment="Stretch">
+      <StackPanel HorizontalAlignment="Left" Margin="10">
+        <TextBlock FontWeight="Bold">LogExpress was made with the following design-goals:</TextBlock>
+        <Separator Height="10"/>
+        <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto,Auto,Auto" HorizontalAlignment="Left">
+          <TextBlock Grid.Row="0" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="0" Grid.Column="1">Real-time: It should be able to stay up-to date with even the busiest logs.</TextBlock>
+          <TextBlock Grid.Row="1" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="1" Grid.Column="1">Startup: It should be able to get started viewing logs as soon as possible. (Note: LogExpress is not fully optimized in this respect - yet)</TextBlock>
+          <TextBlock Grid.Row="2" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="2" Grid.Column="1">Memory: It should use as little memory as possible, even if it is monitoring a log-set that is "huge".</TextBlock>
+          <TextBlock Grid.Row="3" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="3" Grid.Column="1">"One" log: It should allow you to spectate the "product-log" as one, not having to worry about rolled over archived logs.</TextBlock>
+        </Grid>
+      </StackPanel>
+    </Border>
+    <Border DockPanel.Dock="Top" Classes="info" HorizontalAlignment="Stretch">
+      <StackPanel HorizontalAlignment="Left" Margin="10">
+        <TextBlock FontWeight="Bold">"One" product log</TextBlock>
+        <StackPanel Margin="10">
+          <TextBlock>LogExpress is not the goto tool for loading multiple log-files from different products. It is specialized to handle *one* product log only.</TextBlock>
+          <TextBlock>It expects the log-files loaded to all be from the same product and process. Log-files from one single product will not have overlapping date-ranges. It will always also have the same log-entry "layout", meaning that the date is at the same position and format as well as the severity-level being positioned at the same place and have the predefined names only.</TextBlock>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <Border DockPanel.Dock="Top" Classes="info" HorizontalAlignment="Stretch">
+      <StackPanel Name="NotSupported" HorizontalAlignment="Left" Margin="10">
+        <TextBlock Classes="header">
+          LogExpress was specifically NOT designed to:
+        </TextBlock>
+        <Separator Height="10"/>
+        <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto,Auto" HorizontalAlignment="Left">
+          <TextBlock Grid.Row="0" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="0" Grid.Column="1">Open multiple log-files from different processes, as the layout and or date-time ranges would not be co-herent.</TextBlock>
+          <TextBlock Grid.Row="1" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="1" Grid.Column="1">Open multiple log-files created in parallel by multiple instances of the same executable. Even though the layout would be consistent, the date-ranges in the files would overlap.</TextBlock>
+          <TextBlock Grid.Row="2" Grid.Column="0" Margin="10 0 0 0" VerticalAlignment="Top">•</TextBlock>
+          <TextBlock Grid.Row="2" Grid.Column="1">Open multiple log-files created in parallel by the same instance/executable. Even though the layout would be consistent, the date-ranges in the files would overlap. Open each of these separately (each of these will also have their own rollover files - if defined).</TextBlock>
+        </Grid>
+      </StackPanel>
+    </Border>
+    <Separator DockPanel.Dock="Top" Height="10"/>
+    <Button DockPanel.Dock="Top" Name="AboutOk" HorizontalAlignment="Center" Padding="20 5">Ok</Button>
+  </DockPanel>  
+</Window>
