@@ -6,8 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -17,8 +15,6 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml.Styling;
 using ByteSizeLib;
 using LogExpress.Models;
-using LogExpress.Services;
-using LogExpress.Utils;
 using LogExpress.Views;
 using ReactiveUI;
 using Serilog;
@@ -46,8 +42,6 @@ namespace LogExpress.ViewModels
 
         private readonly MainWindow _mainWindow;
         private string _appTitle = "LogExpress";
-        private GridLength _filterPaneHeight = FilterGridCollapsed;
-        private FilterViewModel _filterViewModel;
         private string _folder = string.Empty;
         private Layout _layout = null;
         private ObservableAsPropertyHelper<string> _infoBarByteSize;
@@ -80,8 +74,6 @@ namespace LogExpress.ViewModels
         private string _pattern = string.Empty;
         private bool _recursive;
 
-        private bool _showFilterPanel;
-
         private bool _showLogPanel;
         public MainWindowViewModel(MainWindow mainWindow)
         {
@@ -95,7 +87,6 @@ namespace LogExpress.ViewModels
             OpenFileCommand = ReactiveCommand.Create(OpenFileExecute);
             OpenSetCommand = ReactiveCommand.Create(OpenSetExecute);
             ConfigureSetCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSetExecute);
-            ToggleFilterPaneCommand = ReactiveCommand.Create(ToggleFilterPaneExecute);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplicationExecute);
             AboutCommand = ReactiveCommand.Create(AboutExecute);
@@ -133,7 +124,6 @@ namespace LogExpress.ViewModels
         ~MainWindowViewModel()
         {
             _logViewSubscription?.Dispose();
-            //_listBoxScrollViewerControl.ScrollChanged -= RefreshLineContentForVisibleChildren;
         }
 
         public string AppTitle
@@ -157,18 +147,6 @@ namespace LogExpress.ViewModels
         public ReactiveCommand<Unit, Unit> KeyGoPageDownCommand { get; }
         public ReactiveCommand<Unit, Unit> KeyGoUpCommand { get; }
         public ReactiveCommand<Unit, Unit> KeyGoDownCommand { get; }
-
-        public GridLength FilterPaneHeight
-        {
-            get => _filterPaneHeight;
-            set => this.RaiseAndSetIfChanged(ref _filterPaneHeight, value);
-        }
-
-        public FilterViewModel FilterViewModel
-        {
-            get => _filterViewModel;
-            set => this.RaiseAndSetIfChanged(ref _filterViewModel, value);
-        }
 
         public string Folder
         {
@@ -311,19 +289,11 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _recursive, value);
         }
 
-        public bool ShowFilterPanel
-        {
-            get => _showFilterPanel;
-            set => this.RaiseAndSetIfChanged(ref _showFilterPanel, value);
-        }
-
         public bool ShowLogPanel
         {
             get => _showLogPanel;
             set => this.RaiseAndSetIfChanged(ref _showLogPanel, value);
         }
-
-        public ReactiveCommand<Unit, Unit> ToggleFilterPaneCommand { get; }
 
         public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
 
@@ -594,11 +564,6 @@ namespace LogExpress.ViewModels
             }
         }
 
-        private void SetFilterViewDataContext()
-        {
-            FilterViewModel = new FilterViewModel();
-        }
-
         private void SetupLogView((string baseDir, string filter, bool recursive, Layout layout) observerTuple)
         {
             var (baseDir, filter, recursive, layout) = observerTuple;
@@ -721,21 +686,6 @@ namespace LogExpress.ViewModels
                         }
                     });
                 });
-        }
-
-        private void ToggleFilterPaneExecute()
-        {
-            if (ShowFilterPanel)
-            {
-                _lastFilterPaneHeight = FilterPaneHeight;
-                FilterPaneHeight = FilterGridCollapsed;
-            }
-            else
-            {
-                FilterPaneHeight = _lastFilterPaneHeight;
-            }
-
-            ShowFilterPanel = !ShowFilterPanel;
         }
 
         private void ToggleThemeExecute()

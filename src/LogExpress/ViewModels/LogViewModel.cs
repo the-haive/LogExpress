@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
@@ -27,7 +28,7 @@ namespace LogExpress.ViewModels
     {
         private static readonly ILogger Logger = Log.ForContext<LogViewModel>();
         private readonly IObservable<bool> _hasLineSelection;
-        //private readonly ObservableAsPropertyHelper<List<LogFileFilter>> _logFilesFilter;
+
         private readonly LogView _logView;
         private readonly ObservableAsPropertyHelper<long> _totalSize;
 
@@ -89,6 +90,16 @@ namespace LogExpress.ViewModels
             Severity4Name = "ERROR";
             Severity4Name = "FATAL";
 
+            TimeFilterItems = new ReadOnlyObservableCollection<FilterItem<int>>(new ObservableCollection<FilterItem<int>>(new List<FilterItem<int>>()
+            {
+                new FilterItem<int>(0, 0,"Anytime"),
+                new FilterItem<int>(1, 1,"Last Hour"),
+                new FilterItem<int>(2, 2,"Last Day"),
+                new FilterItem<int>(3, 3,"Last Week"),
+                new FilterItem<int>(4, 4,"Last Month"),
+                new FilterItem<int>(5, 5,"Custom Range..."),
+            }));
+
             VirtualLogFile = new VirtualLogFile(BasePath, filter, recursive, layout);
 
             _totalSize = VirtualLogFile.WhenAnyValue(x => x.TotalSize)
@@ -146,36 +157,16 @@ namespace LogExpress.ViewModels
                         _logView.FileFilterCtrl.SelectedIndex = 0;
                     }
                 });
-/*
-            VirtualLogFile.ConnectYearFilterItems()
-                .Prepend(new ChangeSet<FilterItem<int>, int>
-                    {new Change<FilterItem<int>, int>(ChangeReason.Add, 0, new FilterItem<int>(0, 0, "All"))})
-                .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _yearFilterItems)
-                .Subscribe(_ =>
+
+            _fileFilterEnabled = this.WhenAnyValue(x => x.FileFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
+                .Select(obs =>
                 {
-*//*                    if (_logView.YearFilterCtrl.SelectedItem == null)
-                    {
-                        _logView.YearFilterCtrl.SelectedIndex = 0;
-                    }
-*//*                });
-*/
-/*
-            VirtualLogFile.ConnectMonthFilterItems()
-                .Prepend(new ChangeSet<FilterItem<int>, int>
-                    {new Change<FilterItem<int>, int>(ChangeReason.Add, 0, new FilterItem<int>(0, 0, "All"))})
-                .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Bind(out _monthFilterItems)
-                .Subscribe(_ =>
-                {
-*//*                    if (_logView.MonthFilterCtrl.SelectedItem == null)
-                    {
-                        _logView.MonthFilterCtrl.SelectedIndex = 0;
-                    }
-*//*                });
-*/
+                    var (logFileCount, isFiltering) = obs;
+                    return !isFiltering && logFileCount > 0;
+                })
+                .DistinctUntilChanged()
+                .ToProperty(this, x => x.FileFilterEnabled);
+
             VirtualLogFile.ConnectSeverityFilterItems()
                 .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -197,33 +188,23 @@ namespace LogExpress.ViewModels
                 .DistinctUntilChanged()
                 .ToProperty(this, x => x.SeverityFilterEnabled);
 
-            _fileFilterEnabled = this.WhenAnyValue(x => x.FileFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
+            _timeFilterEnabled = this.WhenAnyValue(x => x.TimeFilterItems, x => x.VirtualLogFile.IsFiltering)
                 .Select(obs =>
                 {
-                    var (logFileCount, isFiltering) = obs;
-                    return !isFiltering && logFileCount > 0;
+                    var (timeFilterItems, isFiltering) = obs;
+                    return !isFiltering && timeFilterItems.Count > 0;
                 })
                 .DistinctUntilChanged()
-                .ToProperty(this, x => x.FileFilterEnabled);
-/*
-            _monthFilterEnabled = this.WhenAnyValue(x => x.MonthFilterItems.Count, x => x.VirtualLogFile.YearFilterSelected, x => x.VirtualLogFile.IsFiltering)
-                .Select(obs =>
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Do(_ =>
                 {
-                    var (monthFilterItemsCount, yearFilterSelected, isFiltering) = obs;
-                    return !isFiltering && yearFilterSelected?.Key > 0 && monthFilterItemsCount > 0;
+                    if (_logView.TimeFilterCtrl.SelectedItem == null)
+                    {
+                        TimeFilterSelected = TimeFilterItems.First();
+                        //_logView.TimeFilterCtrl.SelectedIndex = 0;
+                    }
                 })
-                .DistinctUntilChanged()
-                .ToProperty(this, x => x.MonthFilterEnabled);
-
-            _yearFilterEnabled = this.WhenAnyValue(x => x.YearFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
-                .Select(obs =>
-                {
-                    var (yearCount, isFiltering) = obs;
-                    return !isFiltering && yearCount > 0;
-                })
-                .DistinctUntilChanged()
-                .ToProperty(this, x => x.YearFilterEnabled);
-*/
+                .ToProperty(this, x => x.TimeFilterEnabled);
 
             this.WhenAnyValue(x => x.VirtualLogFile.FilteredLines.Count, x => x.Tail, x => x.LineSelected)
                 .Where(((int lineCount, bool tail, LineItem lineSelected) tuple) =>
@@ -264,47 +245,7 @@ namespace LogExpress.ViewModels
                 });
 
             _hasLineSelection = this
-                .WhenAnyValue(x => x.LinesSelected.Count, x => x > 0)
-                .ObserveOn(RxApp.MainThreadScheduler);
-
-            /*
-                        _linesSelected.WhenAnyValue(x => x.Count)
-                            .Where(x => x > 0)
-                            .Throttle(new TimeSpan(0,0,0,0, 100))
-                            .Subscribe(_ => CopySelectedLinesToClipBoard());
-            */
-/*
-            BrowseFileBackCommand = ReactiveCommand.Create(BrowseFileBack);
-            BrowseFileFrwdCommand = ReactiveCommand.Create(BrowseFileFrwd);
-            BrowseTimeYearBackCommand = ReactiveCommand.Create(() =>
-                BrowseTimeBack(contentTime => new DateTime(contentTime.Year, 1, 1).Ticks - 1));
-            BrowseTimeYearFrwdCommand = ReactiveCommand.Create(() =>
-                BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, 1, 1).AddYears(1).Ticks));
-            BrowseTimeMonthBackCommand = ReactiveCommand.Create(() =>
-                BrowseTimeBack(contentTime => new DateTime(contentTime.Year, contentTime.Month, 1).Ticks - 1));
-            BrowseTimeMonthFrwdCommand = ReactiveCommand.Create(() =>
-                BrowseTimeFrwd(contentTime => new DateTime(contentTime.Year, contentTime.Month, 1).AddMonths(1).Ticks));
-*/
-/*
-            BrowseTimeMinuteBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute,
-                    0).Ticks - 1));
-            BrowseTimeMinuteFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute,
-                    0).AddMinutes(1).Ticks));
-            BrowseTimeSecondBackCommand = ReactiveCommand.Create(() => BrowseTimeBack(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute,
-                    contentTime.Second).Ticks - 1));
-            BrowseTimeSecondFrwdCommand = ReactiveCommand.Create(() => BrowseTimeFrwd(contentTime =>
-                new DateTime(contentTime.Year, contentTime.Month, contentTime.Day, contentTime.Hour, contentTime.Minute,
-                    contentTime.Second).AddSeconds(1).Ticks));
-            BrowseLevel1BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(1));
-            BrowseLevel1FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(1));
-            BrowseLevel2BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(2));
-            BrowseLevel2FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(2));
-            BrowseLevel3BackCommand = ReactiveCommand.Create(() => BrowseSeverityBack(3));
-            BrowseLevel3FrwdCommand = ReactiveCommand.Create(() => BrowseSeverityFrwd(3));
-*/
+                .WhenAnyValue(x => x.LineSelected).Select(x => x != null);
 
             BrowseSearchBackCommand = ReactiveCommand.Create(BrowseSearchBack);
             BrowseSearchFrwdCommand = ReactiveCommand.Create(BrowseSearchFrwd);
@@ -361,14 +302,6 @@ namespace LogExpress.ViewModels
         private readonly ObservableAsPropertyHelper<bool> _fileFilterEnabled;
         [UsedImplicitly] public bool FileFilterEnabled => _fileFilterEnabled.Value;
 
-        private ScopedFile _fileFilterSelected;
-        [UsedImplicitly]
-        public ScopedFile FileFilterSelected
-        {
-            get => _fileFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _fileFilterSelected, value);
-        }
-
         private void BrowseFileBack()
         {
             var match = _lineSelected != null
@@ -401,16 +334,6 @@ namespace LogExpress.ViewModels
         private readonly ObservableAsPropertyHelper<bool> _severityFilterEnabled;
         [UsedImplicitly] public bool SeverityFilterEnabled => _severityFilterEnabled.Value;
         
-        private int _severityFilterSelected;
-        [UsedImplicitly]
-        public int SeverityFilterSelected
-        {
-            get => _severityFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _severityFilterSelected, value);
-        }
-
-
-
         private void BrowseSeverityBack(int level)
         {
             var match = _lineSelected != null
@@ -440,41 +363,29 @@ namespace LogExpress.ViewModels
         #endregion
 
 
-        #region TODO TimeFilter
-        #endregion
-        
-        #region MonthFilter
-        private readonly ReadOnlyObservableCollection<FilterItem<int>> _monthFilterItems;
-        public ReadOnlyObservableCollection<FilterItem<int>> MonthFilterItems => _monthFilterItems;
-        
-        private readonly ObservableAsPropertyHelper<bool> _monthFilterEnabled;
-        [UsedImplicitly] public bool MonthFilterEnabled => _monthFilterEnabled.Value;
+        #region TimeFilter
 
-        private int _monthFilterSelected;
-        [UsedImplicitly]
-        public int MonthFilterSelected
+        private ReadOnlyObservableCollection<FilterItem<int>> _timeFilterItems;
+
+        [UsedImplicitly] public ReadOnlyObservableCollection<FilterItem<int>> TimeFilterItems
         {
-            get => _monthFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _monthFilterSelected, value);
+            get => _timeFilterItems;
+            set => this.RaiseAndSetIfChanged(ref _timeFilterItems, value);
         }
+
+        private readonly ObservableAsPropertyHelper<bool> _timeFilterEnabled;
+        [UsedImplicitly] public bool TimeFilterEnabled => _timeFilterEnabled.Value;
+
+        private FilterItem<int> _timeFilterSelected;
+        [UsedImplicitly]
+        public FilterItem<int> TimeFilterSelected
+        {
+            get => _timeFilterSelected;
+            set => this.RaiseAndSetIfChanged(ref _timeFilterSelected, value);
+        }
+
         #endregion
         
-        #region YearFilter
-        private readonly ReadOnlyObservableCollection<FilterItem<int>> _yearFilterItems;
-        public ReadOnlyObservableCollection<FilterItem<int>> YearFilterItems => _yearFilterItems;
-
-        private readonly ObservableAsPropertyHelper<bool> _yearFilterEnabled;
-        [UsedImplicitly] public bool YearFilterEnabled => _yearFilterEnabled.Value;
-
-        private FilterItem<int> _yearFilterSelected;
-        [UsedImplicitly]
-        public FilterItem<int> YearFilterSelected
-        {
-            get => _yearFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _yearFilterSelected, value);
-        }
-        #endregion
-
         #region Search Filter & Browse
 
         private string _searchQuery;

@@ -101,12 +101,6 @@
       <MenuItem Header="_Help">
         <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
       </MenuItem>
-      <!--MenuItem Header="Open _File" Command="{Binding OpenFileCommand}" ToolTip.Tip="Click to open single logfile"/-->
-      <!--Separator/>
-      <CheckBox Command="{Binding ToggleFilterPaneCommand}" Content="Filter Pane" ToolTip.Tip="Toggle showing the advanced filter-pane"/-->
-      <!--MenuItem Header="O_ptions">
-        <CheckBox Name="Theme"  Width="100" Command="{Binding ToggleThemeCommand}" Content="Dark Theme" ToolTip.Tip="Click to toggle between dark and light theme" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
-      </MenuItem-->
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
     <TextBlock Text="Debugger" IsVisible="False"/>
@@ -171,16 +165,6 @@
         <TextBox Text="{Binding InfoBarSeverity0}" />
       </StackPanel>
     </StackPanel>
-    
-    <Grid ColumnDefinitions="*">
-      <Grid.RowDefinitions>
-          <RowDefinition />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="{Binding FilterPaneHeight, Mode=TwoWay}" />
-      </Grid.RowDefinitions>
-      <views:LogView Name="LogPanel" Grid.Row="0" IsVisible="{Binding $parent[2].DataContext.ShowLogPanel}" DataContext="{Binding LogViewModel}"/>
-      <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" Background="{DynamicResource ThemeForegroundLowBrush}" IsVisible="{Binding $parent[2].DataContext.ShowFilterPanel}" />
-      <views:FilterView Name="FilterPanel" Grid.Row="2" IsVisible="{Binding $parent[2].DataContext.ShowFilterPanel}" DataContext="{Binding FilterViewModel}"/>
-    </Grid>
+    <views:LogView Name="LogPanel" Grid.Row="0" IsVisible="{Binding ShowLogPanel}" DataContext="{Binding LogViewModel}"/>
   </DockPanel>
 </Window>

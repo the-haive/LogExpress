@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using System.Windows.Input;
 using Avalonia.Media.Imaging;
 using DynamicData;
 using DynamicData.Binding;
@@ -106,18 +102,17 @@ namespace LogExpress.Services
         private bool _analyzeError;
         private ObservableCollection<LineItem> _filteredLines;
         private bool _isAnalyzed = false;
+        private ObservableCollection<LineItem> _newLines;
+        private (DateTime, DateTime) _range;
         private List<int> _severityFilter = new List<int>();
         private Bitmap _severityMap;
 
         private string _severityMapFile;
 
         private ObservableConcurrentDictionary<byte, long> _severityStats;
-
-        private ObservableCollection<LineItem> _newLines;
-
+        private bool _showLines;
+        private bool _showProgress;
         private long _totalSize;
-        private (DateTime, DateTime) _range;
-
         /// <summary>
         ///     Setup the virtual log-file manager.
         /// </summary>
@@ -222,13 +217,6 @@ namespace LogExpress.Services
                         _severityFilterSource.AddOrUpdate(new FilterItem<int>(severity, severity, name, toolTip));
                     }
 
-                    _monthFilterSource.Clear();
-                    _monthFilterSource.AddOrUpdate(new FilterItem<int>(6,6, "June"));
-                    _monthFilterSource.AddOrUpdate(new FilterItem<int>(8,8, "August"));
-
-                    _yearFilterSource.Clear();
-                    _yearFilterSource.AddOrUpdate(new FilterItem<int>(2019,2019, "2019"));
-                    _yearFilterSource.AddOrUpdate(new FilterItem<int>(2020, 2020, "2020"));
                 });
 
 
@@ -250,26 +238,24 @@ namespace LogExpress.Services
 
 
             this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.FileFilterSelected,
-                    x => x.YearFilterSelected, x => x.MonthFilterSelected, x => x.SeverityFilterSelected)
+                    x => x.SeverityFilterSelected)
                 .Where((
-                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int>
-                        yearFilterSelected, FilterItem<int> monthFilterSelected, FilterItem<int> severityFilterSelected) obs) =>
+                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, 
+                        FilterItem<int> severityFilterSelected) obs) =>
                 {
-                    var (isAnalyzed, lines, _, _, _, _) = obs;
+                    var (isAnalyzed, lines, _, _) = obs;
                     return isAnalyzed && lines != null;
                 })
-                //.ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe((
-                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int>
-                        yearFilterSelected, FilterItem<int> monthFilterSelected, FilterItem<int> severityFilterSelected) obs) =>
+                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, 
+                        FilterItem<int> severityFilterSelected) obs) =>
                 {
-                    var (_, _, fileFilterSelected, yearFilterSelected, monthFilterSelected, severityFilterSelected) =
+                    var (_, _, fileFilterSelected, 
+                            severityFilterSelected) =
                         obs;
 
                     if ((fileFilterSelected == null || fileFilterSelected.Key == 0)
                         && (severityFilterSelected == null || severityFilterSelected.Key == 0)
-                        && (yearFilterSelected == null || yearFilterSelected.Key == 0)
-                        && (monthFilterSelected == null || monthFilterSelected.Key == 0)
                     )
                     {
                         IsFiltered = false;
@@ -284,26 +270,16 @@ namespace LogExpress.Services
                             var lastTimestamp = DateTime.MinValue;
 
                             BackgroundFilteredLines = new ObservableCollection<LineItem>(AllLines
-                                .Where(item => DoFilter(item, fileFilterSelected, yearFilterSelected,
-                                    monthFilterSelected, severityFilterSelected, ref lastTimestamp)));
+                                .Where(item => DoFilter(item, fileFilterSelected, severityFilterSelected, ref lastTimestamp)));
                         });
                     }
                 });
 
         }
-
-        private bool _showLines;
-        public bool ShowLines
+        ~VirtualLogFile()
         {
-            get => _showLines;
-            set => this.RaiseAndSetIfChanged(ref _showLines, value);
-        }
-
-        private bool _showProgress;
-        public bool ShowProgress
-        {
-            get => _showProgress;
-            set => this.RaiseAndSetIfChanged(ref _showProgress, value);
+            // Finalizer calls Dispose(false)
+            Dispose(false);
         }
 
         public FileInfo ActiveLogFile
@@ -326,28 +302,10 @@ namespace LogExpress.Services
 
         public string BasePath { get; set; }
 
-        public string Pattern { get; set; }
-
-        public Layout Layout
-        {
-            get => _layout;
-            set => this.RaiseAndSetIfChanged(ref _layout, value);
-        }
-
         public ObservableCollection<LineItem> FilteredLines
         {
             get => _filteredLines;
             set => this.RaiseAndSetIfChanged(ref _filteredLines, value);
-        }
-        public bool IsFiltering
-        {
-            get => _isFiltering;
-            set => this.RaiseAndSetIfChanged(ref _isFiltering, value);
-        }
-        public bool IsFiltered
-        {
-            get => _isFiltered;
-            set => this.RaiseAndSetIfChanged(ref _isFiltered, value);
         }
 
         public bool IsAnalyzed
@@ -356,7 +314,39 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _isAnalyzed, value);
         }
 
+        public bool IsFiltered
+        {
+            get => _isFiltered;
+            set => this.RaiseAndSetIfChanged(ref _isFiltered, value);
+        }
+
+        public bool IsFiltering
+        {
+            get => _isFiltering;
+            set => this.RaiseAndSetIfChanged(ref _isFiltering, value);
+        }
+
+        public Layout Layout
+        {
+            get => _layout;
+            set => this.RaiseAndSetIfChanged(ref _layout, value);
+        }
+
         public ReadOnlyObservableCollection<ScopedFile> LogFiles => _logFiles;
+
+        public ObservableCollection<LineItem> NewLines
+        {
+            get => _newLines;
+            set => this.RaiseAndSetIfChanged(ref _newLines, value);
+        }
+
+        public string Pattern { get; set; }
+
+        public (DateTime, DateTime) Range
+        {
+            get => _range;
+            set => this.RaiseAndSetIfChanged(ref _range, value);
+        }
 
         public Bitmap SeverityMap
         {
@@ -376,30 +366,21 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _severityStats, value);
         }
 
-        public ObservableCollection<LineItem> NewLines
+        public bool ShowLines
         {
-            get => _newLines;
-            set => this.RaiseAndSetIfChanged(ref _newLines, value);
+            get => _showLines;
+            set => this.RaiseAndSetIfChanged(ref _showLines, value);
         }
-
+        public bool ShowProgress
+        {
+            get => _showProgress;
+            set => this.RaiseAndSetIfChanged(ref _showProgress, value);
+        }
         public long TotalSize
         {
             get => _totalSize;
             set => this.RaiseAndSetIfChanged(ref _totalSize, value);
         }
-
-        public (DateTime, DateTime) Range
-        {
-            get => _range;
-            set => this.RaiseAndSetIfChanged(ref _range, value);
-        }
-
-        ~VirtualLogFile()
-        {
-            // Finalizer calls Dispose(false)
-            Dispose(false);
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -598,8 +579,8 @@ namespace LogExpress.Services
             imgParts.ForEach(i => i.Dispose());
             combinedImage.Dispose();
         }
-        private bool DoFilter(LineItem lineItem, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int> yearFilterSelected,
-            FilterItem<int> monthFilterSelected, FilterItem<int> severityFilterSelected, ref DateTime lastTimestamp)
+
+        private bool DoFilter(LineItem lineItem, FilterItem<ScopedFile> fileFilterSelected, FilterItem<int> severityFilterSelected, ref DateTime lastTimestamp)
         {
             // Check the file-filter
             var fileIncluded = fileFilterSelected == null 
@@ -612,25 +593,7 @@ namespace LogExpress.Services
                                 lineItem.Severity >= severityFilterSelected.Key;
             if (!severityIncluded) return false;
 
-            // If no year-filter is selected then we can just return true (not necessary to check the month-filter)
-            if (yearFilterSelected == null || yearFilterSelected.Key == 0) return true;
-
-            // Check the year-filter
-            var timestamp = lineItem.Timestamp; // NB! Fetches the line timestamp from disk
-            lastTimestamp = timestamp ?? lastTimestamp;
-
-            var year = timestamp?.Year ?? lastTimestamp.Year;
-            var yearIncluded = yearFilterSelected?.Key == year;
-            if (!yearIncluded) return false;
-
-            // If no month-filter is selected then we can just return true
-            if (monthFilterSelected == null || monthFilterSelected.Key == 0) return true;
-
-            // Check the month-filter
-            var month = timestamp?.Month ?? lastTimestamp.Month;
-            var monthIncluded = monthFilterSelected?.Key == month;
-            // Last check
-            return monthIncluded;
+            return true;
         }
 
         private void InitializeLines(IChangeSet<ScopedFile, ulong> changes = null)
@@ -710,41 +673,9 @@ namespace LogExpress.Services
         }
         #endregion
         
-        #region MonthFilter
-        private readonly SourceCache<FilterItem<int>, int> _monthFilterSource = new SourceCache<FilterItem<int>, int>(t => t.Key);
-        
-        private FilterItem<int> _monthFilterSelected;
-        [UsedImplicitly]
-        public FilterItem<int> MonthFilterSelected
-        {
-            get => _monthFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _monthFilterSelected, value);
-        }
-        public IObservable<IChangeSet<FilterItem<int>, int>> ConnectMonthFilterItems()
-        {
-            return _monthFilterSource.Connect();
-        }
-        #endregion
-        
-        #region YearFilter
-        private readonly SourceCache<FilterItem<int>, int> _yearFilterSource = new SourceCache<FilterItem<int>, int>(t => t.Key);
-
-        private FilterItem<int> _yearFilterSelected;
-        [UsedImplicitly]
-        public FilterItem<int> YearFilterSelected
-        {
-            get => _yearFilterSelected;
-            set => this.RaiseAndSetIfChanged(ref _yearFilterSelected, value);
-        }
-        public IObservable<IChangeSet<FilterItem<int>, int>> ConnectYearFilterItems()
-        {
-            return _yearFilterSource.Connect();
-        }
-        #endregion
-
         private ObservableCollection<LineItem> _backgroundFilteredLines;
-        private bool _isFiltering = false;
         private bool _isFiltered = false;
+        private bool _isFiltering = false;
         private Layout _layout;
 
         private ObservableCollection<LineItem> BackgroundFilteredLines

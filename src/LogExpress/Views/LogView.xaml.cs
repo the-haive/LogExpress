@@ -19,6 +19,7 @@ namespace LogExpress.Views
             LinesCtrl = this.FindControl<ListBox>("Lines");
             FileFilterCtrl = this.FindControl<ComboBox>("FileFilter");
             SeverityFilterCtrl = this.FindControl<ComboBox>("SeverityFilter");
+            TimeFilterCtrl = this.FindControl<ComboBox>("TimeFilter");
             SearchQueryCtrl = this.FindControl<TextBox>("SearchQuery");
         }
 
@@ -26,6 +27,7 @@ namespace LogExpress.Views
         public ListBox LinesCtrl { get; private set; }
         public ComboBox FileFilterCtrl { get; set; }
         public ComboBox SeverityFilterCtrl { get; set; }
+        public ComboBox TimeFilterCtrl { get; set; }
         public TextBox SearchQueryCtrl { get; set; }
     }
 }
