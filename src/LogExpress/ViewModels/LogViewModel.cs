@@ -24,29 +24,21 @@ using ScopedFile = LogExpress.Models.ScopedFile;
 
 namespace LogExpress.ViewModels
 {
-    public class LogViewModel : ViewModelBase
+    public class LogViewModel : ViewModelBase, IDisposable
     {
         private static readonly ILogger Logger = Log.ForContext<LogViewModel>();
-        private readonly IObservable<bool> _hasLineSelection;
+        private IObservable<bool> _hasLineSelection;
 
         private readonly LogView _logView;
-        private readonly ObservableAsPropertyHelper<long> _totalSize;
+        private ObservableAsPropertyHelper<long> _totalSize;
 
         [UsedImplicitly] public VirtualLogFile VirtualLogFile { get; set; }
 
-        private string _basePath;
+        private readonly string _basePath;
         private ObservableCollection<LineItem> _lines;
         private LineItem _lineSelected;
         private ObservableCollection<LineItem> _linesSelected = new ObservableCollection<LineItem>();
         private string _severityMapFile;
-        private bool _selectedLast;
-
-        [UsedImplicitly]
-        public string BasePath
-        {
-            get => _basePath;
-            set => this.RaiseAndSetIfChanged(ref _basePath, value);
-        }
 
         public ObservableCollection<LineItem> Lines
         {
@@ -79,16 +71,19 @@ namespace LogExpress.ViewModels
 
         public LogViewModel(string basePath, string filter, in bool recursive, Layout layout, LogView logView)
         {
-            BasePath = basePath;
+            _basePath = basePath;
             Tail = true;
+            _layout = layout;
             _logView = logView;
+            _filter = filter;
+            _recursive = recursive;
 
-            Severity1Name = "TRACE";
-            Severity2Name = "DEBUG";
-            Severity3Name = "INFO";
-            Severity4Name = "WARN";
-            Severity4Name = "ERROR";
-            Severity4Name = "FATAL";
+            Severity1Name = _layout.Severities[1];
+            Severity2Name = _layout.Severities[2];
+            Severity3Name = _layout.Severities[3];
+            Severity4Name = _layout.Severities[4];
+            Severity5Name = _layout.Severities[5];
+            Severity6Name = _layout.Severities[6];
 
             TimeFilterItems = new ReadOnlyObservableCollection<FilterItem<int>>(new ObservableCollection<FilterItem<int>>(new List<FilterItem<int>>()
             {
@@ -100,7 +95,7 @@ namespace LogExpress.ViewModels
                 new FilterItem<int>(5, 5,"Custom Range..."),
             }));
 
-            VirtualLogFile = new VirtualLogFile(BasePath, filter, recursive, layout);
+            VirtualLogFile = new VirtualLogFile(_basePath, _filter, _recursive, _layout);
 
             _totalSize = VirtualLogFile.WhenAnyValue(x => x.TotalSize)
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -115,7 +110,7 @@ namespace LogExpress.ViewModels
                     _logView.SeverityMap.Source = bitmap;
                 });
 
-            VirtualLogFile.WhenAnyValue(x => x.Layout)
+/*            VirtualLogFile.WhenAnyValue(x => x.Layout)
                 .Where(obsLayout => obsLayout != null)
                 .Subscribe(obsLayout =>
                 {
@@ -126,7 +121,7 @@ namespace LogExpress.ViewModels
                     Severity5Name = obsLayout.Severities[5];
                     Severity6Name = obsLayout.Severities[6];
                 });
-
+*/
             VirtualLogFile.WhenAnyValue(x => x.AllLines)
                 .Where(x => x != null)
                 .Subscribe(x =>
@@ -226,7 +221,7 @@ namespace LogExpress.ViewModels
              * @Spiralis you can get the scrollviewer via ListBox.Scroll and check the Extent and Viewport properties: if the extent is larger than the viewport then you have an "overflow"
              */
 
-            // TODO: Move rendering the minimap here (fromthe VirtualLogFile)
+            // TODO: Move rendering the minimap here (from the VirtualLogFile)
             // TODO: Append to the minimap for normal log writes (line-additions).
             // TODO: An idea could be to make the original loaded lines the Main minimap, then any added lines become the "Appended" minmap. Show these in a grid, with weight-factors according to the number of lines they represent.
             // TODO: If/when the number of appended lines is larger than i.e. 500_000 lines then recreate the main minimap and delete the appended.
@@ -235,7 +230,6 @@ namespace LogExpress.ViewModels
             VirtualLogFile.WhenAnyValue(x => x.FilteredLines)
                 .Where(x => x != null && x.Any())
                 .Delay(new TimeSpan(0, 0, 1))
-                .TakeUntil(_ => _selectedLast)
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
@@ -273,6 +267,33 @@ namespace LogExpress.ViewModels
             DeselectCommand = ReactiveCommand.Create(DeselectExecute);
         }
 
+        ~LogViewModel()
+        {
+            // Finalizer calls Dispose(false)
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposing) return;
+
+            if (VirtualLogFile != null) VirtualLogFile.AllLines.CollectionChanged -= LinesUpdated;
+            VirtualLogFile?.Dispose();
+            _lines.Clear();
+            _linesSelected.Clear();
+            _totalSize?.Dispose();
+            _fileFilterEnabled.Dispose();
+            _fileFilterEnabled.Dispose();
+            _severityFilterEnabled.Dispose();
+            _timeFilterEnabled.Dispose();
+        }
+
         public bool _lineUpdateNeeded;
         
         public bool LineUpdateNeeded
@@ -286,53 +307,25 @@ namespace LogExpress.ViewModels
             LineUpdateNeeded = true;
         }
 
-        ~LogViewModel()
-        {
-            if (VirtualLogFile != null) VirtualLogFile.AllLines.CollectionChanged -= LinesUpdated;
-            _totalSize?.Dispose();
-            VirtualLogFile?.Dispose();
-        }
 
         #endregion Constructor / deconstructor
 
         #region FileFilter
-        private readonly ReadOnlyObservableCollection<FilterItem<ScopedFile>> _fileFilterItems;
+        private ReadOnlyObservableCollection<FilterItem<ScopedFile>> _fileFilterItems;
         public ReadOnlyObservableCollection<FilterItem<ScopedFile>> FileFilterItems => _fileFilterItems;
 
-        private readonly ObservableAsPropertyHelper<bool> _fileFilterEnabled;
-        [UsedImplicitly] public bool FileFilterEnabled => _fileFilterEnabled.Value;
-
-        private void BrowseFileBack()
-        {
-            var match = _lineSelected != null
-                ? VirtualLogFile.FilteredLines.LastOrDefault(l => l.CreationTimeTicks < _lineSelected.CreationTimeTicks)
-                : VirtualLogFile.FilteredLines.LastOrDefault();
-
-            if (match == null) return;
-
-            _logView.LinesCtrl.SelectedItem = match;
-        }
-
-        private void BrowseFileFrwd()
-        {
-            var match = _lineSelected != null
-                ? VirtualLogFile.FilteredLines.FirstOrDefault(l => l.CreationTimeTicks > _lineSelected.CreationTimeTicks)
-                : VirtualLogFile.FilteredLines.FirstOrDefault();
-
-            if (match == null) return;
-
-            _logView.LinesCtrl.SelectedItem = match;
-        }
+        private ObservableAsPropertyHelper<bool> _fileFilterEnabled;
+        [UsedImplicitly] public bool FileFilterEnabled => _fileFilterEnabled != null && _fileFilterEnabled.Value;
 
         #endregion
 
         #region SeverityFilter
 
-        private readonly ReadOnlyObservableCollection<FilterItem<int>> _severityFilterItems;
+        private ReadOnlyObservableCollection<FilterItem<int>> _severityFilterItems;
         public ReadOnlyObservableCollection<FilterItem<int>> SeverityFilterItems => _severityFilterItems;
         
-        private readonly ObservableAsPropertyHelper<bool> _severityFilterEnabled;
-        [UsedImplicitly] public bool SeverityFilterEnabled => _severityFilterEnabled.Value;
+        private ObservableAsPropertyHelper<bool> _severityFilterEnabled;
+        [UsedImplicitly] public bool SeverityFilterEnabled => _severityFilterEnabled != null && _severityFilterEnabled.Value;
         
         private void BrowseSeverityBack(int level)
         {
@@ -373,8 +366,8 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _timeFilterItems, value);
         }
 
-        private readonly ObservableAsPropertyHelper<bool> _timeFilterEnabled;
-        [UsedImplicitly] public bool TimeFilterEnabled => _timeFilterEnabled.Value;
+        private ObservableAsPropertyHelper<bool> _timeFilterEnabled;
+        [UsedImplicitly] public bool TimeFilterEnabled => _timeFilterEnabled != null && _timeFilterEnabled.Value;
 
         private FilterItem<int> _timeFilterSelected;
         [UsedImplicitly]
@@ -411,9 +404,9 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> SearchFilter { get; }
         public ReactiveCommand<Unit, Unit> SearchFilterReset { get; }
-        public ReactiveCommand<Unit, Unit> BrowseSearchBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSearchBackCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseSearchFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSearchFrwdCommand { get; set; }
 
         internal void BrowseSearchBack()
         {
@@ -526,29 +519,29 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _severity6Name, value);
         }
 
-        public ReactiveCommand<Unit, Unit> BrowseSeverity4BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSeverity4BackCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseSeverity4FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSeverity4FrwdCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseSeverity5BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSeverity5BackCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseSeverity5FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSeverity5FrwdCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseSeverity6BackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSeverity6BackCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseSeverity6FrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseSeverity6FrwdCommand { get; set; }
 
         #endregion
 
         #region TimeBrowse
 
-        public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayBackCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeDayFrwdCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourBackCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; }
+        public ReactiveCommand<Unit, Unit> BrowseTimeHourFrwdCommand { get; set; }
 
         private void BrowseTimeBack(Func<DateTime, long> maxTicksFactory)
         {
@@ -598,10 +591,13 @@ namespace LogExpress.ViewModels
 
         #region Tools
         private bool _tail = true;
+        private Layout _layout;
+        private string _filter;
+        private bool _recursive;
 
-        public ReactiveCommand<Unit, Unit> CopyCommand { get; }
+        public ReactiveCommand<Unit, Unit> CopyCommand { get; set; }
 
-        public ReactiveCommand<Unit, Unit> TailCommand { get; }
+        public ReactiveCommand<Unit, Unit> TailCommand { get; set; }
 
         private async Task<Unit> CopyExecute()
         {
@@ -630,9 +626,9 @@ namespace LogExpress.ViewModels
 
         #endregion
 
-        public ReactiveCommand<Unit, Unit> DeselectCommand { get; }
+        public ReactiveCommand<Unit, Unit> DeselectCommand { get; set; }
 
-        
+
         private void DeselectExecute()
         {
             if (LineSelected != null)

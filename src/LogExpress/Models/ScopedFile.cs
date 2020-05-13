@@ -91,7 +91,7 @@ namespace LogExpress.Models
 
                 var buffer = new Span<char>(new char[Layout.TimestampLength]);
 
-                reader.BaseStream.Seek(Layout.TimestampStart - 1, SeekOrigin.Begin);
+                reader.BaseStream.Seek(Layout.TimestampStart, SeekOrigin.Begin);
                 var numRead = reader.Read(buffer);
                 if (numRead == -1)
                 {
@@ -171,11 +171,6 @@ namespace LogExpress.Models
 
                 return _endDate.Value;
             }
-        }
-
-        public static string SampleSeverities
-        {
-            get { return ""; }
         }
 
         public DateTime? GetTimestamp(Span<char> buffer)
@@ -287,22 +282,19 @@ namespace LogExpress.Models
             }
         }
 
-        // TODO: Create method to find all Severity dependent on a given start-position (from LineItem.Position, typically)
-        // TODO: The method should take a Reader and the Layout in order to not have to create the reader for every read.
         /// <summary>
-        /// Find the logLevel for the logfile line given by the layout
+        /// Find the logLevel in the logfile line
         /// </summary>
         /// <param name="reader"></param>
         /// <param name="layout"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        internal static byte ReadFileLineSeverity(StreamReader reader, Layout layout, long position)
+        internal static byte ReadFileLineSeverity(StreamReader reader, Layout layout, uint position)
         {
-            if (layout == null) return 0;
-
             var longestSeverity = layout.Severities.OrderByDescending(s => s.Value.Length).First().Value.Length;
             var buffer = new Span<char>(new char[longestSeverity]);
-            reader.BaseStream.Seek(position + layout.SeverityStart - 1, SeekOrigin.Begin);
+
+            reader.BaseStream.Seek(position + layout.SeverityStart, SeekOrigin.Begin);
             reader.DiscardBufferedData();
             var numRead = reader.Read(buffer);
             
@@ -323,10 +315,16 @@ namespace LogExpress.Models
 
     public class Layout
     {
+        private Dictionary<byte, string> _severities;
         public int TimestampStart { get; set; }
         public int TimestampLength { get; set; }
         public string TimestampFormat { get; set; }
         public int SeverityStart { get; set; }
-        public Dictionary<byte, string> Severities { get; set; }
+
+        public Dictionary<byte, string> Severities
+        {
+            get => _severities;
+            set => _severities = value.Where(pair => pair.Value.Length > 0).ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
     }
 }

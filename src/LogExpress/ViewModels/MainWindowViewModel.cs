@@ -65,7 +65,7 @@ namespace LogExpress.ViewModels
         private ObservableAsPropertyHelper<string> _infoBarRange;
         private ObservableAsPropertyHelper<string> _infoBarRangeFilter;
         private ObservableAsPropertyHelper<string> _infoBarRangeToolTip;
-        private ObservableAsPropertyHelper<string> _infoBarRangeToolTipFilter;
+        private ObservableAsPropertyHelper<string> _infoBarRangeFilterToolTip;
         private string _infoBarScope;
         private string _infoBarScopeFilter;
         private GridLength _lastFilterPaneHeight = FilterGridExpanded;
@@ -74,7 +74,6 @@ namespace LogExpress.ViewModels
         private string _pattern = string.Empty;
         private bool _recursive;
 
-        private bool _showLogPanel;
         public MainWindowViewModel(MainWindow mainWindow)
         {
             AppTitle = App.TitleWithVersion;
@@ -110,8 +109,8 @@ namespace LogExpress.ViewModels
                 .WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive, x => x.Layout)
                 .Where(((string baseDir, string filter, bool recursive, Layout layout) observerTuple) =>
                 {
-                    var (baseDir, filter, _, _) = observerTuple;
-                    return !string.IsNullOrWhiteSpace(baseDir) && !string.IsNullOrWhiteSpace(filter);
+                    var (baseDir, filter, _, layout) = observerTuple;
+                    return !string.IsNullOrWhiteSpace(baseDir) && !string.IsNullOrWhiteSpace(filter) && layout != null;
                 })
                 .Throttle(LogArgsChangeThreshold)
                 .ObserveOn(RxApp.TaskpoolScheduler)
@@ -253,7 +252,7 @@ namespace LogExpress.ViewModels
         public string InfoBarRangeFilter => _infoBarRangeFilter?.Value;
 
         public string InfoBarRangeToolTip => _infoBarRangeToolTip?.Value;
-        public string InfoBarRangeToolTipFilter => _infoBarRangeToolTipFilter?.Value;
+        public string InfoBarRangeFilterToolTip => _infoBarRangeFilterToolTip?.Value;
 
         public string InfoBarScope
         {
@@ -289,11 +288,11 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _recursive, value);
         }
 
-        public bool ShowLogPanel
-        {
-            get => _showLogPanel;
-            set => this.RaiseAndSetIfChanged(ref _showLogPanel, value);
-        }
+        private ObservableAsPropertyHelper<bool> _showLogPanel;
+        private ObservableAsPropertyHelper<bool> _isAnalyzed;
+        private ObservableAsPropertyHelper<bool> _isFiltering;
+        private ObservableAsPropertyHelper<bool> _isFiltered;
+
 
         public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
 
@@ -304,7 +303,9 @@ namespace LogExpress.ViewModels
             pattern ??= Pattern;
             recursive ??= Recursive;
             var configureSetView = new ConfigureSetView();
-            configureSetView.DataContext = new ConfigureSetViewModel(configureSetView, folder, pattern, recursive.Value, Layout);
+            var configureSetViewModel = new ConfigureSetViewModel(configureSetView, folder, pattern, recursive.Value, Layout);
+            configureSetViewModel.Init();
+            configureSetView.DataContext = configureSetViewModel;
             var layout = await configureSetView?.ShowDialog<Layout>(_mainWindow);
             if (layout != null)
             {
@@ -343,13 +344,15 @@ namespace LogExpress.ViewModels
 
         private void Drop(object sender, DragEventArgs e)
         {
+/*
             if (e.Data.Contains(DataFormats.Text))
             {
-                Logger.Information("Text dropped in application: {Text}", e.Data.GetText());
+                Logger.Information("TODO: Text dropped in application: {Text}", e.Data.GetText());
             }
-            else if (e.Data.Contains(DataFormats.FileNames))
+*/
+            if (e.Data.Contains(DataFormats.FileNames))
             {
-                Logger.Information("Files(s) dropped in application: {Filenames}", string.Join(", ", e.Data.GetFileNames()));
+                Logger.Information("TODO: Files(s) dropped in application: {Filenames}", string.Join(", ", e.Data.GetFileNames()));
             }
         }
 
@@ -595,7 +598,21 @@ namespace LogExpress.ViewModels
                             .ToProperty(this, x => x.InfoBarSelectedLine);
             */
 
-            // TODO: Add binding HasFilter
+            _isAnalyzed = LogViewModel.VirtualLogFile
+                .WhenAnyValue(x => x.IsAnalyzed)
+                .ToProperty(this, x => x.IsAnalyzed);
+
+            _isFiltering = LogViewModel.VirtualLogFile
+                .WhenAnyValue(x => x.IsFiltering)
+                .ToProperty(this, x => x.IsFiltering);
+
+            _isFiltered = LogViewModel.VirtualLogFile
+                .WhenAnyValue(x => x.IsFiltering)
+                .ToProperty(this, x => x.IsFiltered);
+
+            _showLogPanel = this
+                .WhenAnyValue(x => x.Folder, x => x.Pattern,(string folder, string pattern) => !string.IsNullOrWhiteSpace(folder) && !string.IsNullOrWhiteSpace(pattern))
+                .ToProperty(this, x => x.ShowLogPanel);
 
             _infoBarRange = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.Range)
                 .Select(x =>
@@ -647,7 +664,7 @@ namespace LogExpress.ViewModels
                             chHandler => obs.CollectionChanged += chHandler,
                             chHandler => obs.CollectionChanged -= chHandler);
                     logStatsChanged
-                        .DistinctUntilChanged()
+                        .Throttle(TimeSpan.FromMilliseconds(200))
                         .Subscribe(_ =>
                     {
                         var severityStats = LogViewModel.VirtualLogFile.SeverityStats;
@@ -687,6 +704,11 @@ namespace LogExpress.ViewModels
                     });
                 });
         }
+
+        public bool IsFiltered { get; set; }
+        public bool IsFiltering { get; set; }
+        public bool IsAnalyzed { get; set; }
+        public bool ShowLogPanel { get; set; }
 
         private void ToggleThemeExecute()
         {

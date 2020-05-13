@@ -89,7 +89,7 @@
                   </DrawingGroup.Transform>
                 </DrawingGroup>
               </DrawingPresenter.Drawing>
-	          </DrawingPresenter>	
+	          </DrawingPresenter>
           </MenuItem.Icon>
         </MenuItem>
         <MenuItem Header="_Dark Theme" Command="{Binding ToggleThemeCommand}">
@@ -103,68 +103,79 @@
       </MenuItem>
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
-    <TextBlock Text="Debugger" IsVisible="False"/>
-    <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="0">
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="Filtered" IsEnabled="False" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+    <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="0" VerticalAlignment="Bottom" IsVisible="{Binding ShowLogPanel}">
+      <!--StackPanel Orientation="Vertical" Background="YellowGreen" >
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <TextBox IsEnabled="False" Text="IsAnalyzed:" /><TextBox IsEnabled="False" Text="{Binding IsAnalyzed}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <TextBox IsEnabled="False" Text="IsFiltering:" /><TextBox IsEnabled="False" Text="{Binding IsFiltering}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <TextBox IsEnabled="False" Text="IsFiltered:" /><TextBox IsEnabled="False" Text="{Binding IsFiltered}"/>
+        </StackPanel>
+      </StackPanel>
+      <Separator /-->
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="Filtered" IsEnabled="False" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="Totals" IsEnabled="False"/>
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarScopeFilter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarScopeFilter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarScope}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarRangeFilter}" ToolTip.Tip="{Binding InfoBarRangeFilterToolTip}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarRangeFilter}" ToolTip.Tip="{Binding InfoBarRangeFilterToolTip}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarRange}" ToolTip.Tip="{Binding InfoBarRangeToolTip}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarByteSizeFilter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarByteSizeFilter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarByteSize}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarLineCountFilter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarLineCountFilter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarLineCount}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity1Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity1Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity1}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity2Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity2Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity2}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity3Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity3Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity3}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity4Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity4Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity4}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity5Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity5Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity5}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity6Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity6Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity6}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical">
-        <TextBox Text="{Binding InfoBarSeverity0Filter}" IsVisible="{Binding LogViewModel.VirtualLogFile.IsFiltered}"/>
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+        <TextBox Text="{Binding InfoBarSeverity0Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity0}" />
       </StackPanel>
     </StackPanel>
-    <views:LogView Name="LogPanel" Grid.Row="0" IsVisible="{Binding ShowLogPanel}" DataContext="{Binding LogViewModel}"/>
+    <views:LogView Name="LogPanel" DataContext="{Binding LogViewModel}" IsVisible="{Binding #InfoBar.IsVisible}"/>
   </DockPanel>
 </Window>

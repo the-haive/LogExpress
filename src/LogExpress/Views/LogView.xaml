@@ -107,9 +107,13 @@
           </DockPanel>
           <DockPanel LastChildFill="True" Classes="item">
             <TextBlock Text="Time" DockPanel.Dock="Top"/>
+            <!--
+              Until implemented the TimeFilter is disabled
+              IsEnabled="{Binding TimeFilterEnabled}"
+            -->
             <ComboBox Name="TimeFilter" Width="80" 
                       SelectedItem="{Binding TimeFilterSelected}"
-                      IsEnabled="{Binding TimeFilterEnabled}"
+                      IsEnabled="False"
                       Items="{Binding TimeFilterItems}">
               <ComboBox.ItemTemplate>
                 <DataTemplate>
@@ -125,7 +129,7 @@
           <StackPanel Name="Search" Orientation="Vertical">
             <TextBox Name="SearchQuery" Watermark="Search" HorizontalAlignment="Stretch" Margin="0" Padding="5 3 5 3" FontSize="10" Text="{Binding SearchQuery}" AcceptsReturn="False"/>
             <StackPanel Orientation="Horizontal">
-              <Button Command="{Binding SearchFilter}" Classes="item" ToolTip.Tip="Click to apply the search as a filter" Margin="0 0 0 0" Width="65">
+              <Button Command="{Binding SearchFilter}" Classes="item" ToolTip.Tip="Not implemented yet" Margin="0 0 0 0" Width="65">
                 <DockPanel LastChildFill="True" >
                   <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Left">
                     <DrawingPresenter.Drawing>
@@ -140,7 +144,7 @@
                   <TextBlock Text="Filter" Margin="5 0" HorizontalAlignment="Left"/>
                 </DockPanel>
               </Button>
-              <Button Command="{Binding SearchFilterReset}" Classes="item" Margin="0 0 0 0" >
+              <Button Command="{Binding SearchFilterReset}" ToolTip.Tip="Not implemented yet" Classes="item" Margin="0 0 0 0" >
                 <DrawingPresenter Height="12" Width="12">
                   <DrawingPresenter.Drawing>
                     <DrawingGroup>

@@ -65,12 +65,7 @@ namespace LogExpress.Utils
         public new TValue AddOrUpdate(TKey key, Func<TKey, TValue> addValueFactory,
             Func<TKey, TValue, TValue> updateValueFactory)
         {
-            var wasUpdate = false;
-            var value = base.AddOrUpdate(key, addValueFactory, (k, v) =>
-            {
-                wasUpdate = true;
-                return updateValueFactory(k, v);
-            });
+            var value = base.AddOrUpdate(key, addValueFactory, updateValueFactory);
 
             //TODO: Fix update-notifications -if possible. The following line does not work (NotifyCollectionChangedAction.Replace not allowed)
             //OnCollectionChanged(new NotifyCollectionChangedEventArgs(wasUpdate ? NotifyCollectionChangedAction.Replace : NotifyCollectionChangedAction.Add, new KeyValuePair<TKey, TValue>(key, value), Keys.ToList().IndexOf(key)));
@@ -106,12 +101,7 @@ namespace LogExpress.Utils
         /// </exception>
         public new TValue AddOrUpdate(TKey key, TValue addValue, Func<TKey, TValue, TValue> updateValueFactory)
         {
-            var wasUpdate = false;
-            var value = base.AddOrUpdate(key, addValue, (k, v) =>
-            {
-                wasUpdate = true;
-                return updateValueFactory(k, v);
-            });
+            var value = base.AddOrUpdate(key, addValue, updateValueFactory);
 
             //TODO: Fix update-notifications -if possible. The following line does not work (NotifyCollectionChangedAction.Replace not allowed)
             //OnCollectionChanged(new NotifyCollectionChangedEventArgs(wasUpdate ? NotifyCollectionChangedAction.Replace : NotifyCollectionChangedAction.Add, new KeyValuePair<TKey, TValue>(key, value), Keys.ToList().IndexOf(key)));
@@ -154,12 +144,7 @@ namespace LogExpress.Utils
         public new TValue AddOrUpdate<TArg>(TKey key, Func<TKey, TArg, TValue> addValueFactory,
             Func<TKey, TValue, TArg, TValue> updateValueFactory, TArg factoryArgument)
         {
-            var wasAdded = false;
-            var value = base.AddOrUpdate(key, (k, a) =>
-            {
-                wasAdded = true;
-                return addValueFactory(k, a);
-            }, updateValueFactory, factoryArgument);
+            var value = base.AddOrUpdate(key, addValueFactory, updateValueFactory, factoryArgument);
 
             //TODO: Fix update-notifications -if possible. The following line does not work (NotifyCollectionChangedAction.Replace not allowed)
             //OnCollectionChanged(new NotifyCollectionChangedEventArgs(wasAdded ? NotifyCollectionChangedAction.Add : NotifyCollectionChangedAction.Replace, new KeyValuePair<TKey, TValue>(key, value), Keys.ToList().IndexOf(key)));

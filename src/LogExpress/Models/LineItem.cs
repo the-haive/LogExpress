@@ -6,6 +6,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Avalonia.Media;
+using JetBrains.Annotations;
 using LogExpress.Services;
 using Serilog;
 
@@ -100,15 +101,15 @@ namespace LogExpress.Models
         /// <summary>
         ///     Constructs a new LineItem
         /// </summary>
-        /// <param name="fileInfo">The file that the line was found in</param>
+        /// <param name="scopedFile">The file that the line was found in</param>
         /// <param name="lineNum">The lineNumber for this position</param>
         /// <param name="position">The actual position within the file (NB! Restricted to uint.MaxValue)</param>
         /// <param name="severity">The detected Severity, if any (0 = None)</param>
-        public LineItem(ScopedFile fileInfo, int lineNum, uint position, byte severity)
+        public LineItem(ScopedFile scopedFile, int lineNum, uint position, byte severity)
         {
             Debug.Assert((ulong) lineNum <= LineNumberMaxAndMask);
-            Debug.Assert(fileInfo.CreationTime.Ticks <= CreationDateTimeTicksMax);
-            Key = (GetCreationTimeTicks(fileInfo) << LineNumberBitLength) + (ulong) lineNum;
+            Debug.Assert(scopedFile.CreationTime.Ticks <= CreationDateTimeTicksMax);
+            Key = (GetCreationTimeTicks(scopedFile) << LineNumberBitLength) + (ulong) lineNum;
             Position = position;
             Severity = severity;
         }
@@ -117,7 +118,7 @@ namespace LogExpress.Models
         /// <summary>
         ///     Gets the content for the current LineItem instance
         /// </summary>
-        public string Content => ReadLineFromFilePosition(LogFile, Position);
+        public string Content => ContentFromDisk(LogFile, Position);
 
         public ScopedFile LogFile => LogFiles.FirstOrDefault(logFile => logFile.LinesListCreationTime == CreationTimeTicks);
 
@@ -144,6 +145,18 @@ namespace LogExpress.Models
         ///     this with ordinary log-level values.
         /// </summary>
         public byte Severity { get; }
+        public static byte SeverityFromDisk(ScopedFile scopedFile, uint position)
+        {
+            var layout = scopedFile.Layout;
+
+            if (layout == null) return 0;
+
+            // Try to fetch the date from the last log-entry
+            using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fileStream, scopedFile.Encoding);
+
+            return ScopedFile.ReadFileLineSeverity(reader, layout, position);
+        }
 
         /// <summary>
         ///     Log-colors as given by the Severity
@@ -155,7 +168,7 @@ namespace LogExpress.Models
         ///   Error" foregroundColor="Red"/>
         ///   Fatal" foregroundColor="Red" backgroundColor="White"/>
         /// </summary>
-        public Brush LogFgColor {
+        [UsedImplicitly] public Brush LogFgColor {
             get
             {
                 return Severity switch
@@ -180,7 +193,7 @@ namespace LogExpress.Models
         ///   Error" foregroundColor="Red"/>
         ///   Fatal" foregroundColor="Red" backgroundColor="White"/>
         /// </summary>
-        public Brush LogBgColor {
+        [UsedImplicitly] public Brush LogBgColor {
             get
             {
                 return Severity switch
@@ -196,7 +209,7 @@ namespace LogExpress.Models
             }
         }
 
-        public bool ShowNewFileSeparator => LineNumber == 1;
+        [UsedImplicitly] public bool ShowNewFileSeparator => LineNumber == 1;
 
         /// <summary>
         ///     File-positions in general are long values, but we want to enforce it to be max 4GB, by requiring
@@ -207,13 +220,13 @@ namespace LogExpress.Models
         /// <summary>
         /// Reads the date for the line from disk and parses it to a datetime, if a date was found
         /// </summary>
-        public DateTime? Timestamp => ReadDateFromFilePosition(LogFile, Position);
+        public DateTime? Timestamp => TimestampFromDisk(LogFile, Position);
 
-        private static DateTime? ReadDateFromFilePosition(ScopedFile file, long position)
+        public static DateTime? TimestampFromDisk(ScopedFile file, long position)
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream, file.Encoding);
-            reader.BaseStream.Seek(position + file.Layout.TimestampStart - 1, SeekOrigin.Begin);
+            reader.BaseStream.Seek(position + file.Layout.TimestampStart, SeekOrigin.Begin);
             
             // TODO: Make the date-length configurable
             var buffer = new Span<char>(new char[file.Layout.TimestampLength]);
@@ -230,7 +243,7 @@ namespace LogExpress.Models
             return timestamp;
         }
 
-        private static string ReadLineFromFilePosition(ScopedFile file, long position)
+        public static string ContentFromDisk(ScopedFile file, long position)
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream, file.Encoding);

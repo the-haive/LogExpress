@@ -2,9 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        Width="800"
-        MinWidth="650"
-        Height="850"
+        xmlns:controls="clr-namespace:LogExpress.Controls"
+        Width="900"
+        MinWidth="750"
+        Height="900"
         WindowStartupLocation="CenterOwner"
         x:Class="LogExpress.Views.ConfigureSetView"
         Title="ConfigureSetView">
@@ -36,10 +37,10 @@
     </Style>
   </Window.Styles>
   <DockPanel VerticalAlignment="Stretch" Margin="0 10" LastChildFill="True" HorizontalAlignment="Stretch">
-    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="800" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
+    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="900" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
       Configure Set
     </TextBlock>
-    <Border Classes="info" DockPanel.Dock="Top" Width="750">
+    <Border Classes="info" DockPanel.Dock="Top" Width="850">
       <StackPanel HorizontalAlignment="Center" Margin="10">
         <TextBlock>
           A log-file is something that most software write to using a "logging" tool, i.e: NLog, SeriLog, log4net, EntLib. LogExpress is designed to help navigate logs created by any of these libraries, but it does expect eash log-entry to contain a timestamp and a severity. 
@@ -52,24 +53,22 @@
         </TextBlock>
       </StackPanel>
     </Border>
-    <StackPanel DockPanel.Dock="Top" Spacing="10" Width="600" HorizontalAlignment="Stretch">
+    <StackPanel DockPanel.Dock="Top" Spacing="10" Width="700" HorizontalAlignment="Stretch">
       <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
         <StackPanel Name="Timestamp" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
           <TextBlock FontSize="16" FontWeight="Bold" HorizontalAlignment="Center">Timestamp</TextBlock>
-          <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
-            <TextBlock Text="Select the date/time in this line:" FontWeight="Bold"/>
-            <TextBox Text="{Binding TimestampLine}" Width="400" IsReadOnly="True">
-              <ToolTip.Tip>
-                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
-                  <TextBlock Text="Start column:" FontWeight="Bold"/>
-                  <TextBlock Text="{Binding TimestampStart}"/>
-                  <TextBlock Text="Length:" FontWeight="Bold"/>
-                  <TextBlock Text="{Binding TimestampStart}"/>
-                </StackPanel>
-              </ToolTip.Tip>
-            </TextBox>
+          <StackPanel Orientation="Vertical" Spacing="5" HorizontalAlignment="Center">
+            <TextBlock Text="Mark/select the date-time to autoset start and length:" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <controls:MarkerTextBox Text="{Binding TimestampLine}" Width="580" IsReadOnly="True" HorizontalAlignment="Center" FontSize="14" FontFamily="Consolas"
+                     SelectionStart="{Binding TimestampLineSelectionStart, Mode=TwoWay}"
+                     SelectionEnd="{Binding TimestampLineSelectionEnd, Mode=TwoWay}"
+          />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center" ToolTip.Tip="Expects format according to .Net DateTime.ParseExact API">
+            <!--TextBlock Text="Start:" FontWeight="Bold"/>
+            <TextBox Text="{Binding TimestampLineSelectionStart}" MaxLength="2" Width="25"/>
+            <TextBlock Text="End:" FontWeight="Bold"/>
+            <TextBox Text="{Binding TimestampLineSelectionEnd}" MaxLength="2" Width="25"/-->
             <TextBlock Text="Date format:" FontWeight="Bold"/>
             <TextBox Name="TimestampFormat" Text="{Binding TimestampFormat}" Width="200"/>
           </StackPanel>
@@ -78,48 +77,63 @@
       <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
         <StackPanel Name="Severity" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
           <TextBlock FontSize="16" FontWeight="Bold" HorizontalAlignment="Center">Severity</TextBlock>
-          <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
-            <TextBlock Text="Select the severity in this line:" FontWeight="Bold"/>
-            <TextBox Text="{Binding SeverityLine}" Width="400" IsReadOnly="True">
-              <ToolTip.Tip>
-                <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center">
-                  <TextBlock Text="Start column:" FontWeight="Bold"/>
-                  <TextBlock Text="{Binding SeverityStart}"/>
-                </StackPanel>
-              </ToolTip.Tip>
-            </TextBox>
+          <StackPanel Orientation="Vertical" Spacing="5" HorizontalAlignment="Center">
+            <TextBlock Text="Mark/select the severity to autoset start (the length is not needed):" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <controls:MarkerTextBox Text="{Binding SeverityLine}" Width="580" IsReadOnly="True" HorizontalAlignment="Center" FontSize="14" FontFamily="Consolas"
+                     SelectionStart="{Binding SeverityLineSelectionStart, Mode=TwoWay}"
+                     SelectionEnd="{Binding SeverityLineSelectionEnd, Mode=TwoWay}"/>
+            <!--StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
+              <TextBlock Text="Start:" FontWeight="Bold"/>
+              <TextBox Text="{Binding SeverityLineSelectionStart}" MaxLength="2" Width="25"/>
+            </StackPanel-->
           </StackPanel>
-          <TextBlock Text="Please define the actual log-levels along with their levels below. Note: The casing does matter!" HorizontalAlignment="Center"/>
-          <Grid ColumnDefinitions="Auto,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
-            <TextBlock Grid.Row="0" Grid.Column="0" Margin="5" FontWeight="Bold">Level</TextBlock><TextBlock Grid.Row="0" Grid.Column="1" Margin="5" FontWeight="Bold">Severity</TextBlock>
-            <TextBlock Grid.Row="1" Grid.Column="0" Margin="5" TextAlignment="Center">1</TextBlock><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SeverityName1, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="2" Grid.Column="0" Margin="5" TextAlignment="Center">2</TextBlock><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SeverityName2, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="3" Grid.Column="0" Margin="5" TextAlignment="Center">3</TextBlock><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SeverityName3, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="4" Grid.Column="0" Margin="5" TextAlignment="Center">4</TextBlock><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SeverityName4, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="5" Grid.Column="0" Margin="5" TextAlignment="Center">5</TextBlock><TextBox Grid.Row="5" Grid.Column="1" Text="{Binding SeverityName5, Mode=TwoWay}"/>
-            <TextBlock Grid.Row="6" Grid.Column="0" Margin="5" TextAlignment="Center">6</TextBlock><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SeverityName6, Mode=TwoWay}"/>
-          </Grid>
+          <TextBlock Text="Please define the actual log-levels along with their levels below. Note: The casing does matter!" HorizontalAlignment="Center" FontWeight="Bold"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+            <StackPanel Orientation="Vertical" Margin="20" VerticalAlignment="Center">
+              <Button Content="UPPERCASED" Command="{Binding UpperCaseCommand}" Padding="0"/>
+              <Button Content="lowercased" Command="{Binding LowerCaseCommand}" Padding="0"/>
+              <Button Content="Titlecased" Command="{Binding TitleCaseCommand}" Padding="0"/>
+            </StackPanel>
+            <Grid ColumnDefinitions="Auto,100, Auto,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
+              <TextBlock Grid.Row="0" Grid.Column="0" Margin="5" >Level</TextBlock>
+              <TextBlock Grid.Row="0" Grid.Column="1" Margin="5">Severity</TextBlock>
+              <TextBlock Grid.Row="0" Grid.Column="2" Margin="5" >Level</TextBlock>
+              <TextBlock Grid.Row="0" Grid.Column="3" Margin="5">Severity</TextBlock>
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Margin="5" TextAlignment="Center">1</TextBlock>
+              <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SeverityName1, Mode=TwoWay}"/>
+              <TextBlock Grid.Row="1" Grid.Column="2" Margin="5" TextAlignment="Center">4</TextBlock>
+              <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding SeverityName4, Mode=TwoWay}"/>
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Margin="5" TextAlignment="Center">2</TextBlock>
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SeverityName2, Mode=TwoWay}"/>
+              <TextBlock Grid.Row="2" Grid.Column="2" Margin="5" TextAlignment="Center">5</TextBlock>
+              <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding SeverityName5, Mode=TwoWay}"/>
+            
+              <TextBlock Grid.Row="3" Grid.Column="0" Margin="5" TextAlignment="Center">3</TextBlock>
+              <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SeverityName3, Mode=TwoWay}"/>
+              <TextBlock Grid.Row="3" Grid.Column="2" Margin="5" TextAlignment="Center">6</TextBlock>
+              <TextBox Grid.Row="3" Grid.Column="3" Text="{Binding SeverityName6, Mode=TwoWay}"/>
+            </Grid>
+            <StackPanel Orientation="Vertical" Margin="20" VerticalAlignment="Center">
+              <Button Content="Use NLog" Command="{Binding UseNLogCommand}" Padding="0"/>
+              <Button Content="Use SeriLog (long)" Command="{Binding UseSeriLogLongCommand}" Padding="0"/>
+              <Button Content="Use SeriLog (short)" Command="{Binding UseSeriLogShortNLogCommand}" Padding="0"/>
+              <Button Content="Use Log4j" Command="{Binding UseLog4JCommand}" Padding="0"/>
+              <Button Content="Use Python" Command="{Binding UsePythonCommand}" Padding="0"/>
+            </StackPanel>
+          </StackPanel>
         </StackPanel>
       </Border>
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-        <!--StackPanel Orientation="Vertical">
-          <Grid ColumnDefinitions="100,200" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Left">
-            <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" FontWeight="Bold">Timestamp</TextBlock>
-            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 10 0">Start column</TextBlock>
-            <TextBox Grid.Row="1" Grid.Column="1" Name="TimestampStart" HorizontalAlignment="Left" Width="30" TextAlignment="Right" MaxLength="3" Text="{Binding TimestampStart}" />
-            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 10 0">Length:</TextBlock>
-            <TextBox Grid.Row="2" Grid.Column="1" Name="TimestampLength" HorizontalAlignment="Left" Width="30" TextAlignment="Right"  MaxLength="3" Text="{Binding TimestampLength}" />
-            <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 10 0">Format:</TextBlock>
-            <TextBox Grid.Row="3" Grid.Column="1" Name="TimestampFormat" HorizontalAlignment="Left" Text="{Binding TimestampFormat}" Width="200"/>
-            <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" FontWeight="Bold" Margin="0 20 0 0">Severity</TextBlock>
-            <TextBlock Grid.Row="5" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 10 0">Start column:</TextBlock>
-            <TextBox Grid.Row="5" Grid.Column="1" Name="SeverityStart" HorizontalAlignment="Left" Width="30" MaxLength="3" Text="{Binding SeverityStart}" />
-          </Grid>
-        </StackPanel-->
-        <Separator Width="20"/>
-        <StackPanel Orientation="Vertical" Spacing="10" >
-        </StackPanel>
-      </StackPanel>
+    </StackPanel>
+    <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold">Verification table:</TextBlock>
+    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="25 0 0 0">
+      <TextBlock Width="142" FontWeight="Bold" FontSize="10">Filename</TextBlock>
+      <TextBlock Width="110" FontWeight="Bold" FontSize="10">Start-date</TextBlock>
+      <TextBlock Width="110" FontWeight="Bold" FontSize="10">End-date</TextBlock>
+      <TextBlock Width="110" FontWeight="Bold" FontSize="10">Timestamp</TextBlock>
+      <TextBlock Width="50" FontWeight="Bold" FontSize="10">Severity</TextBlock>
+      <TextBlock FontWeight="Bold" FontSize="10">Content</TextBlock>
     </StackPanel>
     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
@@ -133,26 +147,31 @@
                 IsCancel="True"/>
       </StackPanel>
     </StackPanel>
-    <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold">Parse samples:</TextBlock>
-    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="25 0 0 0">
-      <TextBlock Width="162" FontWeight="Bold">Name</TextBlock>
-      <TextBlock Width="130" FontWeight="Bold">Start-date</TextBlock>
-      <TextBlock Width="130" FontWeight="Bold">End-date</TextBlock>
-      <TextBlock FontWeight="Bold">Sample Severities</TextBlock>
-    </StackPanel>
     <ListBox
       Items="{Binding ParseSamples}"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
       Margin="20 0"
+      SelectionMode="Toggle"
       >
       <ListBox.ItemTemplate>
         <DataTemplate>
-          <StackPanel Orientation="Horizontal" ToolTip.Tip="{Binding FullName}">
-            <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0" Width="150"/>
-            <TextBlock Text="{Binding StartDate}" Margin="0 0 10 0" Width="120"/>
-            <TextBlock Text="{Binding EndDate}" Margin="0 0 10 0" Width="120"/>
-            <TextBlock Text="{Binding Severities}" />
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0" Width="130" FontSize="10" 
+                       ToolTip.Tip="{Binding FullName}"/>
+            <TextBlock Text="{Binding StartDate}" Margin="0 0 10 0" Width="100" Height="14" FontSize="10" 
+                       Background="{Binding SequenceErrorColor}" 
+                       ToolTip.Tip="{Binding SequenceErrorDetails}"/>
+            <TextBlock Text="{Binding EndDate}" Margin="0 0 10 0" Width="100" Height="14" FontSize="10" 
+                       Background="{Binding SequenceErrorColor}" 
+                       ToolTip.Tip="{Binding SequenceErrorDetails}"/>
+            <TextBlock Text="{Binding Timestamp}" Margin="0 0 10 0" Width="100" Height="14" FontSize="10" 
+                       Background="{Binding TimestampErrorColor}" 
+                       ToolTip.Tip="{Binding TimestampErrorDetails}"/>
+            <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="40" Height="14" FontSize="10" 
+                       Background="{Binding SeverityErrorColor}" 
+                       ToolTip.Tip="{Binding SeverityErrorDetails}"/>
+            <TextBlock Text="{Binding Content}" FontSize="10"/>
           </StackPanel>
         </DataTemplate>
       </ListBox.ItemTemplate>

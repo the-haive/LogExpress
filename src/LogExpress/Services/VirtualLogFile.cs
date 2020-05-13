@@ -30,21 +30,6 @@ namespace LogExpress.Services
     /// </summary>
     public class VirtualLogFile : ReactiveObject, IDisposable
     {
-        public readonly Dictionary<string, byte> SeverityLookup = new Dictionary<string, byte>
-        {
-            {"VRB", 1},
-            {"DBG", 2},
-            {"INF", 3},
-            {"WRN", 4},
-            {"ERR", 5},
-            {"FTL", 6},
-            {"WARN", 4},
-            {"TRACE", 1},
-            {"DEBUG", 2},
-            {"FATAL", 6},
-            {"VERBOSE", 1}
-        };
-
         public ObservableCollection<LineItem> LinesInBgThread;
         private static readonly ILogger Logger = Log.ForContext<VirtualLogFile>();
         private readonly ScopedFileMonitor _fileMonitor;
@@ -104,7 +89,6 @@ namespace LogExpress.Services
         private bool _isAnalyzed = false;
         private ObservableCollection<LineItem> _newLines;
         private (DateTime, DateTime) _range;
-        private List<int> _severityFilter = new List<int>();
         private Bitmap _severityMap;
 
         private string _severityMapFile;
@@ -125,9 +109,8 @@ namespace LogExpress.Services
             BasePath = basePath;
             Pattern = pattern;
             Layout = layout;
-            LineItem.LogFiles = LogFiles;
-
-            foreach (var pair in SeverityLookup) _severityMatchers.Add(new WordMatcher(pair.Key), pair.Value);
+            _severityMatchers.Clear();
+            foreach (var pair in layout.Severities) _severityMatchers.Add(new WordMatcher(pair.Value), pair.Key);
 
             Logger.Debug(
                 "Creating instance for basePath={basePath} and filters={filters} with recurse={recurse}",
@@ -227,13 +210,13 @@ namespace LogExpress.Services
                 .Subscribe(AddNewLinesExecute);
 
             this.WhenAnyValue(x => x.BackgroundFilteredLines)
-                //.Where(x => x != null && x.Any())
+                .Where(backgroundFilteredLines => backgroundFilteredLines != null && backgroundFilteredLines.Any())
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(collection =>
+                .Subscribe(backgroundFilteredLines =>
                 {
                     IsFiltering = false;
                     IsFiltered = true;
-                    FilteredLines = collection; 
+                    FilteredLines = backgroundFilteredLines; 
                 });
 
 
@@ -391,10 +374,18 @@ namespace LogExpress.Services
         {
             if (!disposing) return;
 
+            _activeLogFileMonitor?.Stop();
+            _allLines.Clear();
+            _filteredLines.Clear();
+            _newLines.Clear();
+            _severityMatchers.Clear();
+            _backgroundFilteredLines.Clear();
+            _severityStats.Clear();
             _severityMap.Dispose();
             _fileMonitorSubscription?.Dispose();
             _fileMonitor?.Dispose();
             _activeLogFileMonitor?.Dispose();
+            _severityFilterSource.Dispose();
         }
 
         private static void SeverityStatsIncrement(IDictionary<byte, long> severityStats, byte severity)
