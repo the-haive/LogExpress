@@ -110,18 +110,6 @@ namespace LogExpress.ViewModels
                     _logView.SeverityMap.Source = bitmap;
                 });
 
-/*            VirtualLogFile.WhenAnyValue(x => x.Layout)
-                .Where(obsLayout => obsLayout != null)
-                .Subscribe(obsLayout =>
-                {
-                    Severity1Name = obsLayout.Severities[1];
-                    Severity2Name = obsLayout.Severities[2];
-                    Severity3Name = obsLayout.Severities[3];
-                    Severity4Name = obsLayout.Severities[4];
-                    Severity5Name = obsLayout.Severities[5];
-                    Severity6Name = obsLayout.Severities[6];
-                });
-*/
             VirtualLogFile.WhenAnyValue(x => x.AllLines)
                 .Where(x => x != null)
                 .Subscribe(x =>
@@ -164,15 +152,16 @@ namespace LogExpress.ViewModels
 
             VirtualLogFile.ConnectSeverityFilterItems()
                 .Sort(SortExpressionComparer<FilterItem<int>>.Ascending(t => t.Key))
-                .ObserveOn(RxApp.MainThreadScheduler)
                 .Bind(out _severityFilterItems)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ =>
                 {
-                    if (_logView.SeverityFilterCtrl.SelectedItem == null)
+                    if (_severityFilterItems.Count == 6 && _logView.SeverityFilterCtrl.SelectedItem == null)
                     {
-                        _logView.SeverityFilterCtrl.SelectedIndex = 0;
+                        VirtualLogFile.SeverityFilterSelected = _severityFilterItems.First();
                     }
                 });
+
 
             _severityFilterEnabled = this.WhenAnyValue(x => x.SeverityFilterItems.Count, x => x.VirtualLogFile.IsFiltering)
                 .Select(obs =>
@@ -190,13 +179,11 @@ namespace LogExpress.ViewModels
                     return !isFiltering && timeFilterItems.Count > 0;
                 })
                 .DistinctUntilChanged()
-                .ObserveOn(RxApp.MainThreadScheduler)
                 .Do(_ =>
                 {
                     if (_logView.TimeFilterCtrl.SelectedItem == null)
                     {
                         TimeFilterSelected = TimeFilterItems.First();
-                        //_logView.TimeFilterCtrl.SelectedIndex = 0;
                     }
                 })
                 .ToProperty(this, x => x.TimeFilterEnabled);

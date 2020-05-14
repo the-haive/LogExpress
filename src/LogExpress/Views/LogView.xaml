@@ -237,6 +237,7 @@
       </StackPanel>
       <Image 
         Name="SeverityMap" 
+        IsVisible="{Binding VirtualLogFile.ShowLines}"
         Margin="0 20 0 38"
         Width="10" 
         Stretch="Fill"

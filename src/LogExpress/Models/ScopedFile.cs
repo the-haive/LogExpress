@@ -219,7 +219,6 @@ namespace LogExpress.Models
         // TODO: Simplify method to only return newlines. The caller can then iterate those and create LineItem entries
         internal static void ReadFileLinePositions(ObservableCollection<LineItem> newLines,
             StreamReader reader,
-            Dictionary<WordMatcher, byte> logLevelMatchers,
             ScopedFile file,
             uint lastLength = 0,
             int lastLineNumber = 1,
@@ -228,58 +227,28 @@ namespace LogExpress.Models
         {
             if (file.Length <= 0) return;
 
-            FindNewLinePositions();
+            var buffer = new Span<char>(new char[1]);
 
-            // Local method to encapsulate the Span, which is not allowed in async code
-            void FindNewLinePositions()
+            var lineNum = lastLineNumber;
+            var filePosition = lastLength;
+            var lastNewLinePos = lastPosition;
+            reader.BaseStream.Seek(filePosition, SeekOrigin.Begin);
+            reader.DiscardBufferedData();
+            while (!reader.EndOfStream)
             {
-                var buffer = new Span<char>(new char[1]);
-
-                // All files with length > 0 implicitly starts with a line
-/*
-                var lineNum = previousFileInfo == null ? 1 : lastLineNumber;
-                var filePosition = (uint) (previousFileInfo?.Length ?? 0);
-                var lastNewLinePos = previousFileInfo == null ? 0 : lastPosition;
-*/
-                var lineNum = lastLineNumber;
-                var filePosition = lastLength;
-                var lastNewLinePos = lastPosition;
-                byte logLevel = 0;
-                byte lastLogLevel = 0;
-                var linePos = 0;
-                reader.BaseStream.Seek(filePosition, SeekOrigin.Begin);
-                reader.DiscardBufferedData();
-                while (!reader.EndOfStream)
+                var numRead = reader.Read(buffer);
+                if (numRead == -1) continue; // End of stream
+                filePosition++;
+                if (buffer[0] == '\n')
                 {
-                    var numRead = reader.Read(buffer);
-                    if (numRead == -1) continue; // End of stream
-                    filePosition++;
-                    linePos++;
-
-                    // Check if the data read so far matches a logLevel indicator
-                    if (logLevel == 0 && linePos >= 25)
-                        foreach (var (wordMatcher, level) in logLevelMatchers)
-                        {
-                            if (!wordMatcher.IsMatch(buffer[0])) continue;
-                            logLevel = level;
-                            break;
-                        }
-
-                    if (buffer[0] == '\n')
-                    {
-                        lastLogLevel = logLevel > 0 ? logLevel : lastLogLevel;
-                        newLines.Add(new LineItem(file, lineNum, lastNewLinePos, lastLogLevel));
-                        lastNewLinePos = filePosition;
-                        lineNum += 1;
-                        logLevel = 0;
-                        linePos = 0;
-                        foreach (var (wordMatcher, _) in logLevelMatchers) wordMatcher.Reset();
-                    }
+                    newLines.Add(new LineItem(file, lineNum, lastNewLinePos));
+                    lastNewLinePos = filePosition;
+                    lineNum += 1;
                 }
-
-                if (filePosition >= lastNewLinePos)
-                    newLines.Add(new LineItem(file, lineNum, lastNewLinePos, lastLogLevel));
             }
+
+            if (filePosition >= lastNewLinePos)
+                newLines.Add(new LineItem(file, lineNum, lastNewLinePos));
         }
 
         /// <summary>
@@ -291,8 +260,7 @@ namespace LogExpress.Models
         /// <returns></returns>
         internal static byte ReadFileLineSeverity(StreamReader reader, Layout layout, uint position)
         {
-            var longestSeverity = layout.Severities.OrderByDescending(s => s.Value.Length).First().Value.Length;
-            var buffer = new Span<char>(new char[longestSeverity]);
+            var buffer = new Span<char>(new char[layout.MaxSeverityNameLength]);
 
             reader.BaseStream.Seek(position + layout.SeverityStart, SeekOrigin.Begin);
             reader.DiscardBufferedData();
@@ -316,6 +284,7 @@ namespace LogExpress.Models
     public class Layout
     {
         private Dictionary<byte, string> _severities;
+        private int _maxSeverityNameLength;
         public int TimestampStart { get; set; }
         public int TimestampLength { get; set; }
         public string TimestampFormat { get; set; }
@@ -325,6 +294,19 @@ namespace LogExpress.Models
         {
             get => _severities;
             set => _severities = value.Where(pair => pair.Value.Length > 0).ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        public int MaxSeverityNameLength
+        {
+            get
+            {
+                if (_maxSeverityNameLength == 0)
+                {
+                    _maxSeverityNameLength = Severities.OrderByDescending(s => s.Value.Length).First().Value.Length;
+                }
+
+                return _maxSeverityNameLength;
+            }
         }
     }
 }

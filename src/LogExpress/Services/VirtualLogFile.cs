@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -36,58 +37,13 @@ namespace LogExpress.Services
         private readonly IDisposable _fileMonitorSubscription;
         private readonly ReadOnlyObservableCollection<ScopedFile> _logFiles;
 
-        private readonly Dictionary<WordMatcher, byte> _severityMatchers = new Dictionary<WordMatcher, byte>();
-        /**
-         * TODO-list
-         * * Filters:
-         *   • Change the scopedFiles detector to parse start and end to find the date-range for every file.
-         *   • Use the aforementioned start-date as the creation-date in the file-info (avoid problems with copied files)
-         *   • Check for overlaps in the log-files loaded and show error message if that happens
-         *   • Use the aforementioned start- and end-dates to create a filter year-list.
-         *   • Use the above year-list filter to find out where to start and stop filtering, when the filter is applied.
-         *   • If more than two years range, then consider looking for the years in-between (should be rare cases only...?)
-         *   • Do not allow selecting a month until a year has been chosen. When chosen iterate the relevant files for months,
-         *     using a binary search approach.
-         *   • When a month-filter is chosen, use the info from the above month-list to know when to start and stop including lines.
-         *   • When using the day or hour up/down navigators, first use the file-info to see if the file is relevant, then use a
-         *     binary search to find the previous/next day or hour.
-         * * Mini-map:
-         *   • Move the generation of the map to the LogView
-         *   • Create a double resolution mini-map for AllLines and another for FilteredLines (if they differ).
-         *     Low-res: In the UI this will be about 3_000 pixels in height, and will contain all lines.
-         *     High-res: In the UI this will be a "fisheye", showing the higher resolution image at the same position as the
-         *       low-res version, giving the user a chance of seeing the actual log-severities.
-         *   • Each of the two above mentioned mini-maps are in reality to be composed by multiple images:
-         *   * First of all, we want them to be in two different resolutions:
-         *         Lo-res: In the UI this will be about 3_000 pixels in height, and will contain all lines.
-         *
-         * * File changes:
-         *   • File appends (active file only): Already done
-         *   • File rollover:
-         *     - If a new file is created, which becomes the new active file, then we assume rollover:
-         *         This is an easy scenario to include, as it means that we just add the new file to the file-list and mark it as the
-         *         active file and start monitoring it.
-         *     - If the active file is renamed, then we assume rollover:
-         *         We need to modify the "active file"-lines to reference the renamed file (changed folder and or name)
-         *         The new file is then just added and monitored as the new active file.
-         *   • File deleted: We should be able to remove the associated lines.
-         *   • File changed (not active): Alert user about the change, allowing for refresh?
-         *   • File moved: Update the affected lines to reference the file
-         *   • File added (not becoming the new active): Alert user about the change, allowing for refresh?
-         */
-        // Used to indicate the activeLogFile, as in the last file in the list (newest).
-        // This file will have a separate change-check as opposed to monitoring it (which would potentially spam with changes)
-        // Instead we check the file for changes 2-3 times per second instead. Which is fast enough for the eye to feel that
-        // it is live. Busy log-files could have tons of writes per second, and depending on the logging system changes could potentially
-        // be flushed for each write.
-        private FileInfo _activeLogFile;
-
         private Timer _activeLogFileMonitor;
         private ObservableCollection<LineItem> _allLines = new ObservableCollection<LineItem>();
         private bool _analyzeError;
         private ObservableCollection<LineItem> _filteredLines;
         private bool _isAnalyzed = false;
         private ObservableCollection<LineItem> _newLines;
+        private bool _newLinesRead;
         private (DateTime, DateTime) _range;
         private Bitmap _severityMap;
 
@@ -109,8 +65,6 @@ namespace LogExpress.Services
             BasePath = basePath;
             Pattern = pattern;
             Layout = layout;
-            _severityMatchers.Clear();
-            foreach (var pair in layout.Severities) _severityMatchers.Add(new WordMatcher(pair.Value), pair.Key);
 
             Logger.Debug(
                 "Creating instance for basePath={basePath} and filters={filters} with recurse={recurse}",
@@ -122,22 +76,38 @@ namespace LogExpress.Services
                 .Subscribe(_ =>
                 {
                     // TODO: Fix potential forever loop with Analyze failures
-                    AnalyzeError = false;
-                    InitializeLines();
+                    Init();
+                });
+
+            this.WhenAnyValue(x => x.NewLinesRead)
+                .Where(newLinesRead => newLinesRead)
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ =>
+                {
+                    AllLines = LinesInBgThread;
+                    Logger.Debug("Starting reading severities");
+                    var timer = Stopwatch.StartNew();
+                    InitializeSeverities();
+                    Logger.Debug("Finished reading severities. Duration: {Duration}", timer.Elapsed);
+                    IsAnalyzed = true;
                 });
 
             this.WhenAnyValue(x => x.IsAnalyzed)
-                .Where(x => x)
+                .Where(isAnalyzed => isAnalyzed)
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(x =>
+                .Subscribe(_ =>
                 {
-                    AllLines = LinesInBgThread;
-
+                    // Create SeverityMap to show on the side of the scrollbar
                     if (AllLines != null && AllLines.Any())
-                        // Create SeverityMap to show on the side of the scrollbar
+                    {
+                        Logger.Debug("Creating severity mini-map");
+                        var timer = Stopwatch.StartNew();
                         CreateSeverityMapImage();
+                        Logger.Debug("Finished creating severity mini-map. Duration: {Duration}", timer.Elapsed);
+                    }
 
-                    Logger.Debug("Finished analyzing");
+                    MonitorActiveLogFile();
+                    Logger.Debug("Monitoring active log-file for changes");
                 });
 
             _fileMonitor = new ScopedFileMonitor(BasePath, new List<string> {Pattern}, recursive);
@@ -145,13 +115,13 @@ namespace LogExpress.Services
             _fileMonitorSubscription = _fileMonitor.Connect()
                 .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
                 .Bind(out _logFiles)
-                .Subscribe(InitializeLines);
+                .Subscribe(Init);
 
-            this.WhenAnyValue(x => x.LogFiles, x => x.LogFiles.Count, x => x.IsAnalyzed)
-                .Where(((ReadOnlyObservableCollection<ScopedFile> logFiles, int count, bool isAnalyzed) obs) =>
+            this.WhenAnyValue(x => x.LogFiles, x => x.LogFiles.Count, x => x.NewLinesRead)
+                .Where(((ReadOnlyObservableCollection<ScopedFile> logFiles, int count, bool newLinesRead) obs) =>
                 {
-                    var (_, count, isAnalyzed) = obs;
-                    return isAnalyzed && count > 0;
+                    var (_, count, newLinesRead) = obs;
+                    return newLinesRead && count > 0;
                 })
                 .DistinctUntilChanged()
                 .Subscribe(tuple =>
@@ -167,7 +137,6 @@ namespace LogExpress.Services
                     var endDate = sortedItems.Last().EndDate;
                     Range = (startDate, endDate);
 
-                    MonitorActiveLogFile(tuple);
                 });
 
             this.WhenAnyValue(x => x.IsAnalyzed, x => x.IsFiltering)
@@ -179,29 +148,21 @@ namespace LogExpress.Services
                     ShowLines = !ShowProgress;
                 });
 
-            this.WhenAnyValue(x => x.SeverityStats, x => x.IsAnalyzed)
-                .Where(obs =>
-                {
-                    var (severityStats, isAnalyzed) = obs;
-                    return severityStats != null && isAnalyzed;
-                })
+            this.WhenAnyValue(x => x.IsAnalyzed)
+                .Where(isAnalyzed => isAnalyzed)
                 .Subscribe(_ =>
                 {
                     _severityFilterSource.Clear();
-                    foreach (var (severity, count) in SeverityStats)
+                    _severityFilterSource.AddOrUpdate(new FilterItem<int>(0, 0, "All", "Show all severities, including entries with undetected severity"));
+                    foreach (var (level, severity) in Layout.Severities)
                     {
-                        var name = severity == 0 ? "Any" : $"{severity}-{Layout.Severities[severity]}";
-                        var toolTip = severity switch
-                        {
-                            0 => string.Empty,
-                            6 => "Show severity level 6",
-                            _ => $"Show severity level {severity} and higher"
-                        };
-                        _severityFilterSource.AddOrUpdate(new FilterItem<int>(severity, severity, name, toolTip));
+                        var name = level == 0 ? "Any" : $"{level}-{severity}";
+                        var toolTip = level == 6
+                            ? "Show severity level 6"
+                            : $"Show severity level {severity} and higher";
+                        _severityFilterSource.AddOrUpdate(new FilterItem<int>(level, level, name, toolTip));
                     }
-
                 });
-
 
             // This works because we always create the NewLines collection when there is changes
             this.WhenAnyValue(x => x.NewLines)
@@ -222,20 +183,14 @@ namespace LogExpress.Services
 
             this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.FileFilterSelected,
                     x => x.SeverityFilterSelected)
-                .Where((
-                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, 
-                        FilterItem<int> severityFilterSelected) obs) =>
+                .Where(obs =>
                 {
                     var (isAnalyzed, lines, _, _) = obs;
                     return isAnalyzed && lines != null;
                 })
-                .Subscribe((
-                    (bool isAnalyzed, ObservableCollection<LineItem> lines, FilterItem<ScopedFile> fileFilterSelected, 
-                        FilterItem<int> severityFilterSelected) obs) =>
+                .Subscribe(obs =>
                 {
-                    var (_, _, fileFilterSelected, 
-                            severityFilterSelected) =
-                        obs;
+                    var (_, _, fileFilterSelected, severityFilterSelected) = obs;
 
                     if ((fileFilterSelected == null || fileFilterSelected.Key == 0)
                         && (severityFilterSelected == null || severityFilterSelected.Key == 0)
@@ -259,16 +214,27 @@ namespace LogExpress.Services
                 });
 
         }
+
+        private void Init(IChangeSet<ScopedFile, ulong> set = null)
+        {
+            AnalyzeError = false;
+            IsAnalyzed = false;
+            NewLinesRead = false;
+            ShowProgress = true;
+            ShowLines = !ShowProgress;
+            Logger.Debug("Starting reading newlines");
+            var timer = Stopwatch.StartNew();
+            InitializeLines(set);
+            Logger.Debug("Finished reading newlines. Duration: {Duration}", timer.Elapsed);
+            ShowProgress = false;
+            ShowLines = !ShowProgress;
+            NewLinesRead = true;
+        }
+
         ~VirtualLogFile()
         {
             // Finalizer calls Dispose(false)
             Dispose(false);
-        }
-
-        public FileInfo ActiveLogFile
-        {
-            get => _activeLogFile;
-            set => this.RaiseAndSetIfChanged(ref _activeLogFile, value);
         }
 
         public ObservableCollection<LineItem> AllLines
@@ -289,6 +255,12 @@ namespace LogExpress.Services
         {
             get => _filteredLines;
             set => this.RaiseAndSetIfChanged(ref _filteredLines, value);
+        }
+
+        public bool NewLinesRead
+        {
+            get => _newLinesRead;
+            set => this.RaiseAndSetIfChanged(ref _newLinesRead, value);
         }
 
         public bool IsAnalyzed
@@ -378,7 +350,6 @@ namespace LogExpress.Services
             _allLines.Clear();
             _filteredLines.Clear();
             _newLines.Clear();
-            _severityMatchers.Clear();
             _backgroundFilteredLines.Clear();
             _severityStats.Clear();
             _severityMap.Dispose();
@@ -435,40 +406,6 @@ namespace LogExpress.Services
             newLines.Clear();
         }
 
-        private void AnalyzeLinesInLogFile(object arg)
-        {
-            var (logFiles, changes) =
-                ((ReadOnlyObservableCollection<ScopedFile>, IChangeSet<ScopedFile, ulong>)) arg;
-
-            LinesInBgThread = new ObservableCollection<LineItem>();
-
-            // Do the all
-            var iterator = logFiles.GetEnumerator();
-            try
-            {
-                while (iterator.MoveNext())
-                {
-                    var scopedFile = iterator.Current;
-                    using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var reader = new StreamReader(fileStream, scopedFile.Encoding);
-
-                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader, _severityMatchers, scopedFile);
-                }
-
-                iterator.Dispose();
-                IsAnalyzed = true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Error during analyze", ex);
-                AnalyzeError = true;
-            }
-            finally
-            {
-                iterator.Dispose();
-            }
-        }
-
         private void CheckActiveLogFileChanged(object sender, ElapsedEventArgs e)
         {
             if (!_logFiles.Any()) return;
@@ -482,7 +419,17 @@ namespace LogExpress.Services
                 using var fileStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(fileStream, scopedFile.Encoding);
                 var newLines = new ObservableCollection<LineItem>();
-                ScopedFile.ReadFileLinePositions(newLines, reader, _severityMatchers, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
+                ScopedFile.ReadFileLinePositions(newLines, reader/*, _severityMatchers*/, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
+                byte lastSeverity = 0;
+                var count = newLines.Count;
+                for (var i = 0; i < count; i++)
+                {
+                    var lineItem = newLines[i];
+                    var severity = ScopedFile.ReadFileLineSeverity(reader, scopedFile.Layout, lineItem.Position);
+                    lineItem.Severity = severity != 0 ? severity : lastSeverity;
+                    lastSeverity = severity;
+                }
+
                 if (newLines.Any()) NewLines = newLines;
 
                 scopedFile.Length = (uint) fileInfo.Length;
@@ -495,6 +442,10 @@ namespace LogExpress.Services
         // Which means perhaps move it from here to the UI as a responsibility?
         private void CreateSeverityMapImage()
         {
+            SeverityStats = new ObservableConcurrentDictionary<byte, long>();
+            // ReSharper disable once PossibleInvalidCastExceptionInForeachLoop
+            foreach (byte i in Enumerable.Range(0, 7)) SeverityStats[i] = 0;
+
             const int targetPartImageHeight = 500_000;
             const int severityMapHeight = 2_048;
 
@@ -587,13 +538,47 @@ namespace LogExpress.Services
             return true;
         }
 
+        private void InitializeSeverities()
+        {
+            ScopedFile currentScopedFile = null;
+            FileStream currentFileStream = null;
+            StreamReader currentReader = null;
+
+            byte lastSeverity = 0;
+            var count = AllLines.Count;
+            for (var i = 0; i < count; i++)
+            {
+                var lineItem = AllLines[i];
+                if (lineItem.LogFile != currentScopedFile)
+                {
+                    if (currentReader != null)
+                    {
+                        currentReader.Dispose();
+                        currentFileStream.Dispose();
+                    }
+
+                    currentScopedFile = lineItem.LogFile;
+                    currentFileStream = new FileStream(currentScopedFile.FullName, FileMode.Open, FileAccess.Read,
+                        FileShare.ReadWrite);
+                    currentReader = new StreamReader(currentFileStream, currentScopedFile.Encoding);
+                }
+
+                var severity = ScopedFile.ReadFileLineSeverity(currentReader, currentScopedFile?.Layout, lineItem.Position);
+
+                // We use the severity for the previous line, if this line had no severity
+                lineItem.Severity = severity != 0 ? severity : lastSeverity;
+                lastSeverity = severity;
+            }
+
+            if (currentReader != null)
+            {
+                currentReader.Dispose();
+                currentFileStream.Dispose();
+            }
+        }
+
         private void InitializeLines(IChangeSet<ScopedFile, ulong> changes = null)
         {
-            IsAnalyzed = false;
-            SeverityStats = new ObservableConcurrentDictionary<byte, long>();
-            // ReSharper disable once PossibleInvalidCastExceptionInForeachLoop
-            foreach (byte i in Enumerable.Range(0, 7)) SeverityStats[i] = 0;
-
             LineItem.LogFiles = LogFiles;
             TotalSize = LogFiles.Sum(l => l.Length);
 
@@ -603,18 +588,44 @@ namespace LogExpress.Services
             }
 
             // TODO: Use a normal async task for this instead, or is this ok?
-            new Thread(AnalyzeLinesInLogFile)
-            {
-                Priority = ThreadPriority.Lowest,
-                IsBackground = true
-            }.Start((LogFiles, changes));
-        }
-        private void MonitorActiveLogFile(
-            (ReadOnlyObservableCollection<ScopedFile> scopedFiles, int count, bool isAnalyzed) tuple)
-        {
-            var (scopedFiles, _, isAnalyzed) = tuple;
+            
+            LinesInBgThread = new ObservableCollection<LineItem>();
 
-            if (scopedFiles == null || !scopedFiles.Any() || !isAnalyzed)
+            // Do the all
+            var iterator = LogFiles.GetEnumerator();
+            try
+            {
+                while (iterator.MoveNext())
+                {
+                    var scopedFile = iterator.Current;
+                    if (scopedFile == null)
+                    {
+                        Logger.Error("Unexpected error: The ScopedFile object in the LogFiles connection was null");
+                        break;
+                    }
+                    using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var reader = new StreamReader(fileStream, scopedFile.Encoding);
+
+                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader/*, _severityMatchers*/, scopedFile);
+                }
+
+                iterator.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error during analyze", ex);
+                AnalyzeError = true;
+            }
+            finally
+            {
+                iterator.Dispose();
+            }
+        }
+
+        private void MonitorActiveLogFile()
+        {
+
+            if (LogFiles == null || !LogFiles.Any() || !IsAnalyzed)
             {
                 _activeLogFileMonitor?.Dispose();
                 _activeLogFileMonitor = null;
@@ -676,38 +687,5 @@ namespace LogExpress.Services
         }
 
         #endregion Filters
-    }
-
-    public class WordMatcher
-    {
-        private readonly string _wordToCheck;
-        private bool _disqualified;
-        private int _matchCounter;
-
-        public WordMatcher(string wordToCheck)
-        {
-            _wordToCheck = wordToCheck;
-        }
-
-        public bool IsMatch(char nextChar)
-        {
-            // Already disqualified
-            if (_disqualified) return false;
-
-            // Check if the character matches (negate to update _disqualified immediately)
-            _disqualified = !_wordToCheck[_matchCounter].Equals(nextChar);
-
-            // No match
-            if (_disqualified) return false;
-
-            // Actual match!
-            return ++_matchCounter == _wordToCheck.Length;
-        }
-
-        public void Reset()
-        {
-            _matchCounter = 0;
-            _disqualified = false;
-        }
     }
 }

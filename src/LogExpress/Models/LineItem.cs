@@ -104,14 +104,12 @@ namespace LogExpress.Models
         /// <param name="scopedFile">The file that the line was found in</param>
         /// <param name="lineNum">The lineNumber for this position</param>
         /// <param name="position">The actual position within the file (NB! Restricted to uint.MaxValue)</param>
-        /// <param name="severity">The detected Severity, if any (0 = None)</param>
-        public LineItem(ScopedFile scopedFile, int lineNum, uint position, byte severity)
+        public LineItem(ScopedFile scopedFile, int lineNum, uint position)
         {
             Debug.Assert((ulong) lineNum <= LineNumberMaxAndMask);
             Debug.Assert(scopedFile.CreationTime.Ticks <= CreationDateTimeTicksMax);
             Key = (GetCreationTimeTicks(scopedFile) << LineNumberBitLength) + (ulong) lineNum;
             Position = position;
-            Severity = severity;
         }
 
 
@@ -144,7 +142,7 @@ namespace LogExpress.Models
         ///     Log-levels. Only need 3 bits, but since we have no other data that we want to add then we just assign
         ///     this with ordinary log-level values.
         /// </summary>
-        public byte Severity { get; }
+        public byte Severity { get; set; }
         public static byte SeverityFromDisk(ScopedFile scopedFile, uint position)
         {
             var layout = scopedFile.Layout;

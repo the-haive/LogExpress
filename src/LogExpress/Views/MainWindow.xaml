@@ -176,6 +176,6 @@
         <TextBox Text="{Binding InfoBarSeverity0}" />
       </StackPanel>
     </StackPanel>
-    <views:LogView Name="LogPanel" DataContext="{Binding LogViewModel}" IsVisible="{Binding #InfoBar.IsVisible}"/>
+    <views:LogView Name="LogPanel" DataContext="{Binding LogViewModel}"/>
   </DockPanel>
 </Window>
