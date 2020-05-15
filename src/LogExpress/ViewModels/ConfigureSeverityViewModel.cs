@@ -16,7 +16,7 @@ using Serilog;
 
 namespace LogExpress.ViewModels
 {
-    public class ConfigureSetViewModel : ViewModelBase, IDisposable
+    public class ConfigureSeverityViewModel : ViewModelBase, IDisposable
     {
         private static readonly ILogger Logger = Log.ForContext<LineItem>();
         private static readonly Brush ErrorColor = new SolidColorBrush(Colors.Red);
@@ -28,7 +28,7 @@ namespace LogExpress.ViewModels
         private IDisposable _timestampSubscription;
         private readonly TextInfo _textInfo= new CultureInfo("en-US",false).TextInfo;
 
-        public ConfigureSetViewModel(ConfigureSetView view, string folder, string pattern, bool recursive,
+        public ConfigureSeverityViewModel(ConfigureSeverityView view, string folder, string pattern, bool recursive,
             Layout layout = null)
         {
             View = view;
@@ -264,7 +264,7 @@ namespace LogExpress.ViewModels
                     Logger.Error(ex, "Error while trying to get data from disk");
                 }
 
-                var sample = new Sample()
+                var sample = new SeveritySample()
                 {
                     FullName = scopedFile.FullName,
                     RelativeFullName = scopedFile.RelativeFullName,
@@ -311,9 +311,9 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> OpenCommand { get; set; }
 
-        public ObservableCollection<Sample> ParseSamples{ get; set; } = new ObservableCollection<Sample>();
+        public ObservableCollection<SeveritySample> ParseSamples{ get; set; } = new ObservableCollection<SeveritySample>();
 
-        public ConfigureSetView View { get; }
+        public ConfigureSeverityView View { get; }
 
         private void CancelExecute()
         {
@@ -481,7 +481,7 @@ namespace LogExpress.ViewModels
 
         #region Implementation of IDisposable
 
-        ~ConfigureSetViewModel()
+        ~ConfigureSeverityViewModel()
         {
             // Finalizer calls Dispose(false)
             Dispose(false);
@@ -507,7 +507,7 @@ namespace LogExpress.ViewModels
         #endregion Implementation of IDisposable
     }
 
-    public class Sample: ReactiveObject
+    public class SeveritySample: ReactiveObject
     {
         public string RelativeFullName { get; set; }
         public string StartDate { get; set; }

@@ -25,7 +25,6 @@ namespace LogExpress.ViewModels
     {
         public static readonly ILogger Logger = Log.ForContext<MainWindowViewModel>();
 
-        private static readonly GridLength FilterGridCollapsed = new GridLength(0);
         private static readonly GridLength FilterGridExpanded = new GridLength(1, GridUnitType.Star);
         private static readonly TimeSpan LogArgsChangeThreshold = new TimeSpan(0, 0, 0, 0, 100);
         private readonly StyleInclude _darkTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog"))
@@ -68,7 +67,6 @@ namespace LogExpress.ViewModels
         private ObservableAsPropertyHelper<string> _infoBarRangeFilterToolTip;
         private string _infoBarScope;
         private string _infoBarScopeFilter;
-        private GridLength _lastFilterPaneHeight = FilterGridExpanded;
         private LogView _logView;
         private LogViewModel _logViewModel;
         private string _pattern = string.Empty;
@@ -83,9 +81,10 @@ namespace LogExpress.ViewModels
             _logView = _mainWindow.LogView;
 
             InitCommand = ReactiveCommand.Create(InitExecute);
-            OpenFileCommand = ReactiveCommand.Create(OpenFileExecute);
-            OpenSetCommand = ReactiveCommand.Create(OpenSetExecute);
-            ConfigureSetCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSetExecute);
+            //OpenFileCommand = ReactiveCommand.Create(OpenFileExecute);
+            OpenCommand = ReactiveCommand.Create(OpenExecute);
+            ConfigureTimestampCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureTimestampExecute);
+            ConfigureSeverityCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSeverityExecute);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplicationExecute);
             AboutCommand = ReactiveCommand.Create(AboutExecute);
@@ -147,8 +146,9 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> InitCommand { get; set; }
 
-        public ReactiveCommand<(string, string, bool?), Unit> ConfigureSetCommand { get; }
-
+        public ReactiveCommand<(string, string, bool?), Unit> ConfigureTimestampCommand { get; }
+        public ReactiveCommand<(string, string, bool?), Unit> ConfigureSeverityCommand { get; }
+        
         public ReactiveCommand<Unit, Unit> ExitCommand { get; }
         public ReactiveCommand<Unit, Unit> AboutCommand { get; }
         public ReactiveCommand<Unit, Unit> KeyGotoStartCommand { get; }
@@ -286,9 +286,9 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _logViewModel, value);
         }
 
-        public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
+        //public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> OpenSetCommand { get; }
+        public ReactiveCommand<Unit, Unit> OpenCommand { get; }
 
         public string Pattern
         {
@@ -309,17 +309,22 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
 
-        private async void ConfigureSetExecute((string folder, string pattern, bool? recursive) args)
+        private async void ConfigureTimestampExecute((string folder, string pattern, bool? recursive) args)
         {
             var (folder, pattern, recursive) = args;
             folder ??= Folder;
             pattern ??= Pattern;
             recursive ??= Recursive;
-            var configureSetView = new ConfigureSetView();
-            var configureSetViewModel = new ConfigureSetViewModel(configureSetView, folder, pattern, recursive.Value, Layout);
-            configureSetViewModel.Init();
-            configureSetView.DataContext = configureSetViewModel;
-            var layout = await configureSetView?.ShowDialog<Layout>(_mainWindow);
+            var configureTimestampView = new ConfigureTimestampView();
+            var configureTimestampViewModel = new ConfigureTimestampViewModel(configureTimestampView, folder, pattern, recursive.Value, Layout);
+            configureTimestampViewModel.Init();
+            configureTimestampView.DataContext = configureTimestampViewModel;
+
+            // TODO Handle results
+            // 1. Cancel
+            // 1. Prev (ConfigureScope): Keep the start and length, in case the user browses back (but don't set it so that loading will use it)
+            // 2. Next (ConfigureSeverity): Keep the value
+            var layout = await configureTimestampView?.ShowDialog<Layout>(_mainWindow);
             if (layout != null)
             {
                 Logger.Information("Layout set: TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampLeFormat='{TimestampFormat} SeverityStart={SeverityStart} Severities={Severities}", layout.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart, string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
@@ -334,7 +339,7 @@ namespace LogExpress.ViewModels
                 Logger.Information("Open/configure was cancelled");
                 if (string.IsNullOrWhiteSpace(Folder) || string.IsNullOrWhiteSpace(Pattern))
                 {
-                    _mainWindow.MenuConfigureLayout.IsEnabled = false;
+                    _mainWindow.MenuConfigureTimestamp.IsEnabled = false;
 
                     var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
                         "No logfile or set selected",
@@ -343,6 +348,51 @@ namespace LogExpress.ViewModels
                     await messageBoxStandardWindow.ShowDialog(_mainWindow);
                 }
             }
+        }
+        private async void ConfigureSeverityExecute((string folder, string pattern, bool? recursive) args)
+        {
+            var (folder, pattern, recursive) = args;
+            folder ??= Folder;
+            pattern ??= Pattern;
+            recursive ??= Recursive;
+            var configureSeverityView = new ConfigureSeverityView();
+            var configureSeverityViewModel = new ConfigureSeverityViewModel(configureSeverityView, folder, pattern, recursive.Value, Layout);
+            configureSeverityViewModel.Init();
+            configureSeverityView.DataContext = configureSeverityViewModel;
+
+            // TODO Handle results
+            // 1. Cancel
+            // 1. Prev (ConfigureScope): Keep the start and severities, in case the user browses back (but don't set it so that loading will use it)
+            // 2. Next (Load): Keep the start and severities
+            var layout = await configureSeverityView?.ShowDialog<Layout>(_mainWindow);
+            if (layout != null)
+            {
+                Logger.Information("Layout set: TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampLeFormat='{TimestampFormat} SeverityStart={SeverityStart} Severities={Severities}", layout.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart, string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
+                LoadExecute(Folder, pattern, recursive, layout);
+            } 
+            else
+            {
+                Logger.Information("Open/configure was cancelled");
+                if (string.IsNullOrWhiteSpace(Folder) || string.IsNullOrWhiteSpace(Pattern))
+                {
+                    _mainWindow.MenuConfigureTimestamp.IsEnabled = false;
+
+                    var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+                        "No logfile or set selected",
+                        "Use the Open File Or Open Set menus to open log-files."
+                    );
+                    await messageBoxStandardWindow.ShowDialog(_mainWindow);
+                }
+            }
+        }
+
+        private async void LoadExecute(string folder, string pattern, bool? recursive, Layout layout)
+        {
+            Logger.Information("Opening Folder='{Folder}' Pattern='{Pattern}' Recursive={Recursive}", folder, pattern, recursive.Value);
+            Layout = layout;
+            Folder = folder;
+            Pattern = pattern;
+            Recursive = recursive.Value;
         }
 
         private void DragOver(object sender, DragEventArgs e)
@@ -469,7 +519,7 @@ namespace LogExpress.ViewModels
             return (dirInfo.FullName, fileInfo.Name, false);
         }
 
-        private async void OpenFileExecute()
+/*        private async void OpenFileExecute()
         {
             Logger.Verbose("OpenLogFile clicked");
             var openFileDialog = new OpenFileDialog
@@ -489,10 +539,10 @@ namespace LogExpress.ViewModels
             }
 
             var fileName = file?.First();
-            await ConfigureSetCommand.Execute(DecodeFileName(fileName));
+            await ConfigureTimestampCommand.Execute(DecodeFileName(fileName));
         }
-
-        private async void OpenSetExecute()
+*/
+        private async void OpenExecute()
         {
 
             var openLogSetView = new OpenSetView();
@@ -510,7 +560,7 @@ namespace LogExpress.ViewModels
                 ? DecodeFileName(openSetResult.SelectedFile.FullName)
                 : (openSetResult.Folder, openSetResult.Pattern, openSetResult.Recursive);
             
-            await ConfigureSetCommand.Execute(configureArgs);
+            await ConfigureTimestampCommand.Execute(configureArgs);
         }
 
         private async void InitExecute()
@@ -576,7 +626,7 @@ namespace LogExpress.ViewModels
                     folder = args[0];
                     pattern = args.Count > 1 ? args[1] : "*.log";
                 }
-                await ConfigureSetCommand.Execute((folder, pattern, recursive));
+                await ConfigureTimestampCommand.Execute((folder, pattern, recursive));
             }
         }
 
@@ -648,7 +698,7 @@ namespace LogExpress.ViewModels
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total size, i.e. 'Size: 4kb/21Mb'
             _infoBarByteSize = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.TotalSize)
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Do(size => _mainWindow.MenuConfigureLayout.IsEnabled = size > 0)
+                .Do(size => _mainWindow.MenuConfigureTimestamp.IsEnabled = size > 0)
                 .Select(x => $"Size: {ByteSize.FromBytes(x)}")
                 .ToProperty(this, x => x.InfoBarByteSize);
 

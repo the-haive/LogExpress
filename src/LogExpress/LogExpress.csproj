@@ -21,12 +21,6 @@
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
   <ItemGroup>
-    <AvaloniaResource Remove="Views\AboutView.xaml" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="Views\AboutView.xaml" />
-  </ItemGroup>
-  <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.9.9" />
     <PackageReference Include="Avalonia.Desktop" Version="0.9.9" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="0.9.9" />
@@ -41,11 +35,6 @@
     <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0007" />
     <PackageReference Include="TextCopy" Version="3.2.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Views\AboutView.xaml">
-      <Generator>MSBuild:Compile</Generator>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UTF.Unknown\UTF-unknown.csproj" />

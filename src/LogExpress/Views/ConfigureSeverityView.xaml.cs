@@ -4,9 +4,9 @@ using Avalonia.Markup.Xaml;
 
 namespace LogExpress.Views
 {
-    public class ConfigureSetView : Window
+    public class ConfigureSeverityView : Window
     {
-        public ConfigureSetView()
+        public ConfigureSeverityView()
         {
             this.InitializeComponent();
 #if DEBUG

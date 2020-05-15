@@ -7,8 +7,8 @@
         MinWidth="750"
         Height="900"
         WindowStartupLocation="CenterOwner"
-        x:Class="LogExpress.Views.ConfigureSetView"
-        Title="ConfigureSetView">
+        x:Class="LogExpress.Views.ConfigureTimestampView"
+        Title="ConfigureTimestampView">
   <Window.Styles>
     <Style Selector="TextBlock">
        <Setter Property="VerticalAlignment" Value="Center"/>
