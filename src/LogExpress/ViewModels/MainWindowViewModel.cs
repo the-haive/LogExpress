@@ -89,6 +89,10 @@ namespace LogExpress.ViewModels
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplicationExecute);
             AboutCommand = ReactiveCommand.Create(AboutExecute);
+            ToggleDebugCommand = ReactiveCommand.Create(() =>
+            {
+                ShowDebug = !ShowDebug;
+            });
             
             // Hot-keys
             KeyGotoStartCommand = ReactiveCommand.Create(KeyGotoStartExecute);
@@ -101,6 +105,16 @@ namespace LogExpress.ViewModels
             KeyGoUpCommand = ReactiveCommand.Create(KeyGoUpExecute);
             KeyGoDownCommand = ReactiveCommand.Create(KeyGoDownExecute);
         }
+
+        private bool _showDebug;
+
+        public bool ShowDebug
+        {
+            get => _showDebug;
+            set => this.RaiseAndSetIfChanged(ref _showDebug, value);
+        }
+
+        public ReactiveCommand<Unit, Unit> ToggleDebugCommand { get; }
 
         public async void Init()
         {
@@ -288,7 +302,6 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _recursive, value);
         }
 
-        private ObservableAsPropertyHelper<bool> _showLogPanel;
         private ObservableAsPropertyHelper<bool> _isAnalyzed;
         private ObservableAsPropertyHelper<bool> _isFiltering;
         private ObservableAsPropertyHelper<bool> _isFiltered;
@@ -571,7 +584,6 @@ namespace LogExpress.ViewModels
         {
             var (baseDir, filter, recursive, layout) = observerTuple;
             Logger.Debug("Scope changed, setting up the LogView DataContext");
-            ShowLogPanel = true;
             LogViewModel = new LogViewModel(baseDir, filter, recursive, layout, _logView);
 
             // Set the InfoBar property for the scope selected
@@ -600,19 +612,19 @@ namespace LogExpress.ViewModels
 
             _isAnalyzed = LogViewModel.VirtualLogFile
                 .WhenAnyValue(x => x.IsAnalyzed)
+                .Do(isAnalyzed => Logger.Debug("Main: IsAnalyzed={IsAnalyzed}", isAnalyzed))
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.IsAnalyzed);
 
             _isFiltering = LogViewModel.VirtualLogFile
                 .WhenAnyValue(x => x.IsFiltering)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.IsFiltering);
 
             _isFiltered = LogViewModel.VirtualLogFile
-                .WhenAnyValue(x => x.IsFiltering)
+                .WhenAnyValue(x => x.IsFiltered)
+                .ObserveOn(RxApp.MainThreadScheduler)
                 .ToProperty(this, x => x.IsFiltered);
-
-            _showLogPanel = this
-                .WhenAnyValue(x => x.Folder, x => x.Pattern,(string folder, string pattern) => !string.IsNullOrWhiteSpace(folder) && !string.IsNullOrWhiteSpace(pattern))
-                .ToProperty(this, x => x.ShowLogPanel);
 
             _infoBarRange = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.Range)
                 .Select(x =>
@@ -644,7 +656,6 @@ namespace LogExpress.ViewModels
 
             // TODO: Implement filters in VirtualLogFile, and show both the filtered and total no of lines, i.e. 'Lines: 12/931'
             _infoBarLineCount = LogViewModel.VirtualLogFile.WhenAnyValue(x => x.FilteredLines.Count)
-                .ObserveOn(RxApp.MainThreadScheduler)
                 .Select(x => $"Lines: {x:N0}")
                 .ToProperty(this, x => x.InfoBarLineCount);
 
@@ -705,10 +716,9 @@ namespace LogExpress.ViewModels
                 });
         }
 
-        public bool IsFiltered { get; set; }
-        public bool IsFiltering { get; set; }
-        public bool IsAnalyzed { get; set; }
-        public bool ShowLogPanel { get; set; }
+        public bool IsFiltered => _isFiltered != null && _isFiltered.Value;
+        public bool IsFiltering => _isFiltering != null && _isFiltering.Value;
+        public bool IsAnalyzed => _isAnalyzed != null && _isAnalyzed.Value;
 
         private void ToggleThemeExecute()
         {

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
         x:Class="LogExpress.Views.MainWindow"
-        Icon="/Assets/avalonia-logo.ico"
+        Icon="/Assets/logexpress-logo.ico"
         Width="1024" Height="768"
         Title="{Binding AppTitle}"
         DragDrop.AllowDrop="True"
@@ -18,18 +18,42 @@
       <Setter Property="Height" Value="1"/>
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
     </Style>       
-    <Style Selector="#InfoBar > Separator">
-      <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
-      <Setter Property="Width" Value="1"/>
-      <Setter Property="Margin" Value="5 3"/>
+    <!-- InfoBar -->
+    <Style Selector="StackPanel#InfoBar">
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
     </Style>
-    <Style Selector="StackPanel#InfoBar StackPanel TextBox">
+    <Style Selector="StackPanel#InfoBar > StackPanel">
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+    <Style Selector="StackPanel#InfoBar TextBox">
       <Setter Property="FontSize" Value="10"/>
       <Setter Property="IsReadOnly" Value="True"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="0 3"/>
     </Style>            
+    <Style Selector="StackPanel#InfoBar Separator">
+      <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
+      <Setter Property="Width" Value="1"/>
+      <Setter Property="Margin" Value="5 3"/>
+    </Style>
+    <!-- DebugBar -->
+    <Style Selector="StackPanel#DebugBar">
+      <Setter Property="Background" Value="Orange"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+    </Style>
+    <Style Selector="StackPanel#DebugBar TextBox">
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="IsReadOnly" Value="True"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0 3"/>
+    </Style>            
+    <Style Selector="StackPanel#DebugBar Separator">
+      <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
+      <Setter Property="Width" Value="1"/>
+      <Setter Property="Margin" Value="5 3"/>
+    </Style>
   </Window.Styles>
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+Home" Command="{Binding KeyGotoStartCommand}"/>
@@ -42,6 +66,7 @@
     <KeyBinding Gesture="Up" Command="{Binding KeyGoUpCommand}"/>
     <KeyBinding Gesture="Down" Command="{Binding KeyGoDownCommand}"/>
     <KeyBinding Gesture="F1" Command="{Binding AboutCommand}"/>
+    <KeyBinding Gesture="F8" Command="{Binding ToggleDebugCommand}"/>
   </Window.KeyBindings>
 
   <DockPanel>
@@ -103,78 +128,85 @@
       </MenuItem>
     </Menu>
     <Separator DockPanel.Dock="Top" Classes="hor_line"/>
-    <StackPanel DockPanel.Dock="Bottom" Name="InfoBar" Orientation="Horizontal" Margin="0" VerticalAlignment="Bottom" IsVisible="{Binding ShowLogPanel}">
-      <!--StackPanel Orientation="Vertical" Background="YellowGreen" >
-        <StackPanel Orientation="Horizontal" Spacing="5">
-          <TextBox IsEnabled="False" Text="IsAnalyzed:" /><TextBox IsEnabled="False" Text="{Binding IsAnalyzed}"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="5">
-          <TextBox IsEnabled="False" Text="IsFiltering:" /><TextBox IsEnabled="False" Text="{Binding IsFiltering}"/>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Spacing="5">
-          <TextBox IsEnabled="False" Text="IsFiltered:" /><TextBox IsEnabled="False" Text="{Binding IsFiltered}"/>
-        </StackPanel>
-      </StackPanel>
-      <Separator /-->
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+    <StackPanel DockPanel.Dock="Bottom"
+                Name="DebugBar" 
+                Orientation="Horizontal" 
+                IsVisible="{Binding ShowDebug}">
+      <TextBox Text="IsAnalyzed:" Margin="5 0" /><TextBox Text="{Binding IsAnalyzed}"/>
+      <Separator />
+      <TextBox Text="IsFiltering:" Margin="5 0" /><TextBox Text="{Binding IsFiltering}"/>
+      <Separator />
+      <TextBox Text="IsFiltered:" Margin="5 0" /><TextBox Text="{Binding IsFiltered}"/>
+      <Separator />
+      <TextBox Text="ShowLines:" Margin="5 0" /><TextBox Text="{Binding LogViewModel.VirtualLogFile.ShowLines}"/>
+      <Separator />
+      <TextBox Text="ShowProgress:" Margin="5 0" /><TextBox Text="{Binding LogViewModel.VirtualLogFile.ShowProgress}"/>
+      <Separator />
+    </StackPanel>
+    <StackPanel DockPanel.Dock="Bottom"
+                Name="InfoBar" 
+                Orientation="Horizontal" 
+                IsVisible="{Binding ShowLines}">
+      <StackPanel Orientation="Vertical" Margin="5 0">
         <TextBox Text="Filtered" IsEnabled="False" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="Totals" IsEnabled="False"/>
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical">
         <TextBox Text="{Binding InfoBarScopeFilter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarScope}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarRangeFilter}" ToolTip.Tip="{Binding InfoBarRangeFilterToolTip}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarRange}" ToolTip.Tip="{Binding InfoBarRangeToolTip}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarByteSizeFilter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarByteSize}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarLineCountFilter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarLineCount}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity1Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity1}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity2Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity2}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity3Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity3}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity4Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity4}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity5Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity5}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity6Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity6}" />
       </StackPanel>
       <Separator />
-      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom">
+      <StackPanel Orientation="Vertical" >
         <TextBox Text="{Binding InfoBarSeverity0Filter}" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="{Binding InfoBarSeverity0}" />
       </StackPanel>
+      <Separator />
     </StackPanel>
     <views:LogView Name="LogPanel" DataContext="{Binding LogViewModel}"/>
   </DockPanel>

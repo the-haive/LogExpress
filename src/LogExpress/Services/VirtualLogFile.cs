@@ -41,7 +41,7 @@ namespace LogExpress.Services
         private ObservableCollection<LineItem> _allLines = new ObservableCollection<LineItem>();
         private bool _analyzeError;
         private ObservableCollection<LineItem> _filteredLines;
-        private bool _isAnalyzed = false;
+        private bool _isAnalyzed;
         private ObservableCollection<LineItem> _newLines;
         private bool _newLinesRead;
         private (DateTime, DateTime) _range;
@@ -225,10 +225,6 @@ namespace LogExpress.Services
             Logger.Debug("Starting reading newlines");
             var timer = Stopwatch.StartNew();
             InitializeLines(set);
-            Logger.Debug("Finished reading newlines. Duration: {Duration}", timer.Elapsed);
-            ShowProgress = false;
-            ShowLines = !ShowProgress;
-            NewLinesRead = true;
         }
 
         ~VirtualLogFile()
@@ -595,6 +591,7 @@ namespace LogExpress.Services
             var iterator = LogFiles.GetEnumerator();
             try
             {
+                var timer = Stopwatch.StartNew();
                 while (iterator.MoveNext())
                 {
                     var scopedFile = iterator.Current;
@@ -609,7 +606,10 @@ namespace LogExpress.Services
                     ScopedFile.ReadFileLinePositions(LinesInBgThread, reader/*, _severityMatchers*/, scopedFile);
                 }
 
-                iterator.Dispose();
+                Logger.Debug("Finished reading newlines. Duration: {Duration}", timer.Elapsed);
+                ShowProgress = false;
+                ShowLines = !ShowProgress;
+                NewLinesRead = true;
             }
             catch (Exception ex)
             {

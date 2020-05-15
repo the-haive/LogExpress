@@ -1,4 +1,4 @@
-﻿<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -221,8 +221,8 @@
         </StackPanel>
       </Border>
     </StackPanel>
-    <DockPanel LastChildFill="True">
-      <StackPanel Orientation="Vertical" IsVisible="{Binding VirtualLogFile.ShowProgress}">
+    <Grid ColumnDefinitions="*" RowDefinitions="*">
+      <StackPanel Orientation="Vertical" IsVisible="{Binding VirtualLogFile.ShowProgress}" HorizontalAlignment="Center">
         <progRing:ProgressRing 
           Width="70" 
           Height="70"
@@ -232,8 +232,8 @@
           Foreground="Green"
           Margin="20 20 20 0"
           />
-        <TextBlock Text="Analyzing log-file(s)..." Margin="20 0 20 20" IsVisible="{Binding !VirtualLogFile.IsAnalyzed}"/>
-        <TextBlock Text="Filtering..." Margin="30 0 20 20" IsVisible="{Binding VirtualLogFile.IsFiltering}"/>
+        <TextBlock Text="Analyzing log-file(s)..." Margin="20 0 20 20" IsVisible="{Binding !VirtualLogFile.IsAnalyzed}" HorizontalAlignment="Center"/>
+        <TextBlock Text="Filtering..." Margin="30 0 20 20" IsVisible="{Binding VirtualLogFile.IsFiltering}" HorizontalAlignment="Center"/>
       </StackPanel>
       <Image 
         Name="SeverityMap" 
@@ -271,6 +271,6 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-    </DockPanel>
+    </Grid>
   </DockPanel>
 </UserControl>
