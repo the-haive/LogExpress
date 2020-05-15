@@ -29,9 +29,10 @@
     <Style Selector="Panel#Selector:pointerover">
       <Setter Property="Background" Value="Gray"/>
     </Style>
-    <Style Selector="#Toolbar StackPanel.group">
-      <Setter Property="Orientation" Value="Horizontal"/>
-      <Setter Property="Margin" Value="10 0 0 0"/>
+    <Style Selector="#Toolbar Separator.group">
+      <Setter Property="Background" Value="Gainsboro"/>      
+      <Setter Property="Width" Value="2"/>
+      <Setter Property="Margin" Value="5"/>
     </Style>
     <Style Selector="#Toolbar DockPanel.item">
       <Setter Property="Margin" Value="5"/>
@@ -61,8 +62,8 @@
     </Style>
   </UserControl.Styles>
   <DockPanel>
-    <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top" Height="70" Background="{DynamicResource ThemeAccentBrush4}" >
-      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+    <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top" Height="70" Background="{DynamicResource ThemeControlMidBrush}" >
+      <Border Margin="5">
         <StackPanel Name="Filters" Orientation="Horizontal">
           <DockPanel LastChildFill="True" Classes="item">
             <TextBlock Text="File" DockPanel.Dock="Top"/>
@@ -124,7 +125,8 @@
           </DockPanel>
         </StackPanel>
       </Border>
-      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+      <Separator Classes="group"/>
+      <Border Padding="5" Margin="5">
         <StackPanel Orientation="Horizontal" Spacing="7">
           <StackPanel Name="Search" Orientation="Vertical">
             <TextBox Name="SearchQuery" Watermark="Search" HorizontalAlignment="Stretch" Margin="0" Padding="5 3 5 3" FontSize="10" Text="{Binding SearchQuery}" AcceptsReturn="False"/>
@@ -169,7 +171,8 @@
           </StackPanel>
         </StackPanel>
       </Border>
-      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+      <Separator Classes="group"/>
+      <Border Padding="5" Margin="5">
         <StackPanel Name="Navigators" Orientation="Horizontal" Spacing="7">
           <StackPanel Name="Severity4" Orientation="Vertical" Classes="item">
             <TextBlock Text="{Binding Severity4Name}" HorizontalAlignment="Center"/>
@@ -208,12 +211,13 @@
           </StackPanel>
         </StackPanel>        
       </Border>
-      <Border BorderBrush="{DynamicResource ThemeControlHighBrush}" BorderThickness="1" Padding="5" Background="{DynamicResource ThemeControlMidBrush}" Margin="5">
+      <Separator Classes="group"/>
+      <Border Padding="5" Margin="0 5">
         <StackPanel Orientation="Horizontal">
-          <Button Width="40" Command="{Binding CopyCommand}" Classes="item" ToolTip.Tip="Copy selected line(s)">
+          <Button Width="40" Command="{Binding CopyCommand}" Classes="item" ToolTip.Tip="Copy selected line(s)" Background="Transparent" BorderThickness="0">
             <DrawingPresenter>
               <DrawingPresenter.Drawing>
-                <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+                <GeometryDrawing Brush="{DynamicResource ThemeForegroundLowBrush}" Geometry="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
               </DrawingPresenter.Drawing>
 	          </DrawingPresenter>	
           </Button>

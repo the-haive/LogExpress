@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
         x:Class="LogExpress.Views.MainWindow"
-        Icon="/Assets/logexpress-logo.ico"
+        Icon="/Assets/LogExpress Logo 16x16.png"
         Width="1024" Height="768"
         Title="{Binding AppTitle}"
         DragDrop.AllowDrop="True"
@@ -33,7 +33,7 @@
       <Setter Property="Padding" Value="0 3"/>
     </Style>            
     <Style Selector="StackPanel#InfoBar Separator">
-      <Setter Property="Background" Value="{DynamicResource ThemeForegroundBrush}"/>
+      <Setter Property="Background" Value="{DynamicResource ThemeControlMidBrush}"/>
       <Setter Property="Width" Value="1"/>
       <Setter Property="Margin" Value="5 3"/>
     </Style>
