@@ -12,5 +12,6 @@
     <StyleInclude Source="avares://AvaloniaProgressRing/Styles/ProgressRing.xaml"/>
     <!-- NB! The theme must be the third style. Used in MainWindowViewModel for switching theme. -->  
     <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseLight.xaml"/>
+    <StyleInclude Source="avares://LogExpress/Styles/StyledWindowStyle.xaml" />
   </Application.Styles>
 </Application>

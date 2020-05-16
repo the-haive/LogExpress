@@ -1,10 +1,11 @@
-<Window xmlns="https://github.com/avaloniaui"
+<StyledWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:LogExpress.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
         x:Class="LogExpress.Views.MainWindow"
+        HasSystemDecorations="false"
         Icon="/Assets/LogExpress Logo 16x16.png"
         Width="1024" Height="768"
         Title="{Binding AppTitle}"
@@ -68,8 +69,7 @@
     <KeyBinding Gesture="F1" Command="{Binding AboutCommand}"/>
     <KeyBinding Gesture="F8" Command="{Binding ToggleDebugCommand}"/>
   </Window.KeyBindings>
-
-  <DockPanel>
+  <StyledWindow.HeaderContent>
     <Menu DockPanel.Dock="Top">
       <MenuItem Header="_File">
         <MenuItem Header="_Open Log" Command="{Binding OpenCommand}">
@@ -142,7 +142,8 @@
         <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
       </MenuItem>
     </Menu>
-    <Separator DockPanel.Dock="Top" Classes="hor_line"/>
+  </StyledWindow.HeaderContent>
+  <DockPanel>
     <StackPanel DockPanel.Dock="Bottom"
                 Name="DebugBar" 
                 Orientation="Horizontal" 
@@ -225,4 +226,4 @@
     </StackPanel>
     <views:LogView Name="LogPanel" DataContext="{Binding LogViewModel}"/>
   </DockPanel>
-</Window>
+</StyledWindow>

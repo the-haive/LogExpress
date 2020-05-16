@@ -3,11 +3,12 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using LogExpress.Controls;
 using LogExpress.ViewModels;
 
 namespace LogExpress.Views
 {
-    public class MainWindow : Window
+    public class MainWindow : StyledWindow
     {
         #region Overrides of TopLevel
 

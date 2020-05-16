@@ -386,7 +386,7 @@ namespace LogExpress.ViewModels
             }
         }
 
-        private async void LoadExecute(string folder, string pattern, bool? recursive, Layout layout)
+        private void LoadExecute(string folder, string pattern, bool? recursive, Layout layout)
         {
             Logger.Information("Opening Folder='{Folder}' Pattern='{Pattern}' Recursive={Recursive}", folder, pattern, recursive.Value);
             Layout = layout;

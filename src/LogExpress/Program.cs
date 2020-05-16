@@ -39,10 +39,15 @@ namespace LogExpress
 
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()
-            => AppBuilder.Configure<App>()
+            => AppBuilder
+                .Configure<App>()
                 .UsePlatformDetect()
-                //.UseManagedSystemDialogs()
+                //.With(new X11PlatformOptions {EnableMultiTouch = false, UseDBusMenu = true})
+                //.With(new Win32PlatformOptions {EnableMultitouch = false, AllowEglInitialization = true})
+                //.UseSkia()                
                 .LogToDebug()
-                .UseReactiveUI();
+                .UseReactiveUI()
+                //.UseManagedSystemDialogs()
+                ;
     }
 }
