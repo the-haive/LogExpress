@@ -145,15 +145,15 @@ namespace LogExpress.Models
         public byte Severity { get; set; }
         public static byte SeverityFromDisk(ScopedFile scopedFile, uint position)
         {
-            var layout = scopedFile.Layout;
+            var severitySettings = scopedFile.SeveritySettings;
 
-            if (layout == null) return 0;
+            if (severitySettings == null) return 0;
 
             // Try to fetch the date from the last log-entry
             using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             using var reader = new StreamReader(fileStream, scopedFile.Encoding);
 
-            return ScopedFile.ReadFileLineSeverity(reader, layout, position);
+            return ScopedFile.ReadFileLineSeverity(reader, severitySettings, position);
         }
 
         /// <summary>
@@ -224,10 +224,9 @@ namespace LogExpress.Models
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream, file.Encoding);
-            reader.BaseStream.Seek(position + file.Layout.TimestampStart, SeekOrigin.Begin);
+            reader.BaseStream.Seek(position + file.TimestampSettings.TimestampStart, SeekOrigin.Begin);
             
-            // TODO: Make the date-length configurable
-            var buffer = new Span<char>(new char[file.Layout.TimestampLength]);
+            var buffer = new Span<char>(new char[file.TimestampSettings.TimestampLength]);
 
             var numRead = reader.Read(buffer);
             

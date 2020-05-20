@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using ByteSizeLib;
 using LogExpress.Services;
+using LogExpress.ViewModels;
 using Serilog;
 using UtfUnknown;
 using Encoding = System.Text.Encoding;
@@ -18,12 +19,12 @@ namespace LogExpress.Models
         private static readonly ILogger Logger = Log.ForContext<ScopedFile>();
         private DateTime? _startDate;
         private DateTime? _endDate;
-        private Layout _layout;
         private Encoding _encoding;
 
-        public ScopedFile(string file, string basePath, Layout layout = null)
+        public ScopedFile(string file, string basePath, TimestampSettings timestampSettings = null, SeveritySettings severitySettings = null)
         {
-            Layout = layout;
+            TimestampSettings = timestampSettings;
+            SeveritySettings = severitySettings;
             BasePath = basePath;
             var fi = new FileInfo(file);
             CreationTime = fi.CreationTime;
@@ -34,16 +35,8 @@ namespace LogExpress.Models
             LinesListCreationTime = (ulong) (CreationTime.Ticks / LineItem.TicksPerSec);
         }
 
-        public Layout Layout
-        {
-            get => _layout;
-            set
-            {
-                _startDate = null;
-                _endDate = null;
-                _layout = value;
-            }
-        }
+        public TimestampSettings TimestampSettings { get; set; }
+        public SeveritySettings SeveritySettings { get; set; }
 
         public Encoding Encoding
         {
@@ -81,7 +74,7 @@ namespace LogExpress.Models
             {
                 if (_startDate.HasValue) return _startDate.Value;
 
-                if (Layout == null) return DateTime.MinValue;
+                if (TimestampSettings == null) return DateTime.MinValue;
 
                 if (Length <= 0) return DateTime.MinValue;
 
@@ -89,9 +82,9 @@ namespace LogExpress.Models
                 using var fileStream = new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(fileStream, Encoding);
 
-                var buffer = new Span<char>(new char[Layout.TimestampLength]);
+                var buffer = new Span<char>(new char[TimestampSettings.TimestampLength]);
 
-                reader.BaseStream.Seek(Layout.TimestampStart, SeekOrigin.Begin);
+                reader.BaseStream.Seek(TimestampSettings.TimestampStart, SeekOrigin.Begin);
                 var numRead = reader.Read(buffer);
                 if (numRead == -1)
                 {
@@ -119,7 +112,7 @@ namespace LogExpress.Models
             {
                 if (_endDate.HasValue) return _endDate.Value;
 
-                if (Layout == null) return DateTime.MaxValue;
+                if (TimestampSettings == null) return DateTime.MaxValue;
 
                 if (Length <= 0) return DateTime.MaxValue;
 
@@ -127,9 +120,9 @@ namespace LogExpress.Models
                 using var fileStream = new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(fileStream, Encoding);
 
-                var buffer = new Span<char>(new char[Layout.TimestampLength]);
+                var buffer = new Span<char>(new char[TimestampSettings.TimestampLength]);
 
-                long startPos = -1 * Layout.TimestampLength;
+                long startPos = -1 * TimestampSettings.TimestampLength;
                 
                 DateTime? endDate = null;
                 
@@ -138,7 +131,7 @@ namespace LogExpress.Models
                     // Find position for last NewLine
                     var newLinePos = FindLastNewLineInFile(startPos, reader, Length);
                     // 
-                    if (Length - (-1*newLinePos) < Layout.TimestampLength) break;
+                    if (Length - (-1*newLinePos) < TimestampSettings.TimestampLength) break;
 
                     // Get EndDate
                     reader.BaseStream.Seek(newLinePos, SeekOrigin.End);
@@ -175,7 +168,7 @@ namespace LogExpress.Models
 
         public DateTime? GetTimestamp(Span<char> buffer)
         {
-            if (string.IsNullOrWhiteSpace(Layout.TimestampFormat))
+            if (string.IsNullOrWhiteSpace(TimestampSettings.TimestampFormat))
             {
                 if (DateTime.TryParse(buffer, out var dateTime))
                 {
@@ -184,7 +177,7 @@ namespace LogExpress.Models
             }
             else
             {
-                if (DateTime.TryParseExact(buffer, Layout.TimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateTime))
+                if (DateTime.TryParseExact(buffer, TimestampSettings.TimestampFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateTime))
                 {
                     return dateTime;
                 }
@@ -255,21 +248,21 @@ namespace LogExpress.Models
         /// Find the logLevel in the logfile line
         /// </summary>
         /// <param name="reader"></param>
-        /// <param name="layout"></param>
+        /// <param name="severitySettings"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        internal static byte ReadFileLineSeverity(StreamReader reader, Layout layout, uint position)
+        internal static byte ReadFileLineSeverity(StreamReader reader, SeveritySettings severitySettings, uint position)
         {
-            var buffer = new Span<char>(new char[layout.MaxSeverityNameLength]);
+            var buffer = new Span<char>(new char[severitySettings.MaxSeverityNameLength]);
 
-            reader.BaseStream.Seek(position + layout.SeverityStart, SeekOrigin.Begin);
+            reader.BaseStream.Seek(position + severitySettings.SeverityStart, SeekOrigin.Begin);
             reader.DiscardBufferedData();
             var numRead = reader.Read(buffer);
             
             if (numRead == -1) return 0;
             
             // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
-            foreach (var (severityLevel, severityName) in layout.Severities)
+            foreach (var (severityLevel, severityName) in severitySettings.Severities)
             {
                 if (buffer.StartsWith(severityName))
                 {
@@ -281,7 +274,7 @@ namespace LogExpress.Models
     }
 
 
-    public class Layout
+/*    public class Layout
     {
         private Dictionary<byte, string> _severities;
         private int _maxSeverityNameLength;
@@ -309,4 +302,4 @@ namespace LogExpress.Models
             }
         }
     }
-}
+*/}

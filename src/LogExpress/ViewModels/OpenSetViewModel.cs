@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using Avalonia.Controls;
@@ -16,19 +17,22 @@ namespace LogExpress.ViewModels
     public class OpenSetViewModel : ViewModelBase, IDisposable
     {
         private IDisposable _fileMonitorSubscription;
-        private string _folder;
-        private string _pattern;
-        private bool _recursive = true;
+        private string _folder = string.Empty;
+        private string _pattern = "*.log";
+        private bool _recursive = false;
         private ScopedFileMonitor _scopedFileMonitor;
         private readonly IDisposable _scopedFileMonitorSubscription;
         private ScopedFile _selectedLogFile;
 
-        public OpenSetViewModel(OpenSetView view, string folder)
+        public OpenSetViewModel(OpenSetView view, ScopeSettings settings)
         {
             View = view;
-            Folder = folder;
-            Pattern = "*.log";
-            Recursive = false;
+            if (settings != null)
+            {
+                Folder = settings.Folder ?? string.Empty;
+                Pattern = settings.Pattern ?? "*.log";
+                Recursive = settings.Recursive;
+            }
 
             SelectFolderCommand = ReactiveCommand.Create(SelectFolderExecute);
             CancelCommand = ReactiveCommand.Create(CancelExecute);
@@ -121,14 +125,26 @@ namespace LogExpress.ViewModels
 
         private void ConfigureSetExecute()
         {
-            View.Close(new OpenSetResult
-                {SelectedFile = null, Folder = Folder, Pattern = Pattern, Recursive = Recursive});
+            var hasFiles = LogFiles.Count > 0;
+            View.Close((new ScopeSettings
+            {
+                Folder = Folder, 
+                Pattern = Pattern, 
+                Recursive = Recursive
+            }, hasFiles));
         }
 
         private void ConfigureFileExecute()
         {
-            View.Close(new OpenSetResult
-                {SelectedFile = SelectedLogFile, Folder = Folder, Pattern = Pattern, Recursive = Recursive});
+            var hasFiles = LogFiles.Count > 0;
+            var fileInfo = new FileInfo(SelectedLogFile.FullName);
+            var dirInfo = Directory.GetParent(fileInfo.FullName);
+            View.Close((new ScopeSettings
+            {
+                Folder = dirInfo.FullName, 
+                Pattern = fileInfo.Name, 
+                Recursive = false
+            }, hasFiles));
         }
 
         private async void SelectFolderExecute()
@@ -149,6 +165,7 @@ namespace LogExpress.ViewModels
             public string Pattern;
             public bool Recursive;
             public ScopedFile SelectedFile;
+            public bool HasFiles;
         }
 
         #region Implementation of IDisposable

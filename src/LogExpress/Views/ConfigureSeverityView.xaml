@@ -3,12 +3,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:LogExpress.Controls"
+        x:Class="LogExpress.Views.ConfigureSeverityView"
         Width="900"
         MinWidth="750"
         Height="900"
         WindowStartupLocation="CenterOwner"
-        x:Class="LogExpress.Views.ConfigureSeverityView"
-        Title="ConfigureSeverityView">
+        Icon="/Assets/LogExpress Logo 16x16.png"
+        >
   <Window.Styles>
     <Style Selector="TextBlock">
        <Setter Property="VerticalAlignment" Value="Center"/>
@@ -37,57 +38,33 @@
     </Style>
   </Window.Styles>
   <DockPanel VerticalAlignment="Stretch" Margin="0 10" LastChildFill="True" HorizontalAlignment="Stretch">
-    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="900" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
-      Configure Set
+    <TextBlock FontSize="18" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="900" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
+      Configure Severity Detection
     </TextBlock>
-    <Border Classes="info" DockPanel.Dock="Top" Width="850">
-      <StackPanel HorizontalAlignment="Center" Margin="10">
-        <TextBlock>
-          A log-file is something that most software write to using a "logging" tool, i.e: NLog, SeriLog, log4net, EntLib. LogExpress is designed to help navigate logs created by any of these libraries, but it does expect eash log-entry to contain a timestamp and a severity. 
-        </TextBlock>
-        <TextBlock>
-          It is not unusual for a log-entry to contain newline characters. LogExpert deals with these lines by giving them the same timestamp and severity as the last logged entry. If the first file in the set starts with no timestamp or severity, then it is given the same timestamp as the file itself, and the severity is set to 0 (although this might not necessarily be correct. We believe that the scenarios for a log-file to start with empty lines to be extremely unusual though, as the loggers writing the log-entries normally flush after a full entry.
-        </TextBlock>
-        <TextBlock FontWeight="Bold" FontStyle="Italic">
-          Note that LogExpert expects the timstamp start-column, length and format as well as the severity-list and start-column to be consistent in all files that are part in the set to be opened.
-        </TextBlock>
+    
+    <Border Classes="info" DockPanel.Dock="Top" Width="850" >
+      <StackPanel HorizontalAlignment="Center" Margin="10" Width="800" TextBlock.FontSize="14">
+        <TextBlock Text="If the log-files you open with LogExpert contains log-entry severities then you get extra functionality for handling these. Log severities are not a standardized concept and different logging systems has different severities. Both the number of severities and the names differ."/>
+        <TextBlock Text="The named severities must start at the same column in each log-line."/>
       </StackPanel>
     </Border>
-    <StackPanel DockPanel.Dock="Top" Spacing="10" Width="700" HorizontalAlignment="Stretch">
-      <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
-        <StackPanel Name="Timestamp" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
-          <TextBlock FontSize="16" FontWeight="Bold" HorizontalAlignment="Center">Timestamp</TextBlock>
-          <StackPanel Orientation="Vertical" Spacing="5" HorizontalAlignment="Center">
-            <TextBlock Text="Mark/select the date-time to autoset start and length:" FontWeight="Bold" HorizontalAlignment="Center"/>
-            <controls:MarkerTextBox Text="{Binding TimestampLine}" Width="580" IsReadOnly="True" HorizontalAlignment="Center" FontSize="14" FontFamily="Consolas"
-                     SelectionStart="{Binding TimestampLineSelectionStart, Mode=TwoWay}"
-                     SelectionEnd="{Binding TimestampLineSelectionEnd, Mode=TwoWay}"
-          />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="5" HorizontalAlignment="Center" ToolTip.Tip="Expects format according to .Net DateTime.ParseExact API">
-            <!--TextBlock Text="Start:" FontWeight="Bold"/>
-            <TextBox Text="{Binding TimestampLineSelectionStart}" MaxLength="2" Width="25"/>
-            <TextBlock Text="End:" FontWeight="Bold"/>
-            <TextBox Text="{Binding TimestampLineSelectionEnd}" MaxLength="2" Width="25"/-->
-            <TextBlock Text="Date format:" FontWeight="Bold"/>
-            <TextBox Name="TimestampFormat" Text="{Binding TimestampFormat}" Width="200"/>
-          </StackPanel>
-        </StackPanel>
-      </Border>
+    
+    <StackPanel DockPanel.Dock="Top" Spacing="10" Width="850" HorizontalAlignment="Stretch">
       <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
         <StackPanel Name="Severity" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
-          <TextBlock FontSize="16" FontWeight="Bold" HorizontalAlignment="Center">Severity</TextBlock>
           <StackPanel Orientation="Vertical" Spacing="5" HorizontalAlignment="Center">
-            <TextBlock Text="Mark/select the severity to autoset start (the length is not needed):" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <TextBlock HorizontalAlignment="Center" FontWeight="Bold" FontSize="14"
+                       Text="Start position of the log entry severity"/>
+            <TextBlock HorizontalAlignment="Center"
+                       Text="Below is the first line in the first file in the scoped log-set."/>
+            <TextBlock HorizontalAlignment="Center"
+                       Text="Please select the severity to help LogExpress understand where the severity can be found:" />
             <controls:MarkerTextBox Text="{Binding SeverityLine}" Width="580" IsReadOnly="True" HorizontalAlignment="Center" FontSize="14" FontFamily="Consolas"
                      SelectionStart="{Binding SeverityLineSelectionStart, Mode=TwoWay}"
                      SelectionEnd="{Binding SeverityLineSelectionEnd, Mode=TwoWay}"/>
-            <!--StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="5">
-              <TextBlock Text="Start:" FontWeight="Bold"/>
-              <TextBox Text="{Binding SeverityLineSelectionStart}" MaxLength="2" Width="25"/>
-            </StackPanel-->
           </StackPanel>
-          <TextBlock Text="Please define the actual log-levels along with their levels below. Note: The casing does matter!" HorizontalAlignment="Center" FontWeight="Bold"/>
+          <Separator Height="20"/>
+          <TextBlock Text="Severity levels &amp; names (casing does matter)" HorizontalAlignment="Center" FontWeight="Bold"/>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
             <StackPanel Orientation="Vertical" Margin="20" VerticalAlignment="Center">
               <Button Content="UPPERCASED" Command="{Binding UpperCaseCommand}" Padding="0"/>
@@ -126,55 +103,103 @@
         </StackPanel>
       </Border>
     </StackPanel>
-    <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold">Verification table:</TextBlock>
-    <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="25 0 0 0">
-      <TextBlock Width="142" FontWeight="Bold" FontSize="10">Filename</TextBlock>
-      <TextBlock Width="110" FontWeight="Bold" FontSize="10">Start-date</TextBlock>
-      <TextBlock Width="110" FontWeight="Bold" FontSize="10">End-date</TextBlock>
-      <TextBlock Width="110" FontWeight="Bold" FontSize="10">Timestamp</TextBlock>
-      <TextBlock Width="50" FontWeight="Bold" FontSize="10">Severity</TextBlock>
-      <TextBlock FontWeight="Bold" FontSize="10">Content</TextBlock>
-    </StackPanel>
+    <Separator DockPanel.Dock="Top" Height="20"/>
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto, Auto"  RowDefinitions="Auto,Auto" HorizontalAlignment="Center" TextBlock.FontWeight="Bold" TextBlock.FontSize="14">
+      <!-- Row 0 -->
+      <Panel Grid.Column="0" Grid.Row="0" IsVisible="{Binding EntrySeveritiesVerified}">
+        <DrawingPresenter Width="24" Height="24">
+	        <DrawingPresenter.Drawing>
+            <DrawingGroup>
+              <GeometryDrawing Brush="#00FFFFFF" Geometry="F1M16,16L0,16 0,0 16,0z" /><GeometryDrawing Brush="#FFF6F6F6" Geometry="F1M6.0003,9.1717L2.7073,5.8787 0.000300000000000189,8.5857 0.000300000000000189,8.8277 6.0003,14.8277 16.0003,4.8287 16.0003,4.5857 13.2933,1.8787z" /><GeometryDrawing Brush="#FF388A34" Geometry="F1M14.707,4.707L6,13.414 1.293,8.707 2.707,7.293 6,10.586 13.293,3.293z" />
+            </DrawingGroup>
+          </DrawingPresenter.Drawing>
+	      </DrawingPresenter>
+      </Panel>
+      <Panel Grid.Column="0" Grid.Row="0" IsVisible="{Binding !EntrySeveritiesVerified}">
+        <DrawingPresenter Width="24" Height="24">
+            <DrawingGroup>
+              <GeometryDrawing Brush="#00FFFFFF" Geometry="F1M16,16L0,16 0,0 16,0z" />
+              <GeometryDrawing Brush="#FFF6F6F6" Geometry="F1M1.7173,11.6309L5.3483,7.9999 1.7173,4.3689 4.3683,1.7169 8.0003,5.3479 11.6313,1.7169 14.2833,4.3679 10.6523,7.9999 14.2833,11.6309 11.6313,14.2829 8.0003,10.6519 4.3683,14.2829z" /><GeometryDrawing Brush="#FFE41300" Geometry="F1M9.2379,7.9999L12.8689,11.6309 11.6309,12.8689 7.9999,9.2379 4.3689,12.8689 3.1309,11.6309 6.7619,7.9999 3.1309,4.3689 4.3689,3.1309 7.9999,6.7619 11.6309,3.1309 12.8689,4.3689z" />
+            </DrawingGroup>
+	      </DrawingPresenter>
+      </Panel>
+      <TextBlock Grid.Column="1" Grid.Row="0" Text="Severities found in the sampled set matches the defined names"/>
+    </Grid>
+    <Separator DockPanel.Dock="Top" Height="20"/>
     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-        <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding OpenCommand}" 
-                Content="Open" 
-                IsDefault="True"/>
-        <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding CancelCommand}" 
-                Content="Cancel" 
-                IsCancel="True"/>
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding ConfigureTimestampCommand}">
+          <DockPanel LastChildFill="True" >
+            <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Left">
+              <DrawingPresenter.Drawing>
+                <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M749.171020507813,-707.143981933594C772.734985351563,-707.143981933594 791.838012695313,-688.041015625 791.838012695313,-664.476989746094 791.838012695313,-652.955993652344 787.27099609375,-642.5009765625 779.848999023438,-634.823974609375L568.662048339844,-423.636993408203 568.661010742188,-423.638000488281 568.661010742188,-423.635986328125 568.662048339844,-423.636993408203 779.861022949219,-212.438003540039C787.89697265625,-204.669006347656 792.887023925781,-193.791000366211 792.887023925781,-181.748001098633 792.887023925781,-158.184005737305 773.783996582031,-139.080993652344 750.219970703125,-139.080993652344 738.177001953125,-139.080993652344 727.299987792969,-144.070007324219 719.5419921875,-152.095001220703L478.165008544922,-393.471984863281C470.446990966797,-401.192993164063 465.673004150391,-411.858001708984 465.673004150391,-423.636993408203 465.673004150391,-435.415985107422 470.446990966797,-446.082000732422 478.165008544922,-453.802001953125L719.530029296875,-695.1669921875C727.195007324219,-702.577026367188,737.650024414063,-707.143981933594,749.171020507813,-707.143981933594z M494.220001220703,-708.192993164063C517.783996582031,-708.192993164063 536.887023925781,-689.090026855469 536.887023925781,-665.526000976563 536.887023925781,-653.482971191406 531.898010253906,-642.606018066406 523.872985839844,-634.848022460938L312.662017822266,-423.636993408203 312.661010742188,-423.638000488281 312.661010742188,-423.635986328125 312.662017822266,-423.636993408203 523.861022949219,-212.438003540039C531.89697265625,-204.669006347656 536.887023925781,-193.791000366211 536.887023925781,-181.748001098633 536.887023925781,-158.184005737305 517.783996582031,-139.080993652344 494.220001220703,-139.080993652344 482.177001953125,-139.080993652344 471.299987792969,-144.070007324219 463.5419921875,-152.095001220703L222.164993286133,-393.471984863281C214.447006225586,-401.192993164063 209.673004150391,-411.858001708984 209.673004150391,-423.636993408203 209.673004150391,-435.415985107422 214.447006225586,-446.082000732422 222.164993286133,-453.802001953125L463.529998779297,-695.1669921875C471.299011230469,-703.203002929688,482.177001953125,-708.192993164063,494.220001220703,-708.192993164063z" />
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+            <TextBlock Text="Configure Timestamp..." Margin="5 0" HorizontalAlignment="Left"/>
+          </DockPanel>
+        </Button>
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding CancelCommand}" IsCancel="True" Content="Cancel"/>
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding OpenCommand}" IsDefault="True" BorderThickness="2">
+          <DockPanel LastChildFill="True" >
+            <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Right">
+              <DrawingPresenter.Drawing>
+                <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M515.554016113281,-707.14599609375C527.075012207031,-707.14599609375,537.530029296875,-702.578979492188,545.206970214844,-695.156982421875L786.559997558594,-453.803985595703C794.278015136719,-446.0830078125 799.052001953125,-435.417999267578 799.052001953125,-423.639007568359 799.052001953125,-411.859985351563 794.278015136719,-401.194000244141 786.559997558594,-393.473999023438L545.195007324219,-152.108993530273C537.530029296875,-144.699005126953 527.075012207031,-140.13200378418 515.554016113281,-140.13200378418 491.989990234375,-140.13200378418 472.886993408203,-159.235000610352 472.886993408203,-182.79899597168 472.886993408203,-194.320007324219 477.454010009766,-204.774993896484 484.876007080078,-212.451995849609L696.063049316406,-423.639007568359 696.064025878906,-423.638000488281 696.064025878906,-423.640014648438 696.063049316406,-423.639007568359 484.864013671875,-634.838012695313C477.454010009766,-642.502990722656 472.886993408203,-652.9580078125 472.886993408203,-664.47900390625 472.886993408203,-688.043029785156 491.989990234375,-707.14599609375 515.554016113281,-707.14599609375z M258.505004882813,-708.195007324219C270.548004150391,-708.195007324219,281.424987792969,-703.205993652344,289.183013916016,-695.181030273438L530.559997558594,-453.803985595703C538.278015136719,-446.0830078125 543.052001953125,-435.417999267578 543.052001953125,-423.639007568359 543.052001953125,-411.859985351563 538.278015136719,-401.194000244141 530.559997558594,-393.473999023438L289.195007324219,-152.108993530273C281.529998779297,-144.699005126953 271.075012207031,-140.13200378418 259.553985595703,-140.13200378418 235.990005493164,-140.13200378418 216.886993408203,-159.235000610352 216.886993408203,-182.79899597168 216.886993408203,-194.320007324219 221.453994750977,-204.774993896484 228.876007080078,-212.451995849609L440.06298828125,-423.639007568359 440.063995361328,-423.638000488281 440.063995361328,-423.640014648438 440.06298828125,-423.639007568359 228.863998413086,-634.838012695313C220.828002929688,-642.606994628906 215.837997436523,-653.484985351563 215.837997436523,-665.528015136719 215.837997436523,-689.091979980469 234.940994262695,-708.195007324219 258.505004882813,-708.195007324219z" />
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+            <TextBlock Text="Open" Margin="5 0" HorizontalAlignment="Right"/>
+          </DockPanel>
+        </Button>
       </StackPanel>
     </StackPanel>
-    <ListBox
-      Items="{Binding ParseSamples}"
-      HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch"
-      Margin="20 0"
-      SelectionMode="Toggle"
-      >
-      <ListBox.ItemTemplate>
-        <DataTemplate>
-          <StackPanel Orientation="Horizontal">
-            <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0" Width="130" FontSize="10" 
-                       ToolTip.Tip="{Binding FullName}"/>
-            <TextBlock Text="{Binding StartDate}" Margin="0 0 10 0" Width="100" Height="14" FontSize="10" 
-                       Background="{Binding SequenceErrorColor}" 
-                       ToolTip.Tip="{Binding SequenceErrorDetails}"/>
-            <TextBlock Text="{Binding EndDate}" Margin="0 0 10 0" Width="100" Height="14" FontSize="10" 
-                       Background="{Binding SequenceErrorColor}" 
-                       ToolTip.Tip="{Binding SequenceErrorDetails}"/>
-            <TextBlock Text="{Binding Timestamp}" Margin="0 0 10 0" Width="100" Height="14" FontSize="10" 
-                       Background="{Binding TimestampErrorColor}" 
-                       ToolTip.Tip="{Binding TimestampErrorDetails}"/>
-            <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="40" Height="14" FontSize="10" 
-                       Background="{Binding SeverityErrorColor}" 
-                       ToolTip.Tip="{Binding SeverityErrorDetails}"/>
-            <TextBlock Text="{Binding Content}" FontSize="10"/>
-          </StackPanel>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <DockPanel HorizontalAlignment="Center">
+      <DockPanel DockPanel.Dock="Left">
+        <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold" FontSize="14">Detected file severities</TextBlock>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Left" Margin="25 0 0 0"
+                    Name="FilesHeader">
+          <TextBlock Width="142" FontWeight="Bold" FontSize="10">Filename</TextBlock>
+          <TextBlock Width="220" FontWeight="Bold" FontSize="10">Severities</TextBlock>
+        </StackPanel>
+        <ListBox
+          Items="{Binding Files}"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          Margin="20 0"
+          SelectionMode="Toggle"
+          >
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0" Width="130" FontSize="10" ToolTip.Tip="{Binding FullName}"/>
+                <TextBlock Text="{Binding Severities}" Margin="0 0 10 0" Width="210" Height="14" FontSize="10"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold" FontSize="14">Detected severities (selected file, up to 100 first lines)</TextBlock>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Left" Margin="25 0 0 0" TextBlock.FontSize="10" TextBlock.FontWeight="Bold"
+                    Name="LinesHeader">
+          <TextBlock Width="212">Severity</TextBlock>
+          <TextBlock >Content</TextBlock>
+        </StackPanel>
+        <ListBox
+          Items="{Binding Lines}"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch"
+          Margin="20 0"
+          MinWidth="450"
+          >
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Orientation="Horizontal" TextBlock.FontSize="10">
+                <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="200"/>
+                <TextBlock Text="{Binding Content}" Width="510"/>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </DockPanel>
   </DockPanel>
 </Window>

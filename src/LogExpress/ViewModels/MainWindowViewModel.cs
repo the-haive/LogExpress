@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -23,9 +24,11 @@ namespace LogExpress.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
+        private static readonly Regex DefaultTimestampPattern =
+            new Regex(@"[\d., TZ+:\-\/]+", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
         public static readonly ILogger Logger = Log.ForContext<MainWindowViewModel>();
 
-        private static readonly GridLength FilterGridExpanded = new GridLength(1, GridUnitType.Star);
         private static readonly TimeSpan LogArgsChangeThreshold = new TimeSpan(0, 0, 0, 0, 100);
         private readonly StyleInclude _darkTheme = new StyleInclude(new Uri("resm:Styles?assembly=ControlCatalog"))
         {
@@ -42,7 +45,9 @@ namespace LogExpress.ViewModels
         private readonly MainWindow _mainWindow;
         private string _appTitle = "LogExpress";
         private string _folder = string.Empty;
-        private Layout _layout = null;
+        private ScopeSettings _scopeSettings;
+        private TimestampSettings _timestampSettings;
+        private SeveritySettings _severitySettings;
         private ObservableAsPropertyHelper<string> _infoBarByteSize;
         private ObservableAsPropertyHelper<string> _infoBarByteSizeFilter;
         private ObservableAsPropertyHelper<string> _infoBarLineCount;
@@ -80,11 +85,15 @@ namespace LogExpress.ViewModels
             _mainWindow = mainWindow;
             _logView = _mainWindow.LogView;
 
+            _mainWindow.AddHandler(DragDrop.DragOverEvent, DragOver);
+            _mainWindow.AddHandler(DragDrop.DropEvent, Drop);
+
             InitCommand = ReactiveCommand.Create(InitExecute);
-            //OpenFileCommand = ReactiveCommand.Create(OpenFileExecute);
-            OpenCommand = ReactiveCommand.Create(OpenExecute);
-            ConfigureTimestampCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureTimestampExecute);
-            ConfigureSeverityCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSeverityExecute);
+            ConfigureScopeCommand = ReactiveCommand.Create(ConfigureScopeExecute);
+            //ConfigureTimestampCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureTimestampExecute);
+            ConfigureTimestampCommand = ReactiveCommand.Create(ConfigureTimestampExecute);
+            //ConfigureSeverityCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSeverityExecute);
+            ConfigureSeverityCommand = ReactiveCommand.Create(ConfigureSeverityExecute);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplicationExecute);
             AboutCommand = ReactiveCommand.Create(AboutExecute);
@@ -92,7 +101,7 @@ namespace LogExpress.ViewModels
             {
                 ShowDebug = !ShowDebug;
             });
-            
+
             // Hot-keys
             KeyGotoStartCommand = ReactiveCommand.Create(KeyGotoStartExecute);
             KeyGotoEndCommand = ReactiveCommand.Create(KeyGotoEndExecute);
@@ -118,6 +127,8 @@ namespace LogExpress.ViewModels
         public async void Init()
         {
             // Reactive trigger for when the basedir, filters and recursive has changed
+
+/*
             _logViewSubscription = this
                 .WhenAnyValue(x => x.Folder, x => x.Pattern, x => x.Recursive, x => x.Layout)
                 .Where(((string baseDir, string filter, bool recursive, Layout layout) observerTuple) =>
@@ -128,13 +139,37 @@ namespace LogExpress.ViewModels
                 .Throttle(LogArgsChangeThreshold)
                 .ObserveOn(RxApp.TaskpoolScheduler)
                 .Subscribe(SetupLogView);
+*//*
+            _logViewSubscription = this
+                .WhenAnyValue(x => x.ScopeSettings, x => x.TimestampSettings, x => x.SeveritySettings)
+                .Where(obs =>
+                {
+                    var (scopeSettings, _, _) = obs;
+                    return scopeSettings != null 
+                           && !string.IsNullOrWhiteSpace(scopeSettings.Folder) 
+                           && !string.IsNullOrWhiteSpace(scopeSettings.Pattern);
+                })
+                .Throttle(LogArgsChangeThreshold)
+                .ObserveOn(RxApp.TaskpoolScheduler)
+                .Subscribe(SetupLogView);
+*/
+            _logViewSubscription = this
+                .WhenAnyValue(x => x.CurrentSettings)
+                .Where(currentSettings => currentSettings != null)
+                //.Throttle(LogArgsChangeThreshold)
+                .ObserveOn(RxApp.TaskpoolScheduler)
+                .Subscribe(SetupLogView);
 
             await InitCommand.Execute();
         }
 
 
+
         ~MainWindowViewModel()
         {
+            _mainWindow.RemoveHandler(DragDrop.DragOverEvent, DragOver);
+            _mainWindow.RemoveHandler(DragDrop.DropEvent, Drop);
+
             _logViewSubscription?.Dispose();
         }
 
@@ -146,9 +181,11 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> InitCommand { get; set; }
 
-        public ReactiveCommand<(string, string, bool?), Unit> ConfigureTimestampCommand { get; }
-        public ReactiveCommand<(string, string, bool?), Unit> ConfigureSeverityCommand { get; }
-        
+        //public ReactiveCommand<(string, string, bool?), Unit> ConfigureTimestampCommand { get; }
+        public ReactiveCommand<Unit, Unit> ConfigureTimestampCommand { get; }
+        //public ReactiveCommand<(string, string, bool?), Unit> ConfigureSeverityCommand { get; }
+        public ReactiveCommand<Unit, Unit> ConfigureSeverityCommand { get; set; }
+
         public ReactiveCommand<Unit, Unit> ExitCommand { get; }
         public ReactiveCommand<Unit, Unit> AboutCommand { get; }
         public ReactiveCommand<Unit, Unit> KeyGotoStartCommand { get; }
@@ -161,15 +198,22 @@ namespace LogExpress.ViewModels
         public ReactiveCommand<Unit, Unit> KeyGoUpCommand { get; }
         public ReactiveCommand<Unit, Unit> KeyGoDownCommand { get; }
 
-        public string Folder
+        public ScopeSettings ScopeSettings
         {
-            get => _folder;
-            set => this.RaiseAndSetIfChanged(ref _folder, value);
+            get => _scopeSettings;
+            set => this.RaiseAndSetIfChanged(ref _scopeSettings, value);
         }
-        public Layout Layout
+
+        public TimestampSettings TimestampSettings
         {
-            get => _layout;
-            set => this.RaiseAndSetIfChanged(ref _layout, value);
+            get => _timestampSettings;
+            set => this.RaiseAndSetIfChanged(ref _timestampSettings, value);
+        }
+
+        public SeveritySettings SeveritySettings
+        {
+            get => _severitySettings;
+            set => this.RaiseAndSetIfChanged(ref _severitySettings, value);
         }
 
         public string InfoBarByteSize => _infoBarByteSize?.Value;
@@ -288,28 +332,139 @@ namespace LogExpress.ViewModels
 
         //public ReactiveCommand<Unit, Unit> OpenFileCommand { get; }
 
-        public ReactiveCommand<Unit, Unit> OpenCommand { get; }
-
-        public string Pattern
-        {
-            get => _pattern;
-            set => this.RaiseAndSetIfChanged(ref _pattern, value);
-        }
-
-        public bool Recursive
-        {
-            get => _recursive;
-            set => this.RaiseAndSetIfChanged(ref _recursive, value);
-        }
+        public ReactiveCommand<Unit, Unit> ConfigureScopeCommand { get; }
 
         private ObservableAsPropertyHelper<bool> _isAnalyzed;
         private ObservableAsPropertyHelper<bool> _isFiltering;
         private ObservableAsPropertyHelper<bool> _isFiltered;
+        private ConfigureSettings _newSettings;
+        private ConfigureSettings _currentSettings;
 
 
         public ReactiveCommand<Unit, Unit> ToggleThemeCommand { get; }
 
-        private async void ConfigureTimestampExecute((string folder, string pattern, bool? recursive) args)
+        /*        private async void OpenFileExecute()
+                {
+                    Logger.Verbose("OpenLogFile clicked");
+                    var openFileDialog = new OpenFileDialog
+                    {
+                        Title = "Select folder",
+                        AllowMultiple = false,
+                        InitialFileName = "*.log",
+                        Directory = Folder
+                    };
+
+                    var file = await openFileDialog.ShowAsync(_mainWindow);
+
+                    if (file?.Length <= 0)
+                    {
+                        Logger.Information("OpenFile was cancelled");
+                        return;
+                    }
+
+                    var fileName = file?.First();
+                    await ConfigureTimestampCommand.Execute(DecodeFileName(fileName));
+                }
+        */
+        private async void ConfigureScopeExecute()
+        {
+            _newSettings ??= new ConfigureSettings(CurrentSettings);
+
+            var openLogSetView = new OpenSetView();
+            var openSetViewModel = new OpenSetViewModel(openLogSetView, _newSettings.Scope);
+            //openSetViewModel.Init();
+            openLogSetView.DataContext = openSetViewModel;
+            
+            var result = await openLogSetView.ShowDialog<(ScopeSettings scope, bool hasFiles)>(_mainWindow);
+            
+            if (result.scope == null)
+            {
+                Logger.Information("Configuration was cancelled from ConfigureScope");
+                _newSettings = null;
+                return;
+            }
+
+            _newSettings.Scope = result.scope;
+
+            if (!result.hasFiles)
+            {
+                Logger.Information("No currently matching files. Start the monitor, but skip configuring the timestamp and severity.");
+                Load();
+                return;
+            }
+
+            await ConfigureTimestampCommand.Execute();
+        }
+
+        private async void ConfigureTimestampExecute()
+        {
+            _newSettings ??= new ConfigureSettings(CurrentSettings);
+
+            var configureTimestampView = new ConfigureTimestampView();
+            var configureTimestampViewModel = new ConfigureTimestampViewModel(configureTimestampView, _newSettings.Scope, _newSettings.Timestamp);
+            configureTimestampViewModel.Init();
+            configureTimestampView.DataContext = configureTimestampViewModel;
+            
+            var (action, timestamp) = await configureTimestampView.ShowDialog<(ConfigureAction action, TimestampSettings timestamp)>(_mainWindow);
+
+            switch (action)
+            {
+                case ConfigureAction.Back:
+                    _newSettings.Timestamp = timestamp;
+                    await ConfigureScopeCommand.Execute();
+                    return;
+                case ConfigureAction.Cancel:
+                    Logger.Information("Configuration was cancelled from ConfigureTimestamp");
+                    _newSettings = null;
+                    break;
+                case ConfigureAction.Continue:
+                    _newSettings.Timestamp = timestamp;
+                    await ConfigureSeverityCommand.Execute();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private async void ConfigureSeverityExecute()
+        {
+            _newSettings ??= new ConfigureSettings(CurrentSettings);
+
+            var configureSeverityView = new ConfigureSeverityView();
+            var configureSeverityViewModel = new ConfigureSeverityViewModel(configureSeverityView, _newSettings.Scope, _newSettings.Severity);
+            configureSeverityViewModel.Init();
+            configureSeverityView.DataContext = configureSeverityViewModel;
+            
+            var (action, severity) = await configureSeverityView.ShowDialog<(ConfigureAction action, SeveritySettings severity)>(_mainWindow);
+
+            switch (action)
+            {
+                case ConfigureAction.Back:
+                    _newSettings.Severity = severity;
+                    await ConfigureScopeCommand.Execute();
+                    return;
+                case ConfigureAction.Cancel:
+                    Logger.Information("Configuration was cancelled from ConfigureSeverity");
+                    _newSettings = null;
+                    break;
+                case ConfigureAction.Continue:
+                    _newSettings.Severity = severity;
+                    Load();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private void Load()
+        {
+            Logger.Information("Opening Set");
+            CurrentSettings = _newSettings;
+            _newSettings = null;
+        }
+
+
+/*        private async void ConfigureTimestampExecuteOLD((string folder, string pattern, bool? recursive) args)
         {
             var (folder, pattern, recursive) = args;
             folder ??= Folder;
@@ -324,32 +479,42 @@ namespace LogExpress.ViewModels
             // 1. Cancel
             // 1. Prev (ConfigureScope): Keep the start and length, in case the user browses back (but don't set it so that loading will use it)
             // 2. Next (ConfigureSeverity): Keep the value
-            var layout = await configureTimestampView?.ShowDialog<Layout>(_mainWindow);
-            if (layout != null)
+            var result = await configureTimestampView?.ShowDialog<(bool back, TimestampSettings configureTimestampResult)>(_mainWindow);
+            if (result.back)
             {
-                Logger.Information("Layout set: TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampLeFormat='{TimestampFormat} SeverityStart={SeverityStart} Severities={Severities}", layout.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart, string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
-                Logger.Information("Opening Folder='{Folder}' Pattern='{Pattern}' Recursive={Recursive}", folder, pattern, recursive.Value);
-                Layout = layout;
-                Folder = folder;
-                Pattern = pattern;
-                Recursive = recursive.Value;
+                // TODO: Show ConfigureScope
             } 
-            else
+            else 
             {
-                Logger.Information("Open/configure was cancelled");
-                if (string.IsNullOrWhiteSpace(Folder) || string.IsNullOrWhiteSpace(Pattern))
+                if (result.configureTimestampResult == null)
                 {
-                    _mainWindow.MenuConfigureTimestamp.IsEnabled = false;
+                    Logger.Information("ConfigureTimestamp was cancelled");
+                    if (string.IsNullOrWhiteSpace(Folder) || string.IsNullOrWhiteSpace(Pattern))
+                    {
+                        _mainWindow.MenuConfigureTimestamp.IsEnabled = false;
 
-                    var messageBoxStandardWindow = MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
-                        "No logfile or set selected",
-                        "Use the Open File Or Open Set menus to open log-files."
-                    );
-                    await messageBoxStandardWindow.ShowDialog(_mainWindow);
+                        var messageBoxStandardWindow =
+                            MessageBox.Avalonia.MessageBoxManager.GetMessageBoxStandardWindow(
+                                "No logfile or set selected",
+                                "Use the Open File Or Open Set menus to open log-files."
+                            );
+                        await messageBoxStandardWindow.ShowDialog(_mainWindow);
+                    }
+                }
+                else {
+                    Logger.Information("TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampFormat='{TimestampFormat}",
+                        time.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart,
+                        string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
+                    Logger.Information("Opening Folder='{Folder}' Pattern='{Pattern}' Recursive={Recursive}", folder,
+                        pattern, recursive.Value);
+                    Layout = layout;
+                    Folder = folder;
+                    Pattern = pattern;
+                    Recursive = recursive.Value;
                 }
             }
         }
-        private async void ConfigureSeverityExecute((string folder, string pattern, bool? recursive) args)
+        private async void ConfigureSeverityExecuteOLD((string folder, string pattern, bool? recursive) args)
         {
             var (folder, pattern, recursive) = args;
             folder ??= Folder;
@@ -369,7 +534,7 @@ namespace LogExpress.ViewModels
             {
                 Logger.Information("Layout set: TimestampStart={TimestampStart} TimestampLength={TimestampLength} TimestampLeFormat='{TimestampFormat} SeverityStart={SeverityStart} Severities={Severities}", layout.TimestampStart, layout.TimestampLength, layout.TimestampFormat, layout.SeverityStart, string.Join(", ", layout.Severities.Select(s => $"{s.Key}:{s.Value}")));
                 LoadExecute(Folder, pattern, recursive, layout);
-            } 
+            }
             else
             {
                 Logger.Information("Open/configure was cancelled");
@@ -385,15 +550,7 @@ namespace LogExpress.ViewModels
                 }
             }
         }
-
-        private void LoadExecute(string folder, string pattern, bool? recursive, Layout layout)
-        {
-            Logger.Information("Opening Folder='{Folder}' Pattern='{Pattern}' Recursive={Recursive}", folder, pattern, recursive.Value);
-            Layout = layout;
-            Folder = folder;
-            Pattern = pattern;
-            Recursive = recursive.Value;
-        }
+*/
 
         private void DragOver(object sender, DragEventArgs e)
         {
@@ -407,12 +564,12 @@ namespace LogExpress.ViewModels
 
         private void Drop(object sender, DragEventArgs e)
         {
-/*
-            if (e.Data.Contains(DataFormats.Text))
-            {
-                Logger.Information("TODO: Text dropped in application: {Text}", e.Data.GetText());
-            }
-*/
+            /*
+                        if (e.Data.Contains(DataFormats.Text))
+                        {
+                            Logger.Information("TODO: Text dropped in application: {Text}", e.Data.GetText());
+                        }
+            */
             if (e.Data.Contains(DataFormats.FileNames))
             {
                 Logger.Information("TODO: Files(s) dropped in application: {Filenames}", string.Join(", ", e.Data.GetFileNames()));
@@ -485,13 +642,13 @@ namespace LogExpress.ViewModels
                 Logger.Information("No line selected");
                 return;
             }
-            var current =_logViewModel.VirtualLogFile.FilteredLines.IndexOf(_logViewModel.LineSelected);
+            var current = _logViewModel.VirtualLogFile.FilteredLines.IndexOf(_logViewModel.LineSelected);
             if (current < 0)
             {
                 Logger.Information("No line selected");
                 return;
             }
-            if (current >= _logViewModel.VirtualLogFile.FilteredLines.Count-1)
+            if (current >= _logViewModel.VirtualLogFile.FilteredLines.Count - 1)
             {
                 Logger.Information("Already at the bottom");
                 return;
@@ -509,58 +666,6 @@ namespace LogExpress.ViewModels
         {
             var aboutView = new AboutView();
             aboutView.ShowDialog(_mainWindow);
-        }
-
-        private (string, string, bool) DecodeFileName(string fileName)
-        {
-            Logger.Information("Selected file {LogFile}", fileName);
-            var fileInfo = new FileInfo(fileName);
-            var dirInfo = Directory.GetParent(fileInfo.FullName);
-            return (dirInfo.FullName, fileInfo.Name, false);
-        }
-
-/*        private async void OpenFileExecute()
-        {
-            Logger.Verbose("OpenLogFile clicked");
-            var openFileDialog = new OpenFileDialog
-            {
-                Title = "Select folder",
-                AllowMultiple = false,
-                InitialFileName = "*.log",
-                Directory = Folder
-            };
-
-            var file = await openFileDialog.ShowAsync(_mainWindow);
-
-            if (file?.Length <= 0)
-            {
-                Logger.Information("OpenFile was cancelled");
-                return;
-            }
-
-            var fileName = file?.First();
-            await ConfigureTimestampCommand.Execute(DecodeFileName(fileName));
-        }
-*/
-        private async void OpenExecute()
-        {
-
-            var openLogSetView = new OpenSetView();
-            openLogSetView.DataContext = new OpenSetViewModel(openLogSetView, _folder);
-            var openSetResult = await openLogSetView.ShowDialog<OpenSetViewModel.OpenSetResult>(_mainWindow);
-            if (openSetResult == null)
-            {
-                Logger.Information("OpenSet was cancelled");
-                return;
-            }
-
-            // TODO: Check if the file/set opened already has a configuration in the settings.
-
-            var configureArgs = openSetResult.SelectedFile != null
-                ? DecodeFileName(openSetResult.SelectedFile.FullName)
-                : (openSetResult.Folder, openSetResult.Pattern, openSetResult.Recursive);
-            
-            await ConfigureTimestampCommand.Execute(configureArgs);
         }
 
         private async void InitExecute()
@@ -583,10 +688,6 @@ namespace LogExpress.ViewModels
 
         private async Task ParseArgs(List<string> args)
         {
-
-            _mainWindow.AddHandler(DragDrop.DragOverEvent, DragOver);
-            _mainWindow.AddHandler(DragDrop.DropEvent, Drop);
-
             var optDebugger = args.Contains("-d");
             var optWaitForDebugger = args.Contains("-w");
 
@@ -612,7 +713,6 @@ namespace LogExpress.ViewModels
 
             if (args.Count > 0)
             {
-                Debugger.Launch();
                 string folder;
                 string pattern;
                 if (File.Exists(args[0]))
@@ -626,18 +726,24 @@ namespace LogExpress.ViewModels
                     folder = args[0];
                     pattern = args.Count > 1 ? args[1] : "*.log";
                 }
-                await ConfigureTimestampCommand.Execute((folder, pattern, recursive));
+                // TODO: Handle startup args
+                _newSettings ??= new ConfigureSettings();
+                _newSettings.Scope.Folder = folder;
+                _newSettings.Scope.Pattern = pattern;
+                _newSettings.Scope.Recursive = recursive;
+                await ConfigureTimestampCommand.Execute();
             }
         }
 
-        private void SetupLogView((string baseDir, string filter, bool recursive, Layout layout) observerTuple)
+        private void SetupLogView(ConfigureSettings settings)
         {
-            var (baseDir, filter, recursive, layout) = observerTuple;
-            Logger.Debug("Scope changed, setting up the LogView DataContext");
-            LogViewModel = new LogViewModel(baseDir, filter, recursive, layout, _logView);
+
+
+            Logger.Debug("Settings changed, setting up the LogView DataContext");
+            LogViewModel = new LogViewModel(settings.Scope, settings.Timestamp, settings.Severity, _logView);
 
             // Set the InfoBar property for the scope selected
-            InfoBarScope = $"Scope: {Folder}{Path.DirectorySeparatorChar}{Pattern} {(Recursive ? "(recursive)" : "")}";
+            InfoBarScope = $"Scope: {settings.Scope.Folder}{Path.DirectorySeparatorChar}{settings.Scope.Pattern} {(settings.Scope.Recursive ? "(recursive)" : "")}";
 
             // TODO: Add info on number of files in the set
 
@@ -770,6 +876,12 @@ namespace LogExpress.ViewModels
         public bool IsFiltering => _isFiltering != null && _isFiltering.Value;
         public bool IsAnalyzed => _isAnalyzed != null && _isAnalyzed.Value;
 
+        public ConfigureSettings CurrentSettings
+        {
+            get => _currentSettings;
+            set => _currentSettings = this.RaiseAndSetIfChanged(ref _currentSettings, value);
+        }
+
         private void ToggleThemeExecute()
         {
             // NB! Depends on the first Window.Styles StyleInclude to be the theme, and the third App.Styles to be the theme
@@ -788,6 +900,68 @@ namespace LogExpress.ViewModels
                 _mainWindow.ThemeControl.IsChecked != null && _mainWindow.ThemeControl.IsChecked.Value
                     ? "Dark"
                     : "Light");
+        }
+    }
+
+    public class ConfigureSettings
+    {
+        public ConfigureSettings(ConfigureSettings settingsToClone = null)
+        {
+            if (settingsToClone != null)
+            {
+                Scope = settingsToClone.Scope;
+                Timestamp = settingsToClone.Timestamp;
+                Severity = settingsToClone.Severity;
+            }
+            else
+            {
+                Scope = new ScopeSettings();
+                Timestamp = new TimestampSettings();
+                Severity = new SeveritySettings();
+            }
+        }
+
+        public ScopeSettings Scope { get; set; }
+        public TimestampSettings Timestamp { get; set; }
+        public SeveritySettings Severity { get; set; }
+    }
+
+    public class ScopeSettings
+    {
+        public string Folder { get; set; } = string.Empty;
+        public string Pattern { get; set; } = string.Empty;
+        public bool Recursive { get; set; }
+    }
+
+    public class TimestampSettings
+    {
+        public int TimestampStart { get; set; }
+        public int TimestampLength { get; set; }
+        public string TimestampFormat { get; set; } = string.Empty;
+    }
+
+    public class SeveritySettings
+    {
+        private Dictionary<byte, string> _severities = new Dictionary<byte, string>();
+        private int _maxSeverityNameLength;
+
+        public int SeverityStart { get; set; }
+        public Dictionary<byte, string> Severities
+        {
+            get => _severities;
+            set => _severities = value.Where(pair => pair.Value.Length > 0).ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+        public int MaxSeverityNameLength
+        {
+            get
+            {
+                if (_maxSeverityNameLength == 0)
+                {
+                    _maxSeverityNameLength = Severities.OrderByDescending(s => s.Value.Length).First().Value.Length;
+                }
+
+                return _maxSeverityNameLength;
+            }
         }
     }
 }

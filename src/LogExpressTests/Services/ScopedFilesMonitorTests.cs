@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Threading;
 using DynamicData;
+using LogExpress.Models;
 using LogExpress.Services;
 using NUnit.Framework;
 using Polly;
@@ -12,7 +13,7 @@ using Serilog;
 namespace LogExpressTests.Services
 {
     [TestFixture]
-    public class ScopedFilesMonitorTests
+    public class ScopedFileMonitorTests
     {
         private static readonly Policy WaitAndRetry = Policy
             .Handle<IOException>()
@@ -25,8 +26,8 @@ namespace LogExpressTests.Services
 
         private string _tempFolder;
 
-        private ReadOnlyObservableCollection<FileInfo> _files;
-        private ReadOnlyObservableCollection<FileInfo> Files => _files;
+        private ReadOnlyObservableCollection<ScopedFile> _files;
+        private ReadOnlyObservableCollection<ScopedFile> Files => _files;
 
         #region Helpers
 
@@ -78,7 +79,7 @@ namespace LogExpressTests.Services
         [Test]
         public void Files_Found_Missing_ParentFolder_Then_Created()
         {
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             Directory.CreateDirectory(_tempFolder);
          
@@ -98,7 +99,7 @@ namespace LogExpressTests.Services
         [Test]
         public void Files_Found_Missing_ParentFolder_Then_Created_With_Random_Files_Too()
         {
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             Directory.CreateDirectory(_tempFolder);
             File.WriteAllText(Path.Combine(_tempFolder, "test.1.log"), "Log content");
@@ -120,7 +121,7 @@ namespace LogExpressTests.Services
         public void Files_Found_ParentFolder_Exist_Then_Add_1()
         {
             Directory.CreateDirectory(_tempFolder);
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             File.WriteAllText(Path.Combine(_tempFolder, "test.log"), "Log content");
 
@@ -141,7 +142,7 @@ namespace LogExpressTests.Services
             Directory.CreateDirectory(_tempFolder);
             File.WriteAllText(Path.Combine(_tempFolder, "test.1.log"), "Log content");
 
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             File.WriteAllText(Path.Combine(_tempFolder, "test.2.log"), "Log content");
 
@@ -163,7 +164,7 @@ namespace LogExpressTests.Services
             File.WriteAllText(Path.Combine(_tempFolder, "test.1.log"), "Log content");
             File.WriteAllText(Path.Combine(_tempFolder, "test.2.log"), "Log content");
 
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             File.Delete(Path.Combine(_tempFolder, "test.1.log"));
 
@@ -185,7 +186,7 @@ namespace LogExpressTests.Services
         [Test]
         public void No_Files_Missing_ParentFolder()
         {
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
             using var binding = scopedFilesMonitor
                 .Connect()
                 .Bind(out _files)
@@ -197,7 +198,7 @@ namespace LogExpressTests.Services
         [Test]
         public void No_Files_Missing_ParentFolder_Then_Created()
         {
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             Directory.CreateDirectory(_tempFolder);
 
@@ -216,7 +217,7 @@ namespace LogExpressTests.Services
         {
             Directory.CreateDirectory(_tempFolder);
 
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             Thread.Sleep(300);
             
@@ -233,7 +234,7 @@ namespace LogExpressTests.Services
         {
             Directory.CreateDirectory(_tempFolder);
 
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
             
             CreateRandomFiles(10);
             Thread.Sleep(300);
@@ -253,7 +254,7 @@ namespace LogExpressTests.Services
             CreateRandomFiles(10);
             Thread.Sleep(300);
 
-            using var scopedFilesMonitor = new ScopedFilesMonitor(_tempFolder, new List<string> { "test*.log" }, true);
+            using var scopedFilesMonitor = new ScopedFileMonitor(_tempFolder, new List<string> { "test*.log" }, true);
 
             using var binding = scopedFilesMonitor
                 .Connect()

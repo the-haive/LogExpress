@@ -1,11 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
 using Avalonia.Media.Imaging;
@@ -14,10 +13,10 @@ using DynamicData.Binding;
 using JetBrains.Annotations;
 using LogExpress.Models;
 using LogExpress.Utils;
+using LogExpress.ViewModels;
 using ReactiveUI;
 using Serilog;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -53,22 +52,22 @@ namespace LogExpress.Services
         private bool _showLines;
         private bool _showProgress;
         private long _totalSize;
+
         /// <summary>
-        ///     Setup the virtual log-file manager.
+        /// Setup the virtual log-file manager.
         /// </summary>
-        /// <param name="basePath"></param>
-        /// <param name="pattern"></param>
-        /// <param name="recursive"></param>
-        /// <param name="layout"></param>
-        public VirtualLogFile(string basePath, string pattern, bool recursive, Layout layout)
+        /// <param name="scopeSettings"></param>
+        /// <param name="timestampSettings"></param>
+        /// <param name="severitySettings"></param>
+        public VirtualLogFile(ScopeSettings scopeSettings, TimestampSettings timestampSettings, SeveritySettings severitySettings)
         {
-            BasePath = basePath;
-            Pattern = pattern;
-            Layout = layout;
+            _scopeSettings = scopeSettings;
+            _timestampSettings = timestampSettings;
+            _severitySettings = severitySettings;
 
             Logger.Debug(
                 "Creating instance for basePath={basePath} and filters={filters} with recurse={recurse}",
-                basePath, pattern, recursive);
+                _scopeSettings.Folder, _scopeSettings.Pattern, _scopeSettings.Recursive);
 
             this.WhenAnyValue(x => x.AnalyzeError)
                 .Where(x => x)
@@ -110,7 +109,7 @@ namespace LogExpress.Services
                     Logger.Debug("Monitoring active log-file for changes");
                 });
 
-            _fileMonitor = new ScopedFileMonitor(BasePath, new List<string> {Pattern}, recursive);
+            _fileMonitor = new ScopedFileMonitor(_scopeSettings.Folder, new List<string> {_scopeSettings.Pattern}, _scopeSettings.Recursive);
 
             _fileMonitorSubscription = _fileMonitor.Connect()
                 .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
@@ -154,7 +153,7 @@ namespace LogExpress.Services
                 {
                     _severityFilterSource.Clear();
                     _severityFilterSource.AddOrUpdate(new FilterItem<int>(0, 0, "All", "Show all severities, including entries with undetected severity"));
-                    foreach (var (level, severity) in Layout.Severities)
+                    foreach (var (level, severity) in _severitySettings.Severities)
                     {
                         var name = level == 0 ? "Any" : $"{level}-{severity}";
                         var toolTip = level == 6
@@ -223,7 +222,6 @@ namespace LogExpress.Services
             ShowProgress = true;
             ShowLines = !ShowProgress;
             Logger.Debug("Starting reading newlines");
-            var timer = Stopwatch.StartNew();
             InitializeLines(set);
         }
 
@@ -244,8 +242,6 @@ namespace LogExpress.Services
             get => _analyzeError;
             set => this.RaiseAndSetIfChanged(ref _analyzeError, value);
         }
-
-        public string BasePath { get; set; }
 
         public ObservableCollection<LineItem> FilteredLines
         {
@@ -277,11 +273,24 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _isFiltering, value);
         }
 
-        public Layout Layout
+        public ScopeSettings ScopeSettings
         {
-            get => _layout;
-            set => this.RaiseAndSetIfChanged(ref _layout, value);
+            get => _scopeSettings;
+            set => this.RaiseAndSetIfChanged(ref _scopeSettings, value);
         }
+
+        public TimestampSettings TimestampSettings
+        {
+            get => _timestampSettings;
+            set => this.RaiseAndSetIfChanged(ref _timestampSettings, value);
+        }
+
+        public SeveritySettings SeveritySettings
+        {
+            get => _severitySettings;
+            set => this.RaiseAndSetIfChanged(ref _severitySettings, value);
+        }
+
 
         public ReadOnlyObservableCollection<ScopedFile> LogFiles => _logFiles;
 
@@ -290,8 +299,6 @@ namespace LogExpress.Services
             get => _newLines;
             set => this.RaiseAndSetIfChanged(ref _newLines, value);
         }
-
-        public string Pattern { get; set; }
 
         public (DateTime, DateTime) Range
         {
@@ -421,7 +428,7 @@ namespace LogExpress.Services
                 for (var i = 0; i < count; i++)
                 {
                     var lineItem = newLines[i];
-                    var severity = ScopedFile.ReadFileLineSeverity(reader, scopedFile.Layout, lineItem.Position);
+                    var severity = ScopedFile.ReadFileLineSeverity(reader, scopedFile.SeveritySettings, lineItem.Position);
                     lineItem.Severity = severity != 0 ? severity : lastSeverity;
                     lastSeverity = severity;
                 }
@@ -470,13 +477,13 @@ namespace LogExpress.Services
 
                     var pixel = lineItem.Severity switch
                     {
-                        6 => Rgba32.Red,
-                        5 => Rgba32.Salmon,
-                        4 => Rgba32.Gold,
-                        3 => Rgba32.Beige,
-                        2 => Rgba32.Wheat,
-                        1 => Rgba32.Tan,
-                        _ => Rgba32.FloralWhite
+                        6 => Color.Red,
+                        5 => Color.Salmon,
+                        4 => Color.Gold,
+                        3 => Color.Beige,
+                        2 => Color.Wheat,
+                        1 => Color.Tan,
+                        _ => Color.FloralWhite
                     };
 
                     var pixelRowSpan = image.GetPixelRowSpan(y);
@@ -523,7 +530,7 @@ namespace LogExpress.Services
             // Check the file-filter
             var fileIncluded = fileFilterSelected == null 
                                   || fileFilterSelected.Key == 0
-                                  || LogFiles?.FirstOrDefault(l => l.RelativeFullName.Equals(fileFilterSelected?.Name))?.LinesListCreationTime == lineItem.CreationTimeTicks;
+                                  || LogFiles?.FirstOrDefault(l => l.RelativeFullName.Equals(fileFilterSelected.Name))?.LinesListCreationTime == lineItem.CreationTimeTicks;
             if (!fileIncluded) return false;
 
             // Check the severity-filter (includes log-lines that has the default severity (0)
@@ -531,6 +538,7 @@ namespace LogExpress.Services
                                 lineItem.Severity >= severityFilterSelected.Key;
             if (!severityIncluded) return false;
 
+            // TODO: Add usage of the lastDate to give lines without date the same date as the last item
             return true;
         }
 
@@ -559,7 +567,7 @@ namespace LogExpress.Services
                     currentReader = new StreamReader(currentFileStream, currentScopedFile.Encoding);
                 }
 
-                var severity = ScopedFile.ReadFileLineSeverity(currentReader, currentScopedFile?.Layout, lineItem.Position);
+                var severity = ScopedFile.ReadFileLineSeverity(currentReader, currentScopedFile?.SeveritySettings, lineItem.Position);
 
                 // We use the severity for the previous line, if this line had no severity
                 lineItem.Severity = severity != 0 ? severity : lastSeverity;
@@ -580,7 +588,8 @@ namespace LogExpress.Services
 
             foreach (var scopedFile in LogFiles)
             {
-                scopedFile.Layout = Layout;
+                scopedFile.TimestampSettings = TimestampSettings;
+                scopedFile.SeveritySettings = SeveritySettings;
             }
 
             // TODO: Use a normal async task for this instead, or is this ok?
@@ -678,7 +687,9 @@ namespace LogExpress.Services
         private ObservableCollection<LineItem> _backgroundFilteredLines;
         private bool _isFiltered = false;
         private bool _isFiltering = false;
-        private Layout _layout;
+        private ScopeSettings _scopeSettings;
+        private TimestampSettings _timestampSettings;
+        private SeveritySettings _severitySettings;
 
         private ObservableCollection<LineItem> BackgroundFilteredLines
         {

@@ -27,6 +27,7 @@ namespace LogExpress.ViewModels
     public class LogViewModel : ViewModelBase, IDisposable
     {
         private static readonly ILogger Logger = Log.ForContext<LogViewModel>();
+
         private IObservable<bool> _hasLineSelection;
 
         private readonly LogView _logView;
@@ -34,7 +35,6 @@ namespace LogExpress.ViewModels
 
         [UsedImplicitly] public VirtualLogFile VirtualLogFile { get; set; }
 
-        private readonly string _basePath;
         private ObservableCollection<LineItem> _lines;
         private LineItem _lineSelected;
         private ObservableCollection<LineItem> _linesSelected = new ObservableCollection<LineItem>();
@@ -69,21 +69,24 @@ namespace LogExpress.ViewModels
 
         #region Constructor / deconstructor
 
-        public LogViewModel(string basePath, string filter, in bool recursive, Layout layout, LogView logView)
+        public LogViewModel(ScopeSettings scopeSettings, TimestampSettings timestampSettings, SeveritySettings severitySettings, LogView logView, List<Regex> timestampPatterns = null)
         {
-            _basePath = basePath;
-            Tail = true;
-            _layout = layout;
+            _scopeSettings = scopeSettings;
+            _timestampSettings = timestampSettings;
+            _severitySettings = severitySettings;
             _logView = logView;
-            _filter = filter;
-            _recursive = recursive;
 
-            Severity1Name = _layout.Severities[1];
-            Severity2Name = _layout.Severities[2];
-            Severity3Name = _layout.Severities[3];
-            Severity4Name = _layout.Severities[4];
-            Severity5Name = _layout.Severities[5];
-            Severity6Name = _layout.Severities[6];
+            Tail = true;
+
+            if (_severitySettings != null)
+            {
+                Severity1Name = _severitySettings.Severities[1];
+                Severity2Name = _severitySettings.Severities[2];
+                Severity3Name = _severitySettings.Severities[3];
+                Severity4Name = _severitySettings.Severities[4];
+                Severity5Name = _severitySettings.Severities[5];
+                Severity6Name = _severitySettings.Severities[6];
+            }
 
             TimeFilterItems = new ReadOnlyObservableCollection<FilterItem<int>>(new ObservableCollection<FilterItem<int>>(new List<FilterItem<int>>()
             {
@@ -95,7 +98,7 @@ namespace LogExpress.ViewModels
                 new FilterItem<int>(5, 5,"Custom Range..."),
             }));
 
-            VirtualLogFile = new VirtualLogFile(_basePath, _filter, _recursive, _layout);
+            VirtualLogFile = new VirtualLogFile(_scopeSettings, _timestampSettings, _severitySettings);
 
             _totalSize = VirtualLogFile.WhenAnyValue(x => x.TotalSize)
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -578,9 +581,9 @@ namespace LogExpress.ViewModels
 
         #region Tools
         private bool _tail = true;
-        private Layout _layout;
-        private string _filter;
-        private bool _recursive;
+        private ScopeSettings _scopeSettings;
+        private TimestampSettings _timestampSettings;
+        private SeveritySettings _severitySettings;
 
         public ReactiveCommand<Unit, Unit> CopyCommand { get; set; }
 

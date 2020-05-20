@@ -2,12 +2,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        Width="800"
-        MinWidth="650"
-        Height="850"
-        WindowStartupLocation="CenterOwner"
         x:Class="LogExpress.Views.OpenSetView"
-        Title="OpenSetView">
+        Width="900"
+        MinWidth="750"
+        Height="900"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/LogExpress Logo 16x16.png"
+        >
   <Window.Styles>
     <Style Selector="Border.info">
       <Setter Property="Background" Value="AliceBlue"/>
@@ -33,13 +34,13 @@
     </Style>
   </Window.Styles>
   <DockPanel VerticalAlignment="Stretch" Margin="0 10" LastChildFill="True" HorizontalAlignment="Stretch">
-    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="800" Margin="0 0 0 20">
-      Open Set
+    <TextBlock FontSize="18" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="800" Margin="0 0 0 20">
+      Set Scope
     </TextBlock>
-    <Border Classes="info" DockPanel.Dock="Top" Width="750">
+    <Border Classes="info" DockPanel.Dock="Top" Width="850">
       <StackPanel HorizontalAlignment="Center" Margin="10">
         <TextBlock>
-          Beware that LogExpress expects the opened log-files to have uniform layout. This in practice means that the position and width/format of the log-date and the position of and the list of expected Log-level indicators must be consistent. Finally, the dates within the files should be globally sequential, as in not overlap.
+          Beware that LogExpress expects the opened log-files to have uniform layout. This in practice means that the position and width/format of the log-date and the position of and the list of expected Log-level indicators must be consistent. Finally, the dates within the files should be globally sequential and should not overlap.
         </TextBlock>
         <Separator Height="10"/>
         <StackPanel Name="Supported">
@@ -47,7 +48,7 @@
             LogExpress was specifically designed to: 
           </TextBlock>
           <Separator Height="10"/>
-          <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto" Width="650" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto" Width="750" HorizontalAlignment="Left">
             <TextBlock Grid.Row="0" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
             <TextBlock Grid.Row="0" Grid.Column="1">Load a single log-file, and investigate/monitor the events logged to it.</TextBlock>
             <TextBlock Grid.Row="1" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
@@ -60,7 +61,7 @@
             LogExpress was specifically NOT designed to:
           </TextBlock>
           <Separator Height="10"/>
-          <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto,Auto" Width="650" HorizontalAlignment="Left">
+          <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto,Auto" Width="750" HorizontalAlignment="Left">
             <TextBlock Grid.Row="0" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
             <TextBlock Grid.Row="0" Grid.Column="1">Open multiple log-files from different processes, as the layout and or date-time ranges would not be co-herent.</TextBlock>
             <TextBlock Grid.Row="1" Grid.Column="0" Margin="10 0 0 0">•</TextBlock>
@@ -71,34 +72,52 @@
         </StackPanel>
       </StackPanel>
     </Border>
-    <Grid ColumnDefinitions="100,200,100" RowDefinitions="Auto,Auto,Auto"  Margin="10" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="500">
-      <!-- Row 0 -->
-      <TextBlock Grid.Row="0" Grid.Column="0" Text="Log folder:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-      <TextBox Grid.Row="0" Grid.Column="1" Name="Folder" Watermark="Folder" Margin="5" Padding="5" HorizontalAlignment="Left" Width="200" Text="{Binding Folder}" />
-      <Button Grid.Row="0" Grid.Column="2" Name="SelectFolder" Content="Select folder" Margin="5" Padding="5" HorizontalAlignment="Left" Command="{Binding SelectFolderCommand}"/>
-      <!-- Row 1 -->
-      <TextBlock Grid.Row="1" Grid.Column="0" Text="Log pattern:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-      <TextBox Grid.Row="1" Grid.Column="1" Name="Pattern" Watermark="*.log" Margin="5" Padding="5" HorizontalAlignment="Left" Width="200" Text="{Binding Pattern}"/>
-      <!-- Row 2 -->
-      <TextBlock Grid.Row="2" Grid.Column="0" Text="Recursive:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-      <CheckBox Grid.Row="2" Grid.Column="1" Margin="5" Padding="5" IsChecked="{Binding Recursive}"/>
-    </Grid>
+    <StackPanel DockPanel.Dock="Top" Spacing="10" Width="850" HorizontalAlignment="Stretch" Margin="0 0 0 20">
+      <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
+    
+        <Grid ColumnDefinitions="100,200,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"  Margin="10" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="500">
+          <!-- Row 0 -->
+          <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Text="Choose the folder where the log-files you want to open are located." VerticalAlignment="Center" HorizontalAlignment="Center"/>
+          <!-- Row 1 -->
+          <TextBlock Grid.Row="1" Grid.Column="0" Text="Log folder:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+          <TextBox Grid.Row="1" Grid.Column="1" Name="Folder" Watermark="Folder" Margin="5" Padding="5" HorizontalAlignment="Left" Width="200" Text="{Binding Folder}" />
+          <Button Grid.Row="1" Grid.Column="2" Name="SelectFolder" Content="Select folder" Margin="5" Padding="5" HorizontalAlignment="Left" Command="{Binding SelectFolderCommand}"/>
+          <!-- Row 2 -->
+          <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Text="If there are log-files from multiple products in the same folder, use the pattern to get the logs for just one product." VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+          <!-- Row 3 -->
+          <TextBlock Grid.Row="3" Grid.Column="0" Text="Log pattern:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+          <TextBox Grid.Row="3" Grid.Column="1" Name="Pattern" Watermark="*.log" Margin="5" Padding="5" HorizontalAlignment="Left" Width="200" Text="{Binding Pattern}"/>
+          <!-- Row 4 -->
+          <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3" Text="If the product log is setup with rolling logs that are moved to a sub-folder then check this to make sure it is included." VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap"/>
+          <!-- Row 5 -->
+          <TextBlock Grid.Row="5" Grid.Column="0" Text="Recursive:" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+          <CheckBox Grid.Row="5" Grid.Column="1" Margin="5" Padding="5" IsChecked="{Binding Recursive}"/>
+        </Grid>
+      </Border>
+    </StackPanel>
     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-        <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding ConfigureFileCommand}"  
-                IsEnabled="{Binding SelectedLogFile, Converter={x:Static ObjectConverters.IsNotNull}}"
-                Content="Select File"
-                ToolTip.Tip="Choose just the selected log-file"/>
-        <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding ConfigureSetCommand}" 
-                Content="Select All"
-                IsDefault="True"
-                ToolTip.Tip="Choose all matching log-files"/>
-        <Button Margin="10 5 5 10" Padding="5" Width="140" 
-                Command="{Binding CancelCommand}" 
-                Content="Cancel"
-                IsCancel="True"/>
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding CancelCommand}" Content="Cancel" IsCancel="True"/>
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding ConfigureFileCommand}" IsEnabled="{Binding SelectedLogFile, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Choose just the selected log-file">
+          <DockPanel LastChildFill="True" >
+            <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Right">
+              <DrawingPresenter.Drawing>
+                <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M515.554016113281,-707.14599609375C527.075012207031,-707.14599609375,537.530029296875,-702.578979492188,545.206970214844,-695.156982421875L786.559997558594,-453.803985595703C794.278015136719,-446.0830078125 799.052001953125,-435.417999267578 799.052001953125,-423.639007568359 799.052001953125,-411.859985351563 794.278015136719,-401.194000244141 786.559997558594,-393.473999023438L545.195007324219,-152.108993530273C537.530029296875,-144.699005126953 527.075012207031,-140.13200378418 515.554016113281,-140.13200378418 491.989990234375,-140.13200378418 472.886993408203,-159.235000610352 472.886993408203,-182.79899597168 472.886993408203,-194.320007324219 477.454010009766,-204.774993896484 484.876007080078,-212.451995849609L696.063049316406,-423.639007568359 696.064025878906,-423.638000488281 696.064025878906,-423.640014648438 696.063049316406,-423.639007568359 484.864013671875,-634.838012695313C477.454010009766,-642.502990722656 472.886993408203,-652.9580078125 472.886993408203,-664.47900390625 472.886993408203,-688.043029785156 491.989990234375,-707.14599609375 515.554016113281,-707.14599609375z M258.505004882813,-708.195007324219C270.548004150391,-708.195007324219,281.424987792969,-703.205993652344,289.183013916016,-695.181030273438L530.559997558594,-453.803985595703C538.278015136719,-446.0830078125 543.052001953125,-435.417999267578 543.052001953125,-423.639007568359 543.052001953125,-411.859985351563 538.278015136719,-401.194000244141 530.559997558594,-393.473999023438L289.195007324219,-152.108993530273C281.529998779297,-144.699005126953 271.075012207031,-140.13200378418 259.553985595703,-140.13200378418 235.990005493164,-140.13200378418 216.886993408203,-159.235000610352 216.886993408203,-182.79899597168 216.886993408203,-194.320007324219 221.453994750977,-204.774993896484 228.876007080078,-212.451995849609L440.06298828125,-423.639007568359 440.063995361328,-423.638000488281 440.063995361328,-423.640014648438 440.06298828125,-423.639007568359 228.863998413086,-634.838012695313C220.828002929688,-642.606994628906 215.837997436523,-653.484985351563 215.837997436523,-665.528015136719 215.837997436523,-689.091979980469 234.940994262695,-708.195007324219 258.505004882813,-708.195007324219z" />
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+            <TextBlock Text="Select File..." Margin="5 0" HorizontalAlignment="Right"/>
+          </DockPanel>
+        </Button>
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding ConfigureSetCommand}" IsDefault="True" ToolTip.Tip="Choose all matching log-files" BorderThickness="2">
+          <DockPanel LastChildFill="True" >
+            <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Right">
+              <DrawingPresenter.Drawing>
+                <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M515.554016113281,-707.14599609375C527.075012207031,-707.14599609375,537.530029296875,-702.578979492188,545.206970214844,-695.156982421875L786.559997558594,-453.803985595703C794.278015136719,-446.0830078125 799.052001953125,-435.417999267578 799.052001953125,-423.639007568359 799.052001953125,-411.859985351563 794.278015136719,-401.194000244141 786.559997558594,-393.473999023438L545.195007324219,-152.108993530273C537.530029296875,-144.699005126953 527.075012207031,-140.13200378418 515.554016113281,-140.13200378418 491.989990234375,-140.13200378418 472.886993408203,-159.235000610352 472.886993408203,-182.79899597168 472.886993408203,-194.320007324219 477.454010009766,-204.774993896484 484.876007080078,-212.451995849609L696.063049316406,-423.639007568359 696.064025878906,-423.638000488281 696.064025878906,-423.640014648438 696.063049316406,-423.639007568359 484.864013671875,-634.838012695313C477.454010009766,-642.502990722656 472.886993408203,-652.9580078125 472.886993408203,-664.47900390625 472.886993408203,-688.043029785156 491.989990234375,-707.14599609375 515.554016113281,-707.14599609375z M258.505004882813,-708.195007324219C270.548004150391,-708.195007324219,281.424987792969,-703.205993652344,289.183013916016,-695.181030273438L530.559997558594,-453.803985595703C538.278015136719,-446.0830078125 543.052001953125,-435.417999267578 543.052001953125,-423.639007568359 543.052001953125,-411.859985351563 538.278015136719,-401.194000244141 530.559997558594,-393.473999023438L289.195007324219,-152.108993530273C281.529998779297,-144.699005126953 271.075012207031,-140.13200378418 259.553985595703,-140.13200378418 235.990005493164,-140.13200378418 216.886993408203,-159.235000610352 216.886993408203,-182.79899597168 216.886993408203,-194.320007324219 221.453994750977,-204.774993896484 228.876007080078,-212.451995849609L440.06298828125,-423.639007568359 440.063995361328,-423.638000488281 440.063995361328,-423.640014648438 440.06298828125,-423.639007568359 228.863998413086,-634.838012695313C220.828002929688,-642.606994628906 215.837997436523,-653.484985351563 215.837997436523,-665.528015136719 215.837997436523,-689.091979980469 234.940994262695,-708.195007324219 258.505004882813,-708.195007324219z" />
+              </DrawingPresenter.Drawing>
+	          </DrawingPresenter>	
+            <TextBlock Text="Select All..." Margin="5 0" HorizontalAlignment="Right"/>
+          </DockPanel>
+        </Button>
       </StackPanel>
     </StackPanel>
     <Border Background="Cornsilk"
@@ -108,16 +127,16 @@
             Padding="5"
             IsVisible="{Binding !LogFiles.Count}" 
             DockPanel.Dock="Top" 
-            Width="550">
+            Width="850">
       <StackPanel HorizontalAlignment="Center" Margin="10">
         <TextBlock TextWrapping="Wrap" TextAlignment="Center" Foreground="Black">
           Your definition does not yield any files - at the moment.
         </TextBlock>
-        <TextBlock TextWrapping="Wrap" FontWeight="Bold" FontStyle="Italic" TextAlignment="Center" Margin="10" Foreground="Black">
-          You can however still open the set. 
+        <TextBlock TextWrapping="Wrap" TextAlignment="Center" Margin="10" Foreground="Black">
+          You can however still open the set. LogExpress will monitor the defined scope and start tracking the files when/if they are created.
         </TextBlock>
-        <TextBlock TextWrapping="Wrap" TextAlignment="Center" Foreground="Black">
-          LogExpress will monitor the defined scope and start tracking the files when/if they are created.
+        <TextBlock TextWrapping="Wrap" TextAlignment="Center" Margin="10" Foreground="Black">
+          Note: Once any logfile comes into scope you will have to manually configure the timestamp and severity.
         </TextBlock>
       </StackPanel>
     </Border>

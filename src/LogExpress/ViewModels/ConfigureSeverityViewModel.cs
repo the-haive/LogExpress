@@ -23,45 +23,33 @@ namespace LogExpress.ViewModels
         private static readonly Brush WarningColor = new SolidColorBrush(Colors.Orange);
         private IDisposable _fileMonitorSubscription;
         private IDisposable _parseFilesSubscription;
+        private IDisposable _parseSeveritySubscription;
         private ScopedFileMonitor _scopedFileMonitor;
         private IDisposable _severitySubscription;
-        private IDisposable _timestampSubscription;
         private readonly TextInfo _textInfo= new CultureInfo("en-US",false).TextInfo;
 
-        public ConfigureSeverityViewModel(ConfigureSeverityView view, string folder, string pattern, bool recursive,
-            Layout layout = null)
+        public ConfigureSeverityViewModel(ConfigureSeverityView view, ScopeSettings scopeSettings, SeveritySettings severitySettings)
         {
             View = view;
-            ArgFolder = folder;
-            ArgPattern = pattern;
-            ArgRecursive = recursive;
-            ArgLayout = layout;
-
+            ScopeSettings = scopeSettings;
+            SeveritySettings = severitySettings ?? new SeveritySettings();
         }
 
-        public Layout ArgLayout { get; set; }
+        public ScopeSettings ScopeSettings { get; set; }
 
-        public bool ArgRecursive { get; set; }
-
-        public string ArgPattern { get; set; }
-
-        public string ArgFolder { get; set; }
+        public SeveritySettings SeveritySettings { get; set; }
 
         public void Init()
         {
-            if (ArgLayout != null)
+            if (SeveritySettings != null)
             {
-                _layout = ArgLayout;
-                TimestampLineSelectionStart = ArgLayout.TimestampStart;
-                TimestampLineSelectionEnd = ArgLayout.TimestampStart + ArgLayout.TimestampLength;
-                TimestampFormat = ArgLayout.TimestampFormat;
-                SeverityLineSelectionStart = ArgLayout.SeverityStart;
-                SeverityName1 = ArgLayout.Severities[1];
-                SeverityName2 = ArgLayout.Severities[2];
-                SeverityName3 = ArgLayout.Severities[3];
-                SeverityName4 = ArgLayout.Severities[4];
-                SeverityName5 = ArgLayout.Severities[5];
-                SeverityName6 = ArgLayout.Severities[6];
+                SeverityLineSelectionStart = SeveritySettings.SeverityStart;
+                SeverityName1 = SeveritySettings.Severities.ContainsKey(1) ? SeveritySettings.Severities[1] : string.Empty;
+                SeverityName2 = SeveritySettings.Severities.ContainsKey(2) ? SeveritySettings.Severities[2] : string.Empty;
+                SeverityName3 = SeveritySettings.Severities.ContainsKey(3) ? SeveritySettings.Severities[3] : string.Empty;
+                SeverityName4 = SeveritySettings.Severities.ContainsKey(4) ? SeveritySettings.Severities[4] : string.Empty;
+                SeverityName5 = SeveritySettings.Severities.ContainsKey(5) ? SeveritySettings.Severities[5] : string.Empty;
+                SeverityName6 = SeveritySettings.Severities.ContainsKey(6) ? SeveritySettings.Severities[6] : string.Empty;
             }
 
             UpperCaseCommand = ReactiveCommand.Create(UpperCaseExecute);
@@ -77,12 +65,6 @@ namespace LogExpress.ViewModels
             CancelCommand = ReactiveCommand.Create(CancelExecute);
             OpenCommand = ReactiveCommand.Create(OpenExecute);
 
-            _timestampSubscription = this.WhenAnyValue(
-                    x => x.TimestampLineSelectionStart,
-                    x => x.TimestampLineSelectionEnd,
-                    x => x.TimestampFormat)
-                .Subscribe(_ => UpdateLayout());
-
             _severitySubscription = this.WhenAnyValue(
                     x => x.SeverityLineSelectionStart,
                     x => x.SeverityName1,
@@ -91,9 +73,9 @@ namespace LogExpress.ViewModels
                     x => x.SeverityName4,
                     x => x.SeverityName5,
                     x => x.SeverityName6)
-                .Subscribe(_ => UpdateLayout());
+                .Subscribe(_ => UpdateSeveritySettings());
 
-            _scopedFileMonitor = new ScopedFileMonitor(ArgFolder, new List<string> {ArgPattern}, ArgRecursive);
+            _scopedFileMonitor = new ScopedFileMonitor(ScopeSettings.Folder, new List<string> {ScopeSettings.Pattern}, ScopeSettings.Recursive);
 
             _fileMonitorSubscription?.Dispose();
             _fileMonitorSubscription =
@@ -101,15 +83,22 @@ namespace LogExpress.ViewModels
                     .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
                     .ObserveOn(RxApp.MainThreadScheduler)
                     .Subscribe(LogFilesReady);
-
-            _parseFilesSubscription = this.WhenAnyValue(x => x.LogFiles, x => x.Layout)
-                .Where(obs =>
-                {
-                    var (f, l) = obs;
-                    return f != null && f.Count > 0 && l != null;
-                })
+            _parseFilesSubscription = this.WhenAnyValue(x => x.LogFiles)
+                .Where(files => files != null && files.Count > 0)
+                .Throttle(TimeSpan.FromMilliseconds(100))
                 .DistinctUntilChanged()
                 .ObserveOn(RxApp.MainThreadScheduler)
+                .Do(changes => Logger.Debug("Updating verification table due file-count: {Count}", changes.Count))
+                .Subscribe(_ => UpdateVerificationTable());
+
+            _parseSeveritySubscription = this.WhenAnyValue(
+                    x => x.SeveritySettings.SeverityStart,
+                    x => x.SeveritySettings.Severities
+                )
+                .Throttle(TimeSpan.FromMilliseconds(100))
+                .DistinctUntilChanged()
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Do(changes => Logger.Debug("Updating verification table due severitySettings changes. Start={Start}, Count={Count}", changes.Item1, changes.Item2))
                 .Subscribe(_ => UpdateVerificationTable());
         }
 
@@ -209,28 +198,19 @@ namespace LogExpress.ViewModels
 
         public ReactiveCommand<Unit, Unit> UseNLogCommand { get; set; }
 
-        private void UpdateLayout()
+        private void UpdateSeveritySettings()
         {
-            var tsStart = Math.Min(TimestampLineSelectionStart, TimestampLineSelectionEnd);
-            var tsEnd = Math.Max(TimestampLineSelectionStart, TimestampLineSelectionEnd);
-            var tsLength = tsEnd - tsStart;
-
             var sevStart = Math.Min(SeverityLineSelectionStart, SeverityLineSelectionEnd);
-            Layout = new Layout
+            SeveritySettings.SeverityStart = sevStart;
+
+            SeveritySettings.Severities = new Dictionary<byte, string>
             {
-                TimestampStart = tsStart,
-                TimestampLength = tsLength,
-                TimestampFormat = TimestampFormat,
-                SeverityStart = sevStart,
-                Severities = new Dictionary<byte, string>
-                {
-                    [1] = SeverityName1,
-                    [2] = SeverityName2,
-                    [3] = SeverityName3,
-                    [4] = SeverityName4,
-                    [5] = SeverityName5,
-                    [6] = SeverityName6
-                }
+                [1] = SeverityName1,
+                [2] = SeverityName2,
+                [3] = SeverityName3,
+                [4] = SeverityName4,
+                [5] = SeverityName5,
+                [6] = SeverityName6
             };
         }
 
@@ -238,26 +218,26 @@ namespace LogExpress.ViewModels
         {
             //LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
 
+            Logger.Debug("Updating verification table: File-count={FileCount} Severity-count={SeverityCount}",
+                LogFiles.Count,
+                SeveritySettings.Severities.Count);
             ParseSamples.Clear();
             var isFirst = true;
-            var lastDate = DateTime.MinValue;
+
             foreach (var scopedFile in LogFiles)
             {
-                scopedFile.Layout = Layout;
+                scopedFile.SeveritySettings = SeveritySettings;
                 string content = null;
-                DateTime? timestamp = null;
                 byte severity = 0;
-                string severityName = null;
-                DateTime startDate = default;
-                DateTime endDate = default;
+                string severityName = string.Empty;
                 try
                 {
                     content = LineItem.ContentFromDisk(scopedFile, 0);
-                    timestamp = LineItem.TimestampFromDisk(scopedFile, 0);
-                    severity = LineItem.SeverityFromDisk(scopedFile, 0);
-                    severityName = severity > 0 ? scopedFile.Layout.Severities[severity] : string.Empty;
-                    startDate = scopedFile.StartDate;
-                    endDate = scopedFile.EndDate;
+                    if (scopedFile.SeveritySettings != null && scopedFile.SeveritySettings.Severities.Count > 0)
+                    {
+                        severity = LineItem.SeverityFromDisk(scopedFile, 0);
+                        severityName = severity > 0 ? scopedFile.SeveritySettings?.Severities[severity] : string.Empty;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -268,24 +248,9 @@ namespace LogExpress.ViewModels
                 {
                     FullName = scopedFile.FullName,
                     RelativeFullName = scopedFile.RelativeFullName,
-                    StartDate = $"{startDate}",
-                    EndDate = $"{endDate}",
-                    Timestamp = $"{timestamp}",
                     Severity = $"{severityName}",
                     Content = content
                 };
-
-                if (scopedFile.StartDate < lastDate)
-                {
-                    sample.SequenceErrorColor = ErrorColor;
-                    sample.SequenceErrorDetails = "The StartDate for the file precedes the EndDate of the previous file. \nConsider changing the log-file pattern - as this indicates that the logfiles are not sequential.";
-                }
-
-                if (timestamp == null)
-                {
-                    sample.TimestampErrorColor = ErrorColor;
-                    sample.TimestampErrorDetails = "Unable to get a date from the first entry in this file based on the provided timestamp-settings. \nTune the settings and see if that helps.";
-                }
 
                 if (severity == 0)
                 {
@@ -297,11 +262,9 @@ namespace LogExpress.ViewModels
 
                 if (isFirst)
                 {
-                    TimestampLine = SeverityLine = content;
+                    SeverityLine = content;
                     isFirst = false;
                 }
-
-                lastDate = scopedFile.EndDate;
             }
         }
 
@@ -314,11 +277,6 @@ namespace LogExpress.ViewModels
         public ObservableCollection<SeveritySample> ParseSamples{ get; set; } = new ObservableCollection<SeveritySample>();
 
         public ConfigureSeverityView View { get; }
-
-        private void CancelExecute()
-        {
-            View.Close(null);
-        }
 
         private void LogFilesReady(IChangeSet<ScopedFile, ulong> changes = null)
         {
@@ -348,63 +306,20 @@ namespace LogExpress.ViewModels
                 }
         }
 
+        private void ConfigureTimestampExecute()
+        {
+            View.Close((ConfigureAction.Back, SeveritySettings));
+        }
+
+        private void CancelExecute()
+        {
+            View.Close((ConfigureAction.Cancel, new object()));
+        }
+
         private void OpenExecute()
         {
-            View.Close(Layout);
+            View.Close((ConfigureAction.Continue, SeveritySettings));
         }
-
-        private Layout _layout;
-        public Layout Layout { 
-            get => _layout; 
-            set => this.RaiseAndSetIfChanged(ref _layout, value);
-        }
-
-        #region Timestamp
-
-        private string _timestampLine = string.Empty;
-        private int _timestampLineSelectionStart = 0;
-        private int _timestampLineSelectionEnd = 23;
-        private string _timestampFormat = string.Empty;
-        private int _timestampLength = 23;
-        private int _timestampStart = 1;
-
-        public string TimestampLine
-        {
-            get => _timestampLine;
-            set => this.RaiseAndSetIfChanged(ref _timestampLine, value);
-        }
-
-        public int TimestampLineSelectionStart
-        {
-            get => _timestampLineSelectionStart;
-            set => this.RaiseAndSetIfChanged(ref _timestampLineSelectionStart, value);
-        }
-
-        public int TimestampLineSelectionEnd
-        {
-            get => _timestampLineSelectionEnd;
-            set => this.RaiseAndSetIfChanged(ref _timestampLineSelectionEnd, value);
-        }
-
-        public string TimestampFormat
-        {
-            get => _timestampFormat;
-            set => this.RaiseAndSetIfChanged(ref _timestampFormat, value);
-        }
-
-        public int TimestampLength
-        {
-            get => _timestampLength;
-            set => this.RaiseAndSetIfChanged(ref _timestampLength, value);
-        }
-
-        public int TimestampStart
-        {
-            get => _timestampStart;
-            set => this.RaiseAndSetIfChanged(ref _timestampStart, value);
-        }
-
-        #endregion Timestamp
 
         #region Severity
 
@@ -497,10 +412,10 @@ namespace LogExpress.ViewModels
         {
             if (!disposing) return;
 
-            _timestampSubscription?.Dispose();
             _severitySubscription?.Dispose();
             _fileMonitorSubscription?.Dispose();
             _parseFilesSubscription?.Dispose();
+            _parseSeveritySubscription?.Dispose();
             _scopedFileMonitor?.Dispose();
         }
 

@@ -3,10 +3,6 @@
              xmlns:local="clr-namespace:LogExpress"
              x:Class="LogExpress.App"
              >
-  <Application.DataTemplates>
-    <local:ViewLocator/>
-  </Application.DataTemplates>
-
   <Application.Styles>
     <StyleInclude Source="avares://Avalonia.Themes.Default/DefaultTheme.xaml"/>
     <StyleInclude Source="avares://AvaloniaProgressRing/Styles/ProgressRing.xaml"/>

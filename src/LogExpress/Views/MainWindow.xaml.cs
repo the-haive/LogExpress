@@ -1,5 +1,4 @@
 using System;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
@@ -16,7 +15,7 @@ namespace LogExpress.Views
         protected override void OnOpened(EventArgs e)
         {
             base.OnOpened(e);
-            ((MainWindowViewModel) this.DataContext).Init();
+            ((MainWindowViewModel)this.DataContext).Init();
         }
 
         #endregion

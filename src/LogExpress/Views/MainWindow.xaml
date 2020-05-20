@@ -1,16 +1,17 @@
-<StyledWindow xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:views="clr-namespace:LogExpress.Views"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
-        x:Class="LogExpress.Views.MainWindow"
-        HasSystemDecorations="false"
-        Icon="/Assets/LogExpress Logo 16x16.png"
-        Width="1024" Height="768"
-        Title="{Binding AppTitle}"
-        DragDrop.AllowDrop="True"
-        >
+<controls:StyledWindow  
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:views="clr-namespace:LogExpress.Views"
+    xmlns:controls="clr-namespace:LogExpress.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+    x:Class="LogExpress.Views.MainWindow"
+    Icon="/Assets/LogExpress Logo 32x32.png"
+    Width="1024" Height="768"
+    Title="{Binding AppTitle}"
+    DragDrop.AllowDrop="True"
+    >
   <Window.Styles>
     <!-- NB! The theme must be the first style. Used in MainWindowViewModel for switching theme. -->  
     <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseLight.xaml"/>
@@ -69,10 +70,10 @@
     <KeyBinding Gesture="F1" Command="{Binding AboutCommand}"/>
     <KeyBinding Gesture="F8" Command="{Binding ToggleDebugCommand}"/>
   </Window.KeyBindings>
-  <StyledWindow.HeaderContent>
-    <Menu DockPanel.Dock="Top">
+  <controls:StyledWindow.HeaderContent>
+    <Menu>
       <MenuItem Header="_File">
-        <MenuItem Header="_Open Log" Command="{Binding OpenCommand}">
+        <MenuItem Header="_Open Log" Command="{Binding ConfigureScopeCommand}">
           <MenuItem.Icon>
             <DrawingPresenter Height="16" Width="16">
               <DrawingPresenter.Drawing>
@@ -109,7 +110,7 @@
             <DrawingPresenter Height="16" Width="16">
               <DrawingPresenter.Drawing>
                 <DrawingGroup>
-                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M450,-550C463.80712890625,-550,475,-538.80712890625,475,-525L475,-345.5C504.893218994141,-334.931274414063 524.910888671875,-306.706359863281 525,-275 524.910888671875,-243.29362487793 504.893218994141,-215.068710327148 475,-204.5L475,-75C475,-61.1928787231445,463.80712890625,-50,450,-50C436.19287109375,-50,425,-61.1928787231445,425,-75L425,-204.5C395.338653564453,-215.265625,375.588073730469,-243.445388793945,375.588073730469,-275C375.588073730469,-306.554626464844,395.338653564453,-334.734375,425,-345.5L425,-525C425,-538.80712890625,436.19287109375,-550,450,-550z M150,-550C163.807113647461,-550,175,-538.80712890625,175,-525L175,-245.5C204.661331176758,-234.734375,224.411911010742,-206.554611206055,224.411911010742,-175C224.411911010742,-143.445388793945,204.661331176758,-115.265625,175,-104.5L175,-75C175,-61.1928787231445,163.807113647461,-50,150,-50C136.192886352539,-50,125,-61.1928787231445,125,-75L125,-104.5C95.3386688232422,-115.265625,75.5880889892578,-143.445388793945,75.5880889892578,-175C75.5880889892578,-206.554611206055,95.3386688232422,-234.734375,125,-245.5L125,-525C125,-538.80712890625,136.192886352539,-550,150,-550z M301.546661376953,-550.198364257813C303.889007568359,-550.148071289063,306.247955322266,-549.987976074219,308.617645263672,-549.7138671875C346.53271484375,-545.328491210938 375.107177734375,-513.167724609375 375,-475 374.910888671875,-443.293640136719 354.893218994141,-415.068725585938 325,-404.5L325,-75C325,-61.1928787231445,313.80712890625,-50,300,-50C286.19287109375,-50,275,-61.1928787231445,275,-75L275,-404.5C239.015060424805,-417.222778320313,218.324401855469,-454.941589355469,226.932754516602,-492.126007080078C235.003082275391,-526.986389160156,266.411102294922,-550.952209472656,301.546661376953,-550.198364257813z"   />
+                  <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="M12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20M19.03,7.39L20.45,5.97C20,5.46 19.55,5 19.04,4.56L17.62,6C16.07,4.74 14.12,4 12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22C17,22 21,17.97 21,13C21,10.88 20.26,8.93 19.03,7.39M11,14H13V8H11M15,1H9V3H15V1Z" />
                   <DrawingGroup.Transform>
                     <ScaleTransform ScaleX="0.5" ScaleY="0.5"/>
                   </DrawingGroup.Transform>
@@ -120,7 +121,12 @@
         </MenuItem>
         <MenuItem Header="_Configure Severity Detection" Name="ConfigureSeverity" Command="{Binding ConfigureSeverityCommand}">
           <MenuItem.Icon>
-            <DrawingPresenter Height="16" Width="16">
+            <StackPanel Orientation="Vertical" Width="16">
+              <Separator Height="6" Background="Red"/>
+              <Separator Height="6" Background="Orange"/>
+              <Separator Height="6" Background="Green"/>
+            </StackPanel>
+            <!--DrawingPresenter Height="16" Width="16">
               <DrawingPresenter.Drawing>
                 <DrawingGroup>
                   <GeometryDrawing Brush="{DynamicResource ThemeForegroundBrush}" Geometry="F1M450,-550C463.80712890625,-550,475,-538.80712890625,475,-525L475,-345.5C504.893218994141,-334.931274414063 524.910888671875,-306.706359863281 525,-275 524.910888671875,-243.29362487793 504.893218994141,-215.068710327148 475,-204.5L475,-75C475,-61.1928787231445,463.80712890625,-50,450,-50C436.19287109375,-50,425,-61.1928787231445,425,-75L425,-204.5C395.338653564453,-215.265625,375.588073730469,-243.445388793945,375.588073730469,-275C375.588073730469,-306.554626464844,395.338653564453,-334.734375,425,-345.5L425,-525C425,-538.80712890625,436.19287109375,-550,450,-550z M150,-550C163.807113647461,-550,175,-538.80712890625,175,-525L175,-245.5C204.661331176758,-234.734375,224.411911010742,-206.554611206055,224.411911010742,-175C224.411911010742,-143.445388793945,204.661331176758,-115.265625,175,-104.5L175,-75C175,-61.1928787231445,163.807113647461,-50,150,-50C136.192886352539,-50,125,-61.1928787231445,125,-75L125,-104.5C95.3386688232422,-115.265625,75.5880889892578,-143.445388793945,75.5880889892578,-175C75.5880889892578,-206.554611206055,95.3386688232422,-234.734375,125,-245.5L125,-525C125,-538.80712890625,136.192886352539,-550,150,-550z M301.546661376953,-550.198364257813C303.889007568359,-550.148071289063,306.247955322266,-549.987976074219,308.617645263672,-549.7138671875C346.53271484375,-545.328491210938 375.107177734375,-513.167724609375 375,-475 374.910888671875,-443.293640136719 354.893218994141,-415.068725585938 325,-404.5L325,-75C325,-61.1928787231445,313.80712890625,-50,300,-50C286.19287109375,-50,275,-61.1928787231445,275,-75L275,-404.5C239.015060424805,-417.222778320313,218.324401855469,-454.941589355469,226.932754516602,-492.126007080078C235.003082275391,-526.986389160156,266.411102294922,-550.952209472656,301.546661376953,-550.198364257813z"   />
@@ -129,7 +135,7 @@
                   </DrawingGroup.Transform>
                 </DrawingGroup>
               </DrawingPresenter.Drawing>
-	          </DrawingPresenter>
+	          </DrawingPresenter-->
           </MenuItem.Icon>
         </MenuItem>
         <MenuItem Header="_Dark Theme" Command="{Binding ToggleThemeCommand}">
@@ -142,7 +148,7 @@
         <MenuItem Header="_About" Command="{Binding AboutCommand}"/>
       </MenuItem>
     </Menu>
-  </StyledWindow.HeaderContent>
+  </controls:StyledWindow.HeaderContent>
   <DockPanel>
     <StackPanel DockPanel.Dock="Bottom"
                 Name="DebugBar" 
@@ -226,4 +232,4 @@
     </StackPanel>
     <views:LogView Name="LogPanel" DataContext="{Binding LogViewModel}"/>
   </DockPanel>
-</StyledWindow>
+</controls:StyledWindow>
