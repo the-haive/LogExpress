@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -53,11 +52,12 @@ namespace LogExpress.ViewModels
                     x => x.TimestampLineSelectionStart,
                     x => x.TimestampLineSelectionEnd,
                     x => x.TimestampFormat)
-                .Where(obs =>
+/*                .Where(obs =>
                 {
-                    var (start, end, format) = obs;
-                    return start > -1 && end > start;
-                } )
+                    var (start, end, _) = obs;
+                    return start > -1 && end != start;
+                })
+*/                .Throttle(TimeSpan.FromMilliseconds(100))
                 .Subscribe(_ => UpdateTimestampSettings());
 
             _scopedFileMonitor = new ScopedFileMonitor(ScopeSettings.Folder, new List<string> {ScopeSettings.Pattern}, ScopeSettings.Recursive);
@@ -81,7 +81,15 @@ namespace LogExpress.ViewModels
                 })
                 .DistinctUntilChanged()
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Subscribe(_ => UpdateVerificationTable());
+                .Subscribe(_ => UpdateFileSamples());
+
+            _lineSampleSubscription = this.WhenAnyValue(x => x.FileSampleSelectedItem)
+                .Subscribe(UpdateLineSamples);
+        }
+
+        private void UpdateLineSamples(FileSample selectedFile)
+        {
+            // TODO: For the selected file, read up to 100 lines and add to the table, with the timestamp in the first column
         }
 
         private void UpdateTimestampSettings()
@@ -90,70 +98,141 @@ namespace LogExpress.ViewModels
             var tsEnd = Math.Max(TimestampLineSelectionStart, TimestampLineSelectionEnd);
             var tsLength = tsEnd - tsStart;
 
+            Logger.Debug("Changing timestamp settings: Start={Start} Length:{Length} Format='{Format}'", tsStart, tsLength, TimestampFormat);
             TimestampSettings.TimestampStart = tsStart;
             TimestampSettings.TimestampLength = tsLength;
             TimestampSettings.TimestampFormat = TimestampFormat;
         }
 
-        private void UpdateVerificationTable()
+        private void UpdateFileSamples()
         {
             //LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
+            Logger.Debug(
+                "Updating the verification tables, based on timestamp settings: Start={Start} Length:{Length} Format='{Format}'",
+                TimestampSettings.TimestampStart, TimestampSettings.TimestampLength, TimestampSettings.TimestampFormat);
 
-            ParseSamples.Clear();
-            var isFirst = true;
-            var lastDate = DateTime.MinValue;
-
+            // Iterate all files to get the Start and End dates. StartDate is used as order in the next for-loop, where we check the date-consistency.
+            FoundTimestamp = true;
             foreach (var scopedFile in LogFiles)
             {
                 scopedFile.TimestampSettings = TimestampSettings;
-                string content = null;
-                DateTime? timestamp = null;
-                DateTime startDate = default;
-                DateTime endDate = default;
+                scopedFile.ResetStartAndEndDates();
                 try
                 {
-                    content = LineItem.ContentFromDisk(scopedFile, 0);
-                    timestamp = LineItem.TimestampFromDisk(scopedFile, 0);
-                    startDate = scopedFile.StartDate;
-                    endDate = scopedFile.EndDate;
+                    FoundTimestamp = FoundTimestamp && scopedFile.StartDate > DateTime.MinValue;
+                    FoundTimestamp = FoundTimestamp && scopedFile.EndDate < DateTime.MaxValue;
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex, "Error while trying to get data from disk");
+                    Logger.Error(ex, "Error while trying to get timestamps from disk. Filename: {}", scopedFile.FullName);
                 }
+            }
 
-                var sample = new TimestampSample()
-                {
-                    FullName = scopedFile.FullName,
-                    RelativeFullName = scopedFile.RelativeFullName,
-                    StartDate = $"{startDate}",
-                    EndDate = $"{endDate}",
-                    Timestamp = $"{timestamp}",
-                    Content = content
-                };
+            // Ite
+            FileSamples.Clear();
+            var isFirst = true;
+            var lastDate = DateTime.MinValue;
+            SeqFilesVerified = true;
+            var msComponents = new List<int>();
+            FileSampleSelectedItem = null;
+            foreach (var scopedFile in LogFiles.OrderBy(f => FoundTimestamp ? f.StartDate : f.CreationTime))
+            {
 
-                if (scopedFile.StartDate < lastDate)
-                {
-                    sample.SequenceErrorColor = ErrorColor;
-                    sample.SequenceErrorDetails = "The StartDate for the file precedes the EndDate of the previous file. \nConsider changing the log-file pattern - as this indicates that the logfiles are not sequential.";
-                }
-
-                if (timestamp == null)
-                {
-                    sample.TimestampErrorColor = ErrorColor;
-                    sample.TimestampErrorDetails = "Unable to get a date from the first entry in this file based on the provided timestamp-settings. \nTune the settings and see if that helps.";
-                }
-
-                ParseSamples.Add(sample);
+                var seqStartError = scopedFile.StartDate == DateTime.MinValue || scopedFile.StartDate < lastDate;
+                var seqEndError = scopedFile.EndDate == DateTime.MaxValue || scopedFile.EndDate < scopedFile.StartDate;
+                SeqFilesVerified = SeqFilesVerified && !seqStartError && !seqEndError;
 
                 if (isFirst)
                 {
-                    TimestampLine = content;
+                    TimestampLine = LineItem.ContentFromDisk(scopedFile, 0);
+
+                    TimestampParseResult = scopedFile.StartDate == DateTime.MinValue ? "Unable to get/parse date" : $"{scopedFile.StartDate:F}";
                     isFirst = false;
                 }
 
-                lastDate = endDate;
+                var fileSample = new FileSample
+                {
+                    FullName = scopedFile.FullName,
+                    RelativeFullName = scopedFile.RelativeFullName,
+                    StartDate = $"{scopedFile.StartDate}",
+                    EndDate = $"{scopedFile.EndDate}",
+                    SeqStartError = seqStartError,
+                    SeqEndError = seqEndError
+                };
+                FileSamples.Add(fileSample);
+
+                if (FileSampleSelectedItem == null && (seqStartError || seqEndError)) FileSampleSelectedItem = fileSample;
+
+                lastDate = scopedFile.EndDate;
+
+                // For now only sampling the start and end
+                // TODO: Sample first X lines from each file
+                msComponents.Add(scopedFile.StartDate.Millisecond);
+                msComponents.Add(scopedFile.EndDate.Millisecond);
+
+
+                //Logger.Debug("{RelativeFullName}: Seq={SeqOK} StartDate={StartDate} EndDate={EndDate}", scopedFile.RelativeFullName, SeqFilesVerified, scopedFile.StartDate, scopedFile.EndDate);
             }
+
+            FoundTimestampMessage = FoundTimestamp ? "Timestamp detected" : "Timestamp not detected";
+
+            HasMsResolution = FoundTimestamp && msComponents.Distinct().Count() != 1;
+            HasMsResolutionMessage = HasMsResolution ? "Millisecond resolution detected" :
+                FoundTimestamp ? "Millisecond resolution not detected" :
+                "Not able to check for millisecond resolution, since the timestamp was not detected";
+
+            SeqFilesVerifiedMessage = SeqFilesVerified
+                ? "Logfile entries are sequential without overlapping timestamps"
+                : "Logfile entries are not sequential from one file to the other";
+
+            //Logger.Debug("All files have millisecond resolution? {EntryTimestampsVerified} ({MsCollection})", EntryTimestampsVerified, string.Join(",", msComponents));
+        }
+
+        public string TimestampParseResult
+        {
+            get => _timestampParseResult;
+            set => this.RaiseAndSetIfChanged(ref _timestampParseResult, value);
+        }
+
+        public string FoundTimestampMessage
+        {
+            get => _foundTimestampMessage;
+            set => this.RaiseAndSetIfChanged(ref _foundTimestampMessage, value);
+        }
+
+        public string HasMsResolutionMessage
+        {
+            get => _foundTimestampMessage;
+            set => this.RaiseAndSetIfChanged(ref _foundTimestampMessage, value);
+        }
+        public string SeqFilesVerifiedMessage
+        {
+            get => _seqFilesVerifiedMessage;
+            set => this.RaiseAndSetIfChanged(ref _seqFilesVerifiedMessage, value);
+        }
+
+        public bool SeqFilesVerified
+        {
+            get => _seqFilesVerified;
+            set => this.RaiseAndSetIfChanged(ref _seqFilesVerified, value);
+        }
+
+        public bool FoundTimestamp
+        {
+            get => _foundTimestamp;
+            set => this.RaiseAndSetIfChanged(ref _foundTimestamp, value);
+        }
+
+        public bool HasMsResolution
+        {
+            get => _hasMsResolution;
+            set => this.RaiseAndSetIfChanged(ref _hasMsResolution, value);
+        }
+
+        public FileSample FileSampleSelectedItem
+        {
+            get => _fileSampleSelectedItem;
+            set => this.RaiseAndSetIfChanged(ref _fileSampleSelectedItem, value);
         }
 
         public ReactiveCommand<Unit, Unit> ConfigureScopeCommand { get; set; }
@@ -162,7 +241,9 @@ namespace LogExpress.ViewModels
 
         public ObservableCollection<ScopedFile> LogFiles { get; set; } = new ObservableCollection<ScopedFile>();
         
-        public ObservableCollection<TimestampSample> ParseSamples{ get; set; } = new ObservableCollection<TimestampSample>();
+        //public ObservableCollection<TimestampSample> ParseSamples{ get; set; } = new ObservableCollection<TimestampSample>();
+        public ObservableCollection<FileSample> FileSamples { get; set; } = new ObservableCollection<FileSample>();
+        public ObservableCollection<LineSample> LineSamples { get; set; } = new ObservableCollection<LineSample>();
 
         public ConfigureTimestampView View { get; }
 
@@ -218,6 +299,14 @@ namespace LogExpress.ViewModels
         private string _timestampFormat = string.Empty;
         private int _timestampLength = 23;
         private int _timestampStart = 1;
+        private bool _foundTimestamp;
+        private bool _hasMsResolution;
+        private bool _seqFilesVerified;
+        private string _foundTimestampMessage;
+        private string _seqFilesVerifiedMessage;
+        private string _timestampParseResult;
+        private FileSample _fileSampleSelectedItem;
+        private IDisposable _lineSampleSubscription;
 
         public string TimestampLine
         {
@@ -279,11 +368,13 @@ namespace LogExpress.ViewModels
             _fileMonitorSubscription?.Dispose();
             _parseFilesSubscription?.Dispose();
             _scopedFileMonitor?.Dispose();
+            _lineSampleSubscription?.Dispose();
         }
 
         #endregion Implementation of IDisposable
     }
 
+/*
     public class TimestampSample: ReactiveObject
     {
         public string RelativeFullName { get; set; }
@@ -303,6 +394,22 @@ namespace LogExpress.ViewModels
 
         public string TimestampErrorDetails{ get; set; } = string.Empty;
 
+    }
+*/    
+    public class FileSample: ReactiveObject
+    {
+        public string RelativeFullName { get; set; }
+        public string FullName { get; set; }
+        public string StartDate { get; set; }
+        public string EndDate { get; set; }
+        public bool SeqStartError { get; set; }
+        public bool SeqEndError { get; set; }
+    }
+
+    public class LineSample: ReactiveObject
+    {
+        public string Timestamp { get; set; }
+        public string Content { get; set; }
     }
 
     public enum ConfigureAction

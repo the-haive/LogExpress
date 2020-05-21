@@ -103,7 +103,7 @@ namespace LogExpress.Models
         /// </summary>
         /// <param name="scopedFile">The file that the line was found in</param>
         /// <param name="lineNum">The lineNumber for this position</param>
-        /// <param name="position">The actual position within the file (NB! Restricted to uint.MaxValue)</param>
+        /// <param name="position">The actual newLinePosition within the file (NB! Restricted to uint.MaxValue)</param>
         public LineItem(ScopedFile scopedFile, int lineNum, uint position)
         {
             Debug.Assert((ulong) lineNum <= LineNumberMaxAndMask);
@@ -220,11 +220,11 @@ namespace LogExpress.Models
         /// </summary>
         public DateTime? Timestamp => TimestampFromDisk(LogFile, Position);
 
-        public static DateTime? TimestampFromDisk(ScopedFile file, long position)
+        public static DateTime? TimestampFromDisk(ScopedFile file, long newLinePosition = 0)
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream, file.Encoding);
-            reader.BaseStream.Seek(position + file.TimestampSettings.TimestampStart, SeekOrigin.Begin);
+            reader.BaseStream.Seek(newLinePosition + file.TimestampSettings.TimestampStart, SeekOrigin.Begin);
             
             var buffer = new Span<char>(new char[file.TimestampSettings.TimestampLength]);
 
@@ -234,17 +234,17 @@ namespace LogExpress.Models
             var timestamp = file.GetTimestamp(buffer);
             if (!timestamp.HasValue)
             {
-                Logger.Warning("The log-file's first timestamp could not be parsed. File={File} Position={Position}", file.FullName, position);
+                Logger.Warning("The log-file's first timestamp could not be parsed. File={File} Position={Position}", file.FullName, newLinePosition);
             }
 
             return timestamp;
         }
 
-        public static string ContentFromDisk(ScopedFile file, long position)
+        public static string ContentFromDisk(ScopedFile file, long newLinePosition = 0)
         {
             using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             var reader = new StreamReader(fileStream, file.Encoding);
-            reader.BaseStream.Seek(position, SeekOrigin.Begin);
+            reader.BaseStream.Seek(newLinePosition, SeekOrigin.Begin);
             reader.DiscardBufferedData();
             var buffer = new Span<char>(new char[1]);
             var line = new StringBuilder(300);

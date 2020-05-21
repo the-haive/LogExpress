@@ -933,11 +933,29 @@ namespace LogExpress.ViewModels
         public bool Recursive { get; set; }
     }
 
-    public class TimestampSettings
+    public class TimestampSettings: ReactiveObject
     {
-        public int TimestampStart { get; set; }
-        public int TimestampLength { get; set; }
-        public string TimestampFormat { get; set; } = string.Empty;
+        private int _timestampStart;
+        private int _timestampLength;
+        private string _timestampFormat = string.Empty;
+
+        public int TimestampStart
+        {
+            get => _timestampStart;
+            set => this.RaiseAndSetIfChanged(ref _timestampStart, value);
+        }
+
+        public int TimestampLength
+        {
+            get => _timestampLength;
+            set => this.RaiseAndSetIfChanged(ref _timestampLength, value);
+        }
+
+        public string TimestampFormat
+        {
+            get => _timestampFormat;
+            set => this.RaiseAndSetIfChanged(ref _timestampFormat, value);
+        }
     }
 
     public class SeveritySettings

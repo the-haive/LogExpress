@@ -186,6 +186,12 @@ namespace LogExpress.Models
             return null;
         }
 
+        public void ResetStartAndEndDates()
+        {
+            _startDate = null;
+            _endDate = null;
+        }
+
         private static long FindLastNewLineInFile(long startPos, StreamReader reader, long fileLength)
         {
             long i = 0;
