@@ -214,14 +214,23 @@ namespace LogExpress.Models
             return newLinePos;
         }
 
-        // TODO: Move Severity-detection outside of this method
-        // TODO: Simplify method to only return newlines. The caller can then iterate those and create LineItem entries
-        internal static void ReadFileLinePositions(ObservableCollection<LineItem> newLines,
+        /// <summary>
+        /// Generate an Observable collection of LineItems
+        /// </summary>
+        /// <param name="newLines">The newLines collection to store found newlines in</param>
+        /// <param name="reader">The reader instance to use when finding the lines</param>
+        /// <param name="file">The scoped file to operate on</param>
+        /// <param name="lastLength">The length for the previous time it was called</param>
+        /// <param name="lastLineNumber">The lineNumber for the previous time it was called</param>
+        /// <param name="lastPosition">The position for the previous time it was called</param>
+        /// <param name="maxLinesToRead">When to stop reading newlines (disabled if 0, default 0)</param>
+        public static void ReadFileLinePositions(ObservableCollection<LineItem> newLines,
             StreamReader reader,
             ScopedFile file,
             uint lastLength = 0,
             int lastLineNumber = 1,
-            uint lastPosition = 0
+            uint lastPosition = 0,
+            uint maxLinesToRead = 0
         )
         {
             if (file.Length <= 0) return;
@@ -243,6 +252,7 @@ namespace LogExpress.Models
                     newLines.Add(new LineItem(file, lineNum, lastNewLinePos));
                     lastNewLinePos = filePosition;
                     lineNum += 1;
+                    if (maxLinesToRead > 0 && lineNum >= maxLinesToRead) break;
                 }
             }
 

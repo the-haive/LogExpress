@@ -185,7 +185,7 @@
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           Margin="20 0"
-          SelectionMode="Toggle"
+          SelectionMode="Single"
           SelectedItem="{Binding FileSampleSelectedItem, Mode=TwoWay}"
           >
           <ListBox.ItemTemplate>
@@ -205,11 +205,11 @@
         <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold" FontSize="14">Detected timestamps (selected file, up to 100 first lines)</TextBlock>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Left" Margin="25 0 0 0" TextBlock.FontSize="10" TextBlock.FontWeight="Bold"
                     Name="LineSamples">
-          <TextBlock Width="212">Timestamp</TextBlock>
+          <TextBlock Width="182">Timestamp</TextBlock>
           <TextBlock >Content</TextBlock>
         </StackPanel>
         <ListBox
-          Items="{Binding ParseLines}"
+          Items="{Binding LineSamples}"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           Margin="20 0"
@@ -218,7 +218,7 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" TextBlock.FontSize="10">
-                <TextBlock Text="{Binding Timestamp}" Margin="0 0 10 0" Width="200"/>
+                <TextBlock Text="{Binding Timestamp}" Margin="0 0 10 0" Width="170"/>
                 <TextBlock Text="{Binding Content}" Width="510"/>
               </StackPanel>
             </DataTemplate>

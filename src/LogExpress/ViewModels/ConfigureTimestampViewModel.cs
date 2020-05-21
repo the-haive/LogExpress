@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -17,7 +18,7 @@ namespace LogExpress.ViewModels
 {
     public class ConfigureTimestampViewModel : ViewModelBase, IDisposable
     {
-        private static readonly ILogger Logger = Log.ForContext<LineItem>();
+        private static readonly ILogger Logger = Log.ForContext<ConfigureTimestampViewModel>();
         private static readonly Brush ErrorColor = new SolidColorBrush(Colors.Red);
         private IDisposable _fileMonitorSubscription;
         private IDisposable _parseFilesSubscription;
@@ -89,7 +90,36 @@ namespace LogExpress.ViewModels
 
         private void UpdateLineSamples(FileSample selectedFile)
         {
-            // TODO: For the selected file, read up to 100 lines and add to the table, with the timestamp in the first column
+            LineSamples.Clear();
+
+            if (selectedFile == null) return;
+
+            using var fileStream = new FileStream(selectedFile.ScopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fileStream, selectedFile.ScopedFile.Encoding);
+
+            LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
+
+            var lines = new ObservableCollection<LineItem>();
+            ScopedFile.ReadFileLinePositions(lines, reader, selectedFile.ScopedFile, maxLinesToRead: 100);
+            
+            var tsStart = selectedFile.ScopedFile.TimestampSettings.TimestampStart;
+            var tsLength = selectedFile.ScopedFile.TimestampSettings.TimestampLength;
+            
+            foreach (var lineItem in lines)
+            {
+                var content = lineItem.Content;
+                var buffer = content.Substring(tsStart, tsLength).ToCharArray();
+                var timestamp = selectedFile.ScopedFile.GetTimestamp(buffer);
+
+                var lineSample = new LineSample()
+                {
+                    Timestamp = $"{timestamp:F}",
+                    Content = content
+                };
+
+                LineSamples.Add(lineSample);
+            }
+            Logger.Debug("Have {Count} lines from file {Filename}", LineSamples.Count, selectedFile.RelativeFullName);
         }
 
         private void UpdateTimestampSettings()
@@ -152,6 +182,7 @@ namespace LogExpress.ViewModels
 
                 var fileSample = new FileSample
                 {
+                    ScopedFile = scopedFile,
                     FullName = scopedFile.FullName,
                     RelativeFullName = scopedFile.RelativeFullName,
                     StartDate = $"{scopedFile.StartDate}",
@@ -398,6 +429,7 @@ namespace LogExpress.ViewModels
 */    
     public class FileSample: ReactiveObject
     {
+        public ScopedFile ScopedFile { get; set; }
         public string RelativeFullName { get; set; }
         public string FullName { get; set; }
         public string StartDate { get; set; }

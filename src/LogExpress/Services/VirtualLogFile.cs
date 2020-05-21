@@ -422,7 +422,7 @@ namespace LogExpress.Services
                 using var fileStream = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                 using var reader = new StreamReader(fileStream, scopedFile.Encoding);
                 var newLines = new ObservableCollection<LineItem>();
-                ScopedFile.ReadFileLinePositions(newLines, reader/*, _severityMatchers*/, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
+                ScopedFile.ReadFileLinePositions(newLines, reader, scopedFile, scopedFile.Length, _allLines.Last().LineNumber, _allLines.Last().Position);
                 byte lastSeverity = 0;
                 var count = newLines.Count;
                 for (var i = 0; i < count; i++)
@@ -612,7 +612,7 @@ namespace LogExpress.Services
                     using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
                     using var reader = new StreamReader(fileStream, scopedFile.Encoding);
 
-                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader/*, _severityMatchers*/, scopedFile);
+                    ScopedFile.ReadFileLinePositions(LinesInBgThread, reader, scopedFile);
                 }
 
                 Logger.Debug("Finished reading newlines. Duration: {Duration}", timer.Elapsed);
