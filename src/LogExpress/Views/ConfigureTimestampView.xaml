@@ -5,7 +5,7 @@
         xmlns:controls="clr-namespace:LogExpress.Controls"
         x:Class="LogExpress.Views.ConfigureTimestampView"
         Width="900"
-        MinWidth="750"
+        MinWidth="900"
         Height="900"
         WindowStartupLocation="CenterOwner"
         Icon="/Assets/LogExpress Logo 16x16.png"
@@ -49,6 +49,7 @@
         <TextBlock Text="The timestamp for each log-entry must also start at the same column in each log-line, and have the same format."/>
       </StackPanel>
     </Border>
+    
     <StackPanel DockPanel.Dock="Top" Spacing="10" Width="850" HorizontalAlignment="Stretch">
       <Border HorizontalAlignment="Stretch" Background="{DynamicResource ThemeControlHighlightLowBrush}" BorderBrush="{DynamicResource ThemeControlHighlightMidBrush}" BorderThickness="1">
         <StackPanel Name="Timestamp" Orientation="Vertical" HorizontalAlignment="Stretch" Spacing="5" Margin="10">
@@ -219,7 +220,7 @@
             <DataTemplate>
               <StackPanel Orientation="Horizontal" TextBlock.FontSize="10">
                 <TextBlock Text="{Binding Timestamp}" Margin="0 0 10 0" Width="170"/>
-                <TextBlock Text="{Binding Content}" Width="510"/>
+                <TextBlock Text="{Binding Content}"/>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

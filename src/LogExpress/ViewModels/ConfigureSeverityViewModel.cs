@@ -18,7 +18,7 @@ namespace LogExpress.ViewModels
 {
     public class ConfigureSeverityViewModel : ViewModelBase, IDisposable
     {
-        private static readonly ILogger Logger = Log.ForContext<LineItem>();
+        private static readonly ILogger Logger = Log.ForContext<ConfigureSeverityViewModel>();
         private static readonly Brush ErrorColor = new SolidColorBrush(Colors.Red);
         private static readonly Brush WarningColor = new SolidColorBrush(Colors.Orange);
         private IDisposable _fileMonitorSubscription;

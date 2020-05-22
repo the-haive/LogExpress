@@ -5,7 +5,7 @@
         xmlns:controls="clr-namespace:LogExpress.Controls"
         x:Class="LogExpress.Views.ConfigureSeverityView"
         Width="900"
-        MinWidth="750"
+        MinWidth="900"
         Height="900"
         WindowStartupLocation="CenterOwner"
         Icon="/Assets/LogExpress Logo 16x16.png"
@@ -36,6 +36,10 @@
     <Style Selector="Border.info TextBlock.header">
       <Setter Property="FontWeight" Value="Bold"/>
     </Style>
+    <Style Selector="#Severities Button">
+      <Setter Property="Padding" Value="20 5"/>
+      <Setter Property="Margin" Value="0 2"/>
+    </Style>
   </Window.Styles>
   <DockPanel VerticalAlignment="Stretch" Margin="0 10" LastChildFill="True" HorizontalAlignment="Stretch">
     <TextBlock FontSize="18" FontWeight="Bold" TextAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Width="900" Margin="0 0 0 20" Foreground="{DynamicResource ThemeForegroundBrush}">
@@ -45,7 +49,7 @@
     <Border Classes="info" DockPanel.Dock="Top" Width="850" >
       <StackPanel HorizontalAlignment="Center" Margin="10" Width="800" TextBlock.FontSize="14">
         <TextBlock Text="If the log-files you open with LogExpert contains log-entry severities then you get extra functionality for handling these. Log severities are not a standardized concept and different logging systems has different severities. Both the number of severities and the names differ."/>
-        <TextBlock Text="The named severities must start at the same column in each log-line."/>
+        <TextBlock Text="At the moment LogExpert is limited to at max 6 different severities, which seems to cover a large number of the logging systems. The named severities must start at the same column in each log-line."/>
       </StackPanel>
     </Border>
     
@@ -64,40 +68,49 @@
                      SelectionEnd="{Binding SeverityLineSelectionEnd, Mode=TwoWay}"/>
           </StackPanel>
           <Separator Height="20"/>
-          <TextBlock Text="Severity levels &amp; names (casing does matter)" HorizontalAlignment="Center" FontWeight="Bold"/>
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-            <StackPanel Orientation="Vertical" Margin="20" VerticalAlignment="Center">
-              <Button Content="UPPERCASED" Command="{Binding UpperCaseCommand}" Padding="0"/>
-              <Button Content="lowercased" Command="{Binding LowerCaseCommand}" Padding="0"/>
-              <Button Content="Titlecased" Command="{Binding TitleCaseCommand}" Padding="0"/>
+          <TextBlock HorizontalAlignment="Center" FontWeight="Bold" FontSize="14"
+                     Text="Severity levels &amp; names (casing does matter)" />
+          <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
+                     Text="Please specify the actual severities used in the log-file. The template helper buttons allows you to use predefined severities, based on their known names." />
+          <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"
+                     Text="You can also use the casing helper buttons to modify that selection. Note that even if you chose one of the systems, you can still override each name." />
+          <StackPanel Name="Severities" Orientation="Horizontal" HorizontalAlignment="Center">
+            <StackPanel Name="SeverityHelpers" Orientation="Vertical" Margin="10 0" VerticalAlignment="Top">
+              <TextBlock Text="Templates" Margin="0 5" FontWeight="Bold" HorizontalAlignment="Center"/>
+              <Button Content="Use NLog" Command="{Binding UseNLogCommand}" />
+              <Button Content="Use SeriLog (long)" Command="{Binding UseSeriLogLongCommand}" />
+              <Button Content="Use SeriLog (short)" Command="{Binding UseSeriLogShortNLogCommand}" />
+              <Button Content="Use Log4j" Command="{Binding UseLog4JCommand}" />
+              <Button Content="Use Python" Command="{Binding UsePythonCommand}" />
             </StackPanel>
-            <Grid ColumnDefinitions="Auto,100, Auto,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center">
-              <TextBlock Grid.Row="0" Grid.Column="0" Margin="5" >Level</TextBlock>
-              <TextBlock Grid.Row="0" Grid.Column="1" Margin="5">Severity</TextBlock>
-              <TextBlock Grid.Row="0" Grid.Column="2" Margin="5" >Level</TextBlock>
-              <TextBlock Grid.Row="0" Grid.Column="3" Margin="5">Severity</TextBlock>
+            
+            <Grid ColumnDefinitions="Auto,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="10 0">
+              <TextBlock Grid.Row="0" Grid.Column="0" Margin="5" FontWeight="Bold">Level</TextBlock>
+              <TextBlock Grid.Row="0" Grid.Column="1" Margin="5" FontWeight="Bold">Severity</TextBlock>
 
               <TextBlock Grid.Row="1" Grid.Column="0" Margin="5" TextAlignment="Center">1</TextBlock>
               <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SeverityName1, Mode=TwoWay}"/>
-              <TextBlock Grid.Row="1" Grid.Column="2" Margin="5" TextAlignment="Center">4</TextBlock>
-              <TextBox Grid.Row="1" Grid.Column="3" Text="{Binding SeverityName4, Mode=TwoWay}"/>
 
               <TextBlock Grid.Row="2" Grid.Column="0" Margin="5" TextAlignment="Center">2</TextBlock>
               <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SeverityName2, Mode=TwoWay}"/>
-              <TextBlock Grid.Row="2" Grid.Column="2" Margin="5" TextAlignment="Center">5</TextBlock>
-              <TextBox Grid.Row="2" Grid.Column="3" Text="{Binding SeverityName5, Mode=TwoWay}"/>
             
               <TextBlock Grid.Row="3" Grid.Column="0" Margin="5" TextAlignment="Center">3</TextBlock>
               <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding SeverityName3, Mode=TwoWay}"/>
-              <TextBlock Grid.Row="3" Grid.Column="2" Margin="5" TextAlignment="Center">6</TextBlock>
-              <TextBox Grid.Row="3" Grid.Column="3" Text="{Binding SeverityName6, Mode=TwoWay}"/>
+
+              <TextBlock Grid.Row="4" Grid.Column="0" Margin="5" TextAlignment="Center">4</TextBlock>
+              <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SeverityName4, Mode=TwoWay}"/>
+              
+              <TextBlock Grid.Row="5" Grid.Column="0" Margin="5" TextAlignment="Center">5</TextBlock>
+              <TextBox Grid.Row="5" Grid.Column="1" Text="{Binding SeverityName5, Mode=TwoWay}"/>
+              
+              <TextBlock Grid.Row="6" Grid.Column="0" Margin="5" TextAlignment="Center">6</TextBlock>
+              <TextBox Grid.Row="6" Grid.Column="1" Text="{Binding SeverityName6, Mode=TwoWay}"/>
             </Grid>
-            <StackPanel Orientation="Vertical" Margin="20" VerticalAlignment="Center">
-              <Button Content="Use NLog" Command="{Binding UseNLogCommand}" Padding="0"/>
-              <Button Content="Use SeriLog (long)" Command="{Binding UseSeriLogLongCommand}" Padding="0"/>
-              <Button Content="Use SeriLog (short)" Command="{Binding UseSeriLogShortNLogCommand}" Padding="0"/>
-              <Button Content="Use Log4j" Command="{Binding UseLog4JCommand}" Padding="0"/>
-              <Button Content="Use Python" Command="{Binding UsePythonCommand}" Padding="0"/>
+            <StackPanel Orientation="Vertical" VerticalAlignment="Top" Margin="10 0">
+              <TextBlock Text="Case converters" Margin="0 5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+              <Button Content="UPPERCASED" Command="{Binding UpperCaseCommand}" />
+              <Button Content="lowercased" Command="{Binding LowerCaseCommand}" />
+              <Button Content="Titlecased" Command="{Binding TitleCaseCommand}" />
             </StackPanel>
           </StackPanel>
         </StackPanel>
@@ -123,7 +136,9 @@
             </DrawingGroup>
 	      </DrawingPresenter>
       </Panel>
-      <TextBlock Grid.Column="1" Grid.Row="0" Text="Severities found in the sampled set matches the defined names"/>
+      <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding EntrySeveritiesVerifiedMessage}" IsVisible="{Binding EntrySeveritiesVerified}" Foreground="{DynamicResource ThemeForegroundBrush}"/>
+      <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding EntrySeveritiesVerifiedMessage}" IsVisible="{Binding !EntrySeveritiesVerified}" Foreground="{DynamicResource ErrorBrush}"/>
+
     </Grid>
     <Separator DockPanel.Dock="Top" Height="20"/>
     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
@@ -159,12 +174,13 @@
           <TextBlock Width="142" FontWeight="Bold" FontSize="10">Filename</TextBlock>
           <TextBlock Width="220" FontWeight="Bold" FontSize="10">Severities</TextBlock>
         </StackPanel>
-        <ListBox
-          Items="{Binding Files}"
+        <ListBox Name="FileSamples"
+          Items="{Binding FileSamples}"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           Margin="20 0"
-          SelectionMode="Toggle"
+          SelectionMode="Single"
+          SelectedItem="{Binding FileSampleSelectedItem, Mode=TwoWay}"
           >
           <ListBox.ItemTemplate>
             <DataTemplate>
@@ -179,12 +195,12 @@
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold" FontSize="14">Detected severities (selected file, up to 100 first lines)</TextBlock>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Left" Margin="25 0 0 0" TextBlock.FontSize="10" TextBlock.FontWeight="Bold"
-                    Name="LinesHeader">
-          <TextBlock Width="212">Severity</TextBlock>
+                    Name="LineSamples">
+          <TextBlock Width="112">Severity</TextBlock>
           <TextBlock >Content</TextBlock>
         </StackPanel>
         <ListBox
-          Items="{Binding Lines}"
+          Items="{Binding LineSamples}"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           Margin="20 0"
@@ -193,8 +209,8 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" TextBlock.FontSize="10">
-                <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="200"/>
-                <TextBlock Text="{Binding Content}" Width="510"/>
+                <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="100"/>
+                <TextBlock Text="{Binding Content}"/>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

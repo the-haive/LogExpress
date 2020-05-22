@@ -105,7 +105,7 @@
       </MenuItem>
       <MenuItem Header="_Settings">
         <!-- TODO: Enable only when you have a log opened -->
-        <MenuItem Header="_Configure Timestamp Detection" Name="ConfigureTimestamp" Command="{Binding ConfigureTimestampCommand}">
+        <MenuItem Header="Configure _Timestamp Detection" Name="ConfigureTimestamp" Command="{Binding ConfigureTimestampCommand}">
           <MenuItem.Icon>
             <DrawingPresenter Height="16" Width="16">
               <DrawingPresenter.Drawing>
@@ -119,7 +119,7 @@
 	          </DrawingPresenter>
           </MenuItem.Icon>
         </MenuItem>
-        <MenuItem Header="_Configure Severity Detection" Name="ConfigureSeverity" Command="{Binding ConfigureSeverityCommand}">
+        <MenuItem Header="_Configure _Severity Detection" Name="ConfigureSeverity" Command="{Binding ConfigureSeverityCommand}">
           <MenuItem.Icon>
             <StackPanel Orientation="Vertical" Width="16">
               <Separator Height="6" Background="Red"/>
