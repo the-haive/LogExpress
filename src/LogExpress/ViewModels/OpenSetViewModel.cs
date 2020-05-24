@@ -2,11 +2,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Reactive;
 using Avalonia.Controls;
 using DynamicData;
 using DynamicData.Binding;
+using JetBrains.Annotations;
 using LogExpress.Models;
 using LogExpress.Services;
 using LogExpress.Views;
@@ -19,7 +19,7 @@ namespace LogExpress.ViewModels
         private IDisposable _fileMonitorSubscription;
         private string _folder = string.Empty;
         private string _pattern = "*.log";
-        private bool _recursive = false;
+        private bool _recursive;
         private ScopedFileMonitor _scopedFileMonitor;
         private readonly IDisposable _scopedFileMonitorSubscription;
         private ScopedFile _selectedLogFile;
@@ -52,21 +52,25 @@ namespace LogExpress.ViewModels
                         .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
                         .Subscribe(LogFilesReady);
                 });
+
+            this.RaisePropertyChanged(nameof(Folder));
+            this.RaisePropertyChanged(nameof(Pattern));
+            this.RaisePropertyChanged(nameof(Recursive));
         }
 
-        public ReactiveCommand<Unit, Unit> CancelCommand { get; set; }
+        public ObservableCollection<ScopedFile> LogFiles { get; } = new ObservableCollection<ScopedFile>();
+
+        public ReactiveCommand<Unit, Unit> CancelCommand { [UsedImplicitly] get; }
+        
+        public ReactiveCommand<Unit, Unit> ConfigureSetCommand { [UsedImplicitly] get; }
+
+        public ReactiveCommand<Unit, Unit> ConfigureFileCommand { [UsedImplicitly] get; }
 
         public string Folder
         {
             get => _folder;
             set => this.RaiseAndSetIfChanged(ref _folder, value);
         }
-
-        public ObservableCollection<ScopedFile> LogFiles { get; set; } = new ObservableCollection<ScopedFile>();
-
-        public ReactiveCommand<Unit, Unit> ConfigureSetCommand { get; set; }
-
-        public ReactiveCommand<Unit, Unit> ConfigureFileCommand { get; set; }
 
         public string Pattern
         {
@@ -86,7 +90,7 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _selectedLogFile, value);
         }
 
-        public ReactiveCommand<Unit, Unit> SelectFolderCommand { get; set; }
+        public ReactiveCommand<Unit, Unit> SelectFolderCommand { [UsedImplicitly] get; }
 
         public OpenSetView View { get; }
 
@@ -98,7 +102,7 @@ namespace LogExpress.ViewModels
         private void LogFilesReady(IChangeSet<ScopedFile, ulong> changes = null)
         {
             if (changes == null) return;
-            foreach (var change in changes)
+            foreach (var change in changes){
                 switch (change.Reason)
                 {
                     case ChangeReason.Add:
@@ -111,8 +115,10 @@ namespace LogExpress.ViewModels
 
                     case ChangeReason.Update:
                     case ChangeReason.Refresh:
+/*
                         var logFile = LogFiles.FirstOrDefault(l => l == change.Current);
                         logFile = change.Current;
+*/
                         break;
 
                     case ChangeReason.Moved:
@@ -121,6 +127,7 @@ namespace LogExpress.ViewModels
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+            }
         }
 
         private void ConfigureSetExecute()
@@ -157,15 +164,6 @@ namespace LogExpress.ViewModels
 
             var result = await openFolderDialog.ShowAsync(View);
             if (!string.IsNullOrWhiteSpace(result)) Folder = result;
-        }
-
-        public class OpenSetResult
-        {
-            public string Folder;
-            public string Pattern;
-            public bool Recursive;
-            public ScopedFile SelectedFile;
-            public bool HasFiles;
         }
 
         #region Implementation of IDisposable

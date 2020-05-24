@@ -149,7 +149,7 @@
     <Separator DockPanel.Dock="Top" Height="20"/>
     <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Center" Margin="0 20 0 0">
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding SetScopeCommand}">
+        <Button Margin="10 5 5 10" Padding="5" Width="200" Command="{Binding ConfigureScopeCommand}">
           <DockPanel LastChildFill="True" >
             <DrawingPresenter Height="16" Width="16" DockPanel.Dock="Left">
               <DrawingPresenter.Drawing>
@@ -187,7 +187,7 @@
           VerticalAlignment="Stretch"
           Margin="20 0"
           SelectionMode="Single"
-          SelectedItem="{Binding FileSampleSelectedItem, Mode=TwoWay}"
+          SelectedItem="{Binding TimestampFileSampleSelectedItem, Mode=TwoWay}"
           >
           <ListBox.ItemTemplate>
             <DataTemplate>

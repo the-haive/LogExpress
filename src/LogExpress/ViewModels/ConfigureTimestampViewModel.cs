@@ -24,6 +24,8 @@ namespace LogExpress.ViewModels
         private IDisposable _parseFilesSubscription;
         private ScopedFileMonitor _scopedFileMonitor;
         private IDisposable _timestampSubscription;
+        private TimestampFileSample _timestampFileSampleSelectedItem;
+        private IDisposable _lineSampleSubscription;
 
         public ConfigureTimestampViewModel(ConfigureTimestampView view, ScopeSettings scopeSettings, TimestampSettings timestampSettings)
         {
@@ -53,12 +55,7 @@ namespace LogExpress.ViewModels
                     x => x.TimestampLineSelectionStart,
                     x => x.TimestampLineSelectionEnd,
                     x => x.TimestampFormat)
-/*                .Where(obs =>
-                {
-                    var (start, end, _) = obs;
-                    return start > -1 && end != start;
-                })
-*/                .Throttle(TimeSpan.FromMilliseconds(100))
+                .Throttle(TimeSpan.FromMilliseconds(100))
                 .Subscribe(_ => UpdateTimestampSettings());
 
             _scopedFileMonitor = new ScopedFileMonitor(ScopeSettings.Folder, new List<string> {ScopeSettings.Pattern}, ScopeSettings.Recursive);
@@ -84,34 +81,37 @@ namespace LogExpress.ViewModels
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(_ => UpdateFileSamples());
 
-            _lineSampleSubscription = this.WhenAnyValue(x => x.FileSampleSelectedItem)
+            _lineSampleSubscription = this.WhenAnyValue(x => x.TimestampFileSampleSelectedItem)
                 .Subscribe(UpdateLineSamples);
         }
 
-        private void UpdateLineSamples(FileSample selectedFile)
+        private void UpdateLineSamples(TimestampFileSample selectedTimestampFile)
         {
             LineSamples.Clear();
 
-            if (selectedFile == null) return;
+            if (selectedTimestampFile == null) return;
 
-            using var fileStream = new FileStream(selectedFile.ScopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(fileStream, selectedFile.ScopedFile.Encoding);
+            using var fileStream = new FileStream(selectedTimestampFile.ScopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fileStream, selectedTimestampFile.ScopedFile.Encoding);
 
             LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
 
             var lines = new ObservableCollection<LineItem>();
-            ScopedFile.ReadFileLinePositions(lines, reader, selectedFile.ScopedFile, maxLinesToRead: 100);
+            ScopedFile.ReadFileLinePositions(lines, reader, selectedTimestampFile.ScopedFile, maxLinesToRead: 100);
             
-            var tsStart = selectedFile.ScopedFile.TimestampSettings.TimestampStart;
-            var tsLength = selectedFile.ScopedFile.TimestampSettings.TimestampLength;
+            var tsStart = selectedTimestampFile.ScopedFile.TimestampSettings.TimestampStart;
+            var tsLength = selectedTimestampFile.ScopedFile.TimestampSettings.TimestampLength;
             
             foreach (var lineItem in lines)
             {
                 var content = lineItem.Content;
-                var buffer = content.Substring(tsStart, tsLength).ToCharArray();
-                var timestamp = selectedFile.ScopedFile.GetTimestamp(buffer);
+                var start = Math.Min(tsStart, content.Length);
+                var maxLength = content.Length - start;
+                var length = Math.Min(maxLength, tsLength);
+                var buffer = content.Substring(start, length).ToCharArray();
+                var timestamp = selectedTimestampFile.ScopedFile.GetTimestamp(buffer);
 
-                var lineSample = new LineSample()
+                var lineSample = new TimestampLineSample()
                 {
                     Timestamp = $"{timestamp:F}",
                     Content = content
@@ -119,7 +119,7 @@ namespace LogExpress.ViewModels
 
                 LineSamples.Add(lineSample);
             }
-            Logger.Debug("Have {Count} lines from file {Filename}", LineSamples.Count, selectedFile.RelativeFullName);
+            Logger.Debug("Have {Count} lines from file {Filename}", LineSamples.Count, selectedTimestampFile.RelativeFullName);
         }
 
         private void UpdateTimestampSettings()
@@ -136,9 +136,8 @@ namespace LogExpress.ViewModels
 
         private void UpdateFileSamples()
         {
-            //LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
             Logger.Debug(
-                "Updating the verification tables, based on timestamp settings: Start={Start} Length:{Length} Format='{Format}'",
+                "Updating the verification tables, based on timestamp settings: Start={Start} Length={Length} Format='{Format}'",
                 TimestampSettings.TimestampStart, TimestampSettings.TimestampLength, TimestampSettings.TimestampFormat);
 
             // Iterate all files to get the Start and End dates. StartDate is used as order in the next for-loop, where we check the date-consistency.
@@ -158,13 +157,12 @@ namespace LogExpress.ViewModels
                 }
             }
 
-            // Ite
             FileSamples.Clear();
             var isFirst = true;
             var lastDate = DateTime.MinValue;
             SeqFilesVerified = true;
             var msComponents = new List<int>();
-            FileSampleSelectedItem = null;
+            TimestampFileSampleSelectedItem = null;
             foreach (var scopedFile in LogFiles.OrderBy(f => FoundTimestamp ? f.StartDate : f.CreationTime))
             {
 
@@ -180,7 +178,7 @@ namespace LogExpress.ViewModels
                     isFirst = false;
                 }
 
-                var fileSample = new FileSample
+                var fileSample = new TimestampFileSample
                 {
                     ScopedFile = scopedFile,
                     FullName = scopedFile.FullName,
@@ -192,7 +190,7 @@ namespace LogExpress.ViewModels
                 };
                 FileSamples.Add(fileSample);
 
-                if (FileSampleSelectedItem == null && (seqStartError || seqEndError)) FileSampleSelectedItem = fileSample;
+                if (TimestampFileSampleSelectedItem == null && (seqStartError || seqEndError)) TimestampFileSampleSelectedItem = fileSample;
 
                 lastDate = scopedFile.EndDate;
 
@@ -200,9 +198,6 @@ namespace LogExpress.ViewModels
                 // TODO: Sample first X lines from each file
                 msComponents.Add(scopedFile.StartDate.Millisecond);
                 msComponents.Add(scopedFile.EndDate.Millisecond);
-
-
-                //Logger.Debug("{RelativeFullName}: Seq={SeqOK} StartDate={StartDate} EndDate={EndDate}", scopedFile.RelativeFullName, SeqFilesVerified, scopedFile.StartDate, scopedFile.EndDate);
             }
 
             FoundTimestampMessage = FoundTimestamp ? "Timestamp detected" : "Timestamp not detected";
@@ -215,8 +210,6 @@ namespace LogExpress.ViewModels
             SeqFilesVerifiedMessage = SeqFilesVerified
                 ? "Logfile entries are sequential without overlapping timestamps"
                 : "Logfile entries are not sequential from one file to the other";
-
-            //Logger.Debug("All files have millisecond resolution? {EntryTimestampsVerified} ({MsCollection})", EntryTimestampsVerified, string.Join(",", msComponents));
         }
 
         public string TimestampParseResult
@@ -260,10 +253,10 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _hasMsResolution, value);
         }
 
-        public FileSample FileSampleSelectedItem
+        public TimestampFileSample TimestampFileSampleSelectedItem
         {
-            get => _fileSampleSelectedItem;
-            set => this.RaiseAndSetIfChanged(ref _fileSampleSelectedItem, value);
+            get => _timestampFileSampleSelectedItem;
+            set => this.RaiseAndSetIfChanged(ref _timestampFileSampleSelectedItem, value);
         }
 
         public ReactiveCommand<Unit, Unit> ConfigureScopeCommand { get; set; }
@@ -271,10 +264,8 @@ namespace LogExpress.ViewModels
         public ReactiveCommand<Unit, Unit> ConfigureSeverityCommand { get; set; }
 
         public ObservableCollection<ScopedFile> LogFiles { get; set; } = new ObservableCollection<ScopedFile>();
-        
-        //public ObservableCollection<TimestampSample> ParseSamples{ get; set; } = new ObservableCollection<TimestampSample>();
-        public ObservableCollection<FileSample> FileSamples { get; set; } = new ObservableCollection<FileSample>();
-        public ObservableCollection<LineSample> LineSamples { get; set; } = new ObservableCollection<LineSample>();
+        public ObservableCollection<TimestampFileSample> FileSamples { get; set; } = new ObservableCollection<TimestampFileSample>();
+        public ObservableCollection<TimestampLineSample> LineSamples { get; set; } = new ObservableCollection<TimestampLineSample>();
 
         public ConfigureTimestampView View { get; }
 
@@ -282,6 +273,8 @@ namespace LogExpress.ViewModels
         {
             if (changes == null) return;
             foreach (var change in changes)
+            {
+                change.Current.TimestampSettings = TimestampSettings;
                 switch (change.Reason)
                 {
                     case ChangeReason.Add:
@@ -304,40 +297,41 @@ namespace LogExpress.ViewModels
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+            }
         }
 
         private void ConfigureScopeExecute()
         {
-            // true indicates that the user wants to navigate back
-            View.Close((ConfigureAction.Back, TimestampSettings));
+            var tuple = new Tuple<ConfigureAction, TimestampSettings>(ConfigureAction.Back, TimestampSettings);
+            View.Close(tuple);
         }
 
         private void CancelExecute()
         {
-            View.Close((ConfigureAction.Cancel, new object()));
+            var tuple = new Tuple<ConfigureAction, TimestampSettings>(ConfigureAction.Cancel, null);
+            View.Close(tuple);
         }
 
         private void ConfigureSeverityExecute()
         {
-            View.Close((ConfigureAction.Continue, TimestampSettings));
+            var tuple = new Tuple<ConfigureAction, TimestampSettings>(ConfigureAction.Continue, TimestampSettings);
+            View.Close(tuple);
         }
 
         #region Timestamp
 
         private string _timestampLine = string.Empty;
-        private int _timestampLineSelectionStart = 0;
-        private int _timestampLineSelectionEnd = 23;
+        private int _timestampLineSelectionStart;
+        private int _timestampLineSelectionEnd;
         private string _timestampFormat = string.Empty;
-        private int _timestampLength = 23;
-        private int _timestampStart = 1;
+        private int _timestampLength;
+        private int _timestampStart;
         private bool _foundTimestamp;
         private bool _hasMsResolution;
         private bool _seqFilesVerified;
         private string _foundTimestampMessage;
         private string _seqFilesVerifiedMessage;
         private string _timestampParseResult;
-        private FileSample _fileSampleSelectedItem;
-        private IDisposable _lineSampleSubscription;
 
         public string TimestampLine
         {
@@ -427,7 +421,7 @@ namespace LogExpress.ViewModels
 
     }
 */    
-    public class FileSample: ReactiveObject
+    public class TimestampFileSample: ReactiveObject
     {
         public ScopedFile ScopedFile { get; set; }
         public string RelativeFullName { get; set; }
@@ -438,7 +432,7 @@ namespace LogExpress.ViewModels
         public bool SeqEndError { get; set; }
     }
 
-    public class LineSample: ReactiveObject
+    public class TimestampLineSample: ReactiveObject
     {
         public string Timestamp { get; set; }
         public string Content { get; set; }

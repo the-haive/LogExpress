@@ -143,18 +143,6 @@ namespace LogExpress.Models
         ///     this with ordinary log-level values.
         /// </summary>
         public byte Severity { get; set; }
-        public static byte SeverityFromDisk(ScopedFile scopedFile, uint position)
-        {
-            var severitySettings = scopedFile.SeveritySettings;
-
-            if (severitySettings == null) return 0;
-
-            // Try to fetch the date from the last log-entry
-            using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var reader = new StreamReader(fileStream, scopedFile.Encoding);
-
-            return ScopedFile.ReadFileLineSeverity(reader, severitySettings, position);
-        }
 
         /// <summary>
         ///     Log-colors as given by the Severity
@@ -242,23 +230,32 @@ namespace LogExpress.Models
 
         public static string ContentFromDisk(ScopedFile file, long newLinePosition = 0)
         {
-            using var fileStream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            var reader = new StreamReader(fileStream, file.Encoding);
-            reader.BaseStream.Seek(newLinePosition, SeekOrigin.Begin);
-            reader.DiscardBufferedData();
-            var buffer = new Span<char>(new char[1]);
-            var line = new StringBuilder(300);
-
-            while (!reader.EndOfStream)
+            try
             {
-                var numRead = reader.Read(buffer);
-                if (numRead == -1) continue; // End of stream
-                if (buffer[0] == '\r' || buffer[0] == '\n') break;
-                // TODO: Use proper encoding for creating the line
-                line.Append(buffer);
+                using var fileStream =
+                    new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                var reader = new StreamReader(fileStream, file.Encoding);
+                reader.BaseStream.Seek(newLinePosition, SeekOrigin.Begin);
+                reader.DiscardBufferedData();
+                var buffer = new Span<char>(new char[1]);
+                var line = new StringBuilder(300);
+                while (!reader.EndOfStream)
+                {
+                    var numRead = reader.Read(buffer);
+                    if (numRead == -1) continue; // End of stream
+                    if (buffer[0] == '\r' || buffer[0] == '\n') break;
+                    // TODO: Use proper encoding for creating the line
+                    line.Append(buffer);
+                }
+
+                return line.ToString();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex,"Failed to read content from file '{Filename}' for line at file-position {Position}", file.FullName, newLinePosition);
             }
 
-            return line.ToString();
+            return string.Empty;
         }
     }
 }

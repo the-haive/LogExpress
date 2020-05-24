@@ -63,9 +63,12 @@
                        Text="Below is the first line in the first file in the scoped log-set."/>
             <TextBlock HorizontalAlignment="Center"
                        Text="Please select the severity to help LogExpress understand where the severity can be found:" />
-            <controls:MarkerTextBox Text="{Binding SeverityLine}" Width="580" IsReadOnly="True" HorizontalAlignment="Center" FontSize="14" FontFamily="Consolas"
+            <controls:MarkerTextBox Name="SeverityLine" Text="{Binding SeverityLine}" Width="580" IsReadOnly="True" HorizontalAlignment="Center" FontSize="14" FontFamily="Consolas"
                      SelectionStart="{Binding SeverityLineSelectionStart, Mode=TwoWay}"
-                     SelectionEnd="{Binding SeverityLineSelectionEnd, Mode=TwoWay}"/>
+                     SelectionEnd="{Binding SeverityLineSelectionEnd, Mode=TwoWay}"
+            />
+            <!--TextBlock Text="{Binding SeverityLineSelectionStart}"/>
+            <TextBlock Text="{Binding SeverityLineSelectionEnd}"/-->
           </StackPanel>
           <Separator Height="20"/>
           <TextBlock HorizontalAlignment="Center" FontWeight="Bold" FontSize="14"
@@ -77,11 +80,11 @@
           <StackPanel Name="Severities" Orientation="Horizontal" HorizontalAlignment="Center">
             <StackPanel Name="SeverityHelpers" Orientation="Vertical" Margin="10 0" VerticalAlignment="Top">
               <TextBlock Text="Templates" Margin="0 5" FontWeight="Bold" HorizontalAlignment="Center"/>
-              <Button Content="Use NLog" Command="{Binding UseNLogCommand}" />
-              <Button Content="Use SeriLog (long)" Command="{Binding UseSeriLogLongCommand}" />
-              <Button Content="Use SeriLog (short)" Command="{Binding UseSeriLogShortNLogCommand}" />
-              <Button Content="Use Log4j" Command="{Binding UseLog4JCommand}" />
-              <Button Content="Use Python" Command="{Binding UsePythonCommand}" />
+              <Button Content="Use NLog" Command="{Binding UseNLogCommand}" ToolTip.Tip="{Binding NLogToolTip}"/>
+              <Button Content="Use SeriLog (long)" Command="{Binding UseSeriLogLongCommand}" ToolTip.Tip="{Binding SeriLogLongToolTip}"/>
+              <Button Content="Use SeriLog (short)" Command="{Binding UseSeriLogShortNLogCommand}" ToolTip.Tip="{Binding SeriLogShortNLogToolTip}"/>
+              <Button Content="Use Log4j" Command="{Binding UseLog4JCommand}" ToolTip.Tip="{Binding Log4JToolTip}"/>
+              <Button Content="Use Python" Command="{Binding UsePythonCommand}" ToolTip.Tip="{Binding PythonToolTip}"/>
             </StackPanel>
             
             <Grid ColumnDefinitions="Auto,100" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="10 0">
@@ -180,13 +183,14 @@
           VerticalAlignment="Stretch"
           Margin="20 0"
           SelectionMode="Single"
-          SelectedItem="{Binding FileSampleSelectedItem, Mode=TwoWay}"
+          SelectedItem="{Binding SeverityFileSampleSelectedItem, Mode=TwoWay}"
           >
           <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding RelativeFullName}" Margin="0 0 10 0" Width="130" FontSize="10" ToolTip.Tip="{Binding FullName}"/>
-                <TextBlock Text="{Binding Severities}" Margin="0 0 10 0" Width="210" Height="14" FontSize="10"/>
+                <TextBlock Text="{Binding Severities}" Margin="0 0 10 0" Width="210" Height="14" FontSize="10" IsVisible="{Binding !SeveritiesMissing}" Foreground="{DynamicResource ThemeForegroundBrush}"/>
+                <TextBlock Text="{Binding Severities}" Margin="0 0 10 0" Width="210" Height="14" FontSize="10" IsVisible="{Binding SeveritiesMissing}" Foreground="{DynamicResource ErrorBrush}"/>
               </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
@@ -196,7 +200,7 @@
         <TextBlock DockPanel.Dock="Top" HorizontalAlignment="Center" FontWeight="Bold" FontSize="14">Detected severities (selected file, up to 100 first lines)</TextBlock>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Left" Margin="25 0 0 0" TextBlock.FontSize="10" TextBlock.FontWeight="Bold"
                     Name="LineSamples">
-          <TextBlock Width="112">Severity</TextBlock>
+          <TextBlock Width="62">Severity</TextBlock>
           <TextBlock >Content</TextBlock>
         </StackPanel>
         <ListBox
@@ -209,7 +213,8 @@
           <ListBox.ItemTemplate>
             <DataTemplate>
               <StackPanel Orientation="Horizontal" TextBlock.FontSize="10">
-                <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="100"/>
+                <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="50" IsVisible="{Binding SeverityFound}" Foreground="{DynamicResource ThemeForegroundBrush}"/>
+                <TextBlock Text="{Binding Severity}" Margin="0 0 10 0" Width="50" IsVisible="{Binding !SeverityFound}" Foreground="{DynamicResource ErrorBrush}"/>
                 <TextBlock Text="{Binding Content}"/>
               </StackPanel>
             </DataTemplate>

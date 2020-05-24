@@ -160,15 +160,15 @@
       <Separator />
       <TextBox Text="IsFiltered:" Margin="5 0" /><TextBox Text="{Binding IsFiltered}"/>
       <Separator />
-      <TextBox Text="ShowLines:" Margin="5 0" /><TextBox Text="{Binding LogViewModel.VirtualLogFile.ShowLines}"/>
-      <Separator />
       <TextBox Text="ShowProgress:" Margin="5 0" /><TextBox Text="{Binding LogViewModel.VirtualLogFile.ShowProgress}"/>
+      <Separator />
+      <TextBox Text="HasLines:" Margin="5 0" /><TextBox Text="{Binding LogViewModel.VirtualLogFile.HasLines}"/>
       <Separator />
     </StackPanel>
     <StackPanel DockPanel.Dock="Bottom"
                 Name="InfoBar" 
                 Orientation="Horizontal" 
-                IsVisible="{Binding ShowLines}">
+                IsVisible="{Binding IsAnalyzed}">
       <StackPanel Orientation="Vertical" Margin="5 0">
         <TextBox Text="Filtered" IsEnabled="False" IsVisible="{Binding IsFiltered}"/>
         <TextBox Text="Totals" IsEnabled="False"/>

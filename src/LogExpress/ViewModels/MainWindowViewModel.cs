@@ -89,11 +89,11 @@ namespace LogExpress.ViewModels
             _mainWindow.AddHandler(DragDrop.DropEvent, Drop);
 
             InitCommand = ReactiveCommand.Create(InitExecute);
-            ConfigureScopeCommand = ReactiveCommand.Create(ConfigureScopeExecute);
+            ConfigureScopeCommand = ReactiveCommand.CreateFromTask(ConfigureScopeExecuteTask);
             //ConfigureTimestampCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureTimestampExecute);
-            ConfigureTimestampCommand = ReactiveCommand.Create(ConfigureTimestampExecute);
+            ConfigureTimestampCommand = ReactiveCommand.CreateFromTask(ConfigureTimestampExecuteTask);
             //ConfigureSeverityCommand = ReactiveCommand.Create<(string, string, bool?)>(ConfigureSeverityExecute);
-            ConfigureSeverityCommand = ReactiveCommand.Create(ConfigureSeverityExecute);
+            ConfigureSeverityCommand = ReactiveCommand.CreateFromTask(ConfigureSeverityExecuteTask);
             ToggleThemeCommand = ReactiveCommand.Create(ToggleThemeExecute);
             ExitCommand = ReactiveCommand.Create(ExitApplicationExecute);
             AboutCommand = ReactiveCommand.Create(AboutExecute);
@@ -112,6 +112,104 @@ namespace LogExpress.ViewModels
             KeyGoPageDownCommand = ReactiveCommand.Create(KeyGoPageDownExecute);
             KeyGoUpCommand = ReactiveCommand.Create(KeyGoUpExecute);
             KeyGoDownCommand = ReactiveCommand.Create(KeyGoDownExecute);
+        }
+
+
+
+        private async Task ConfigureSeverityExecuteTask()
+        {
+            _logViewModel?.VirtualLogFile.Pause();
+            _newSettings ??= new ConfigureSettings(CurrentSettings);
+
+            var configureSeverityView = new ConfigureSeverityView();
+            var configureSeverityViewModel = new ConfigureSeverityViewModel(configureSeverityView, _newSettings.Scope, _newSettings.Timestamp, _newSettings.Severity);
+            configureSeverityViewModel.Init();
+            configureSeverityView.DataContext = configureSeverityViewModel;
+            
+            var (action, severity) = await configureSeverityView.ShowDialog<Tuple<ConfigureAction, SeveritySettings>>(_mainWindow);
+
+            switch (action)
+            {
+                case ConfigureAction.Back:
+                    _newSettings.Severity = severity;
+                    await ConfigureTimestampCommand.Execute();
+                    return;
+                case ConfigureAction.Cancel:
+                    Logger.Information("Configuration was cancelled from ConfigureSeverity");
+                    _newSettings = null;
+                    _logViewModel?.VirtualLogFile.Continue();
+                    break;
+                case ConfigureAction.Continue:
+                    _newSettings.Severity = severity;
+                    Load();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private async Task ConfigureTimestampExecuteTask()
+        {
+            _logViewModel?.VirtualLogFile.Pause();
+            _newSettings ??= new ConfigureSettings(CurrentSettings);
+
+            var configureTimestampView = new ConfigureTimestampView();
+            var configureTimestampViewModel = new ConfigureTimestampViewModel(configureTimestampView, _newSettings.Scope, _newSettings.Timestamp);
+            configureTimestampViewModel.Init();
+            configureTimestampView.DataContext = configureTimestampViewModel;
+            
+            var (action, timestamp) = await configureTimestampView.ShowDialog<Tuple<ConfigureAction, TimestampSettings>>(_mainWindow);
+
+            switch (action)
+            {
+                case ConfigureAction.Back:
+                    _newSettings.Timestamp = timestamp;
+                    await ConfigureScopeCommand.Execute();
+                    return;
+                case ConfigureAction.Cancel:
+                    Logger.Information("Configuration was cancelled from ConfigureTimestamp");
+                    _newSettings = null;
+                    _logViewModel?.VirtualLogFile.Continue();
+                    break;
+                case ConfigureAction.Continue:
+                    _newSettings.Timestamp = timestamp;
+                    await ConfigureSeverityCommand.Execute();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private async Task ConfigureScopeExecuteTask()
+        {
+            _logViewModel?.VirtualLogFile.Pause();
+            _newSettings ??= new ConfigureSettings(CurrentSettings);
+
+            var openLogSetView = new OpenSetView();
+            var openSetViewModel = new OpenSetViewModel(openLogSetView, _newSettings.Scope);
+            //openSetViewModel.Init();
+            openLogSetView.DataContext = openSetViewModel;
+            
+            var result = await openLogSetView.ShowDialog<(ScopeSettings scope, bool hasFiles)>(_mainWindow);
+            
+            if (result.scope == null)
+            {
+                Logger.Information("Configuration was cancelled from ConfigureScope");
+                _logViewModel?.VirtualLogFile.Continue();
+                _newSettings = null;
+                return;
+            }
+
+            _newSettings.Scope = result.scope;
+
+            if (!result.hasFiles)
+            {
+                Logger.Information("No currently matching files. Start the monitor, but skip configuring the timestamp and severity.");
+                Load();
+                return;
+            }
+
+            await ConfigureTimestampCommand.Execute();
         }
 
         private bool _showDebug;
@@ -405,7 +503,7 @@ namespace LogExpress.ViewModels
             configureTimestampViewModel.Init();
             configureTimestampView.DataContext = configureTimestampViewModel;
             
-            var (action, timestamp) = await configureTimestampView.ShowDialog<(ConfigureAction action, TimestampSettings timestamp)>(_mainWindow);
+            var (action, timestamp) = await configureTimestampView.ShowDialog<Tuple<ConfigureAction, TimestampSettings>>(_mainWindow);
 
             switch (action)
             {
@@ -431,17 +529,17 @@ namespace LogExpress.ViewModels
             _newSettings ??= new ConfigureSettings(CurrentSettings);
 
             var configureSeverityView = new ConfigureSeverityView();
-            var configureSeverityViewModel = new ConfigureSeverityViewModel(configureSeverityView, _newSettings.Scope, _newSettings.Severity);
+            var configureSeverityViewModel = new ConfigureSeverityViewModel(configureSeverityView, _newSettings.Scope, _newSettings.Timestamp, _newSettings.Severity);
             configureSeverityViewModel.Init();
             configureSeverityView.DataContext = configureSeverityViewModel;
             
-            var (action, severity) = await configureSeverityView.ShowDialog<(ConfigureAction action, SeveritySettings severity)>(_mainWindow);
+            var (action, severity) = await configureSeverityView.ShowDialog<Tuple<ConfigureAction, SeveritySettings>>(_mainWindow);
 
             switch (action)
             {
                 case ConfigureAction.Back:
                     _newSettings.Severity = severity;
-                    await ConfigureScopeCommand.Execute();
+                    await ConfigureTimestampCommand.Execute();
                     return;
                 case ConfigureAction.Cancel:
                     Logger.Information("Configuration was cancelled from ConfigureSeverity");
@@ -967,15 +1065,22 @@ namespace LogExpress.ViewModels
         public Dictionary<byte, string> Severities
         {
             get => _severities;
-            set => _severities = value.Where(pair => pair.Value.Length > 0).ToDictionary(pair => pair.Key, pair => pair.Value);
+            set
+            {
+                _severities = value.Where(pair => pair.Value.Length > 0)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value);
+                _maxSeverityNameLength = 0;
+            }
         }
+
         public int MaxSeverityNameLength
         {
             get
             {
                 if (_maxSeverityNameLength == 0)
                 {
-                    _maxSeverityNameLength = Severities.OrderByDescending(s => s.Value.Length).First().Value.Length;
+                    if (Severities != null && Severities.Any())
+                        _maxSeverityNameLength = Severities.OrderByDescending(s => s.Value.Length).First().Value.Length;
                 }
 
                 return _maxSeverityNameLength;

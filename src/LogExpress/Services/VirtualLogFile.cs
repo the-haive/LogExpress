@@ -114,6 +114,7 @@ namespace LogExpress.Services
             _fileMonitorSubscription = _fileMonitor.Connect()
                 .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
                 .Bind(out _logFiles)
+                .ObserveOn(RxApp.TaskpoolScheduler)
                 .Subscribe(Init);
 
             this.WhenAnyValue(x => x.LogFiles, x => x.LogFiles.Count, x => x.NewLinesRead)
@@ -144,7 +145,6 @@ namespace LogExpress.Services
                 {
                     var (isAnalyzed, isFiltering) = obs;
                     ShowProgress = !isAnalyzed || isFiltering;
-                    ShowLines = !ShowProgress;
                 });
 
             this.WhenAnyValue(x => x.IsAnalyzed)
@@ -170,7 +170,7 @@ namespace LogExpress.Services
                 .Subscribe(AddNewLinesExecute);
 
             this.WhenAnyValue(x => x.BackgroundFilteredLines)
-                .Where(backgroundFilteredLines => backgroundFilteredLines != null && backgroundFilteredLines.Any())
+                .Where(backgroundFilteredLines => backgroundFilteredLines != null)
                 .ObserveOn(RxApp.MainThreadScheduler)
                 .Subscribe(backgroundFilteredLines =>
                 {
@@ -178,6 +178,20 @@ namespace LogExpress.Services
                     IsFiltered = true;
                     FilteredLines = backgroundFilteredLines; 
                 });
+
+            _showNoLinesWarning = this.WhenAnyValue(x => x.HasLines, x => x.IsAnalyzed)
+                .Select(obs =>
+                {
+                    var (hasLines, isAnalyzed) = obs;
+                    return isAnalyzed && !hasLines;
+                })
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .ToProperty(this, x => x.ShowNoLinesWarning);
+
+            _hasLines = this.WhenAnyValue(x => x.FilteredLines)
+                .Select(filteredLines => filteredLines != null && filteredLines.Any())
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .ToProperty(this, x => x.HasLines);
 
 
             this.WhenAnyValue(x => x.IsAnalyzed, x => x.AllLines, x => x.FileFilterSelected,
@@ -220,7 +234,6 @@ namespace LogExpress.Services
             IsAnalyzed = false;
             NewLinesRead = false;
             ShowProgress = true;
-            ShowLines = !ShowProgress;
             Logger.Debug("Starting reading newlines");
             InitializeLines(set);
         }
@@ -265,6 +278,12 @@ namespace LogExpress.Services
         {
             get => _isFiltered;
             set => this.RaiseAndSetIfChanged(ref _isFiltered, value);
+        }
+
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set => this.RaiseAndSetIfChanged(ref _isPaused, value);
         }
 
         public bool IsFiltering
@@ -324,11 +343,6 @@ namespace LogExpress.Services
             set => this.RaiseAndSetIfChanged(ref _severityStats, value);
         }
 
-        public bool ShowLines
-        {
-            get => _showLines;
-            set => this.RaiseAndSetIfChanged(ref _showLines, value);
-        }
         public bool ShowProgress
         {
             get => _showProgress;
@@ -428,9 +442,9 @@ namespace LogExpress.Services
                 for (var i = 0; i < count; i++)
                 {
                     var lineItem = newLines[i];
-                    var severity = ScopedFile.ReadFileLineSeverity(reader, scopedFile.SeveritySettings, lineItem.Position);
+                    var severity = ScopedFile.ReadFileLineSeverity(reader, scopedFile.SeveritySettings, lineItem.Position).Key;
                     lineItem.Severity = severity != 0 ? severity : lastSeverity;
-                    lastSeverity = severity;
+                    lastSeverity = lineItem.Severity;
                 }
 
                 if (newLines.Any()) NewLines = newLines;
@@ -567,11 +581,11 @@ namespace LogExpress.Services
                     currentReader = new StreamReader(currentFileStream, currentScopedFile.Encoding);
                 }
 
-                var severity = ScopedFile.ReadFileLineSeverity(currentReader, currentScopedFile?.SeveritySettings, lineItem.Position);
+                var severity = ScopedFile.ReadFileLineSeverity(currentReader, currentScopedFile?.SeveritySettings, lineItem.Position).Key;
 
                 // We use the severity for the previous line, if this line had no severity
                 lineItem.Severity = severity != 0 ? severity : lastSeverity;
-                lastSeverity = severity;
+                lastSeverity = lineItem.Severity;
             }
 
             if (currentReader != null)
@@ -617,7 +631,6 @@ namespace LogExpress.Services
 
                 Logger.Debug("Finished reading newlines. Duration: {Duration}", timer.Elapsed);
                 ShowProgress = false;
-                ShowLines = !ShowProgress;
                 NewLinesRead = true;
             }
             catch (Exception ex)
@@ -690,6 +703,13 @@ namespace LogExpress.Services
         private ScopeSettings _scopeSettings;
         private TimestampSettings _timestampSettings;
         private SeveritySettings _severitySettings;
+        private bool _isPaused;
+        
+        private ObservableAsPropertyHelper<bool> _hasLines;
+        [UsedImplicitly] public bool HasLines => _hasLines != null && _hasLines.Value;
+
+        private ObservableAsPropertyHelper<bool> _showNoLinesWarning;
+        [UsedImplicitly] public bool ShowNoLinesWarning => _showNoLinesWarning != null && _showNoLinesWarning.Value;
 
         private ObservableCollection<LineItem> BackgroundFilteredLines
         {
@@ -698,5 +718,18 @@ namespace LogExpress.Services
         }
 
         #endregion Filters
+
+        public void Pause()
+        {
+            _activeLogFileMonitor.Stop();
+            IsPaused = true;
+        }
+
+        public void Continue()
+        {
+            LineItem.LogFiles = LogFiles;
+            _activeLogFileMonitor.Start();
+            IsPaused = false;
+        }
     }
 }

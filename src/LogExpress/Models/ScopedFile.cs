@@ -259,7 +259,7 @@ namespace LogExpress.Models
             if (filePosition >= lastNewLinePos)
                 newLines.Add(new LineItem(file, lineNum, lastNewLinePos));
         }
-
+        
         /// <summary>
         /// Find the logLevel in the logfile line
         /// </summary>
@@ -267,7 +267,7 @@ namespace LogExpress.Models
         /// <param name="severitySettings"></param>
         /// <param name="position"></param>
         /// <returns></returns>
-        internal static byte ReadFileLineSeverity(StreamReader reader, SeveritySettings severitySettings, uint position)
+        internal static KeyValuePair<byte, string> ReadFileLineSeverity(StreamReader reader, SeveritySettings severitySettings, uint position)
         {
             var buffer = new Span<char>(new char[severitySettings.MaxSeverityNameLength]);
 
@@ -275,17 +275,17 @@ namespace LogExpress.Models
             reader.DiscardBufferedData();
             var numRead = reader.Read(buffer);
             
-            if (numRead == -1) return 0;
+            if (numRead == -1) return new KeyValuePair<byte, string>(0, buffer.ToString());
             
             // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
-            foreach (var (severityLevel, severityName) in severitySettings.Severities)
+            foreach (var severity in severitySettings.Severities ?? new Dictionary<byte, string>())
             {
-                if (buffer.StartsWith(severityName))
+                if (buffer.StartsWith(severity.Value))
                 {
-                    return severityLevel;
+                    return severity;
                 }
             }
-            return 0;
+            return new KeyValuePair<byte, string>(0, buffer.ToString());
         }
     }
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -19,61 +20,107 @@ namespace LogExpress.ViewModels
     public class ConfigureSeverityViewModel : ViewModelBase, IDisposable
     {
         private static readonly ILogger Logger = Log.ForContext<ConfigureSeverityViewModel>();
-        private static readonly Brush ErrorColor = new SolidColorBrush(Colors.Red);
-        private static readonly Brush WarningColor = new SolidColorBrush(Colors.Orange);
         private IDisposable _fileMonitorSubscription;
         private IDisposable _parseFilesSubscription;
-        private IDisposable _parseSeveritySubscription;
         private ScopedFileMonitor _scopedFileMonitor;
         private IDisposable _severitySubscription;
+        private IDisposable _severitySubscription2;
         private readonly TextInfo _textInfo= new CultureInfo("en-US",false).TextInfo;
+        private SeverityFileSample _severityFileSampleSelectedItem;
+        private IDisposable _lineSampleSubscription;
 
-        public ConfigureSeverityViewModel(ConfigureSeverityView view, ScopeSettings scopeSettings, SeveritySettings severitySettings)
+
+        private static readonly Dictionary<string, List<string>> Templates = new Dictionary<string, List<string>>
+        {
+            {"NLog", new List<string> {"Trace", "Debug", "Info", "Warn", "Error", "Fatal"}},
+            {"SeriLog-long", new List<string> {"Verbose", "Debug", "Info", "Warning", "Error", "Fatal"}},
+            {"SeriLog-short", new List<string> {"VRB", "DBG", "INF", "WRN", "ERR", "FTL"}},
+            {"Log4j", new List<string> {"TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"}},
+            {"Python", new List<string> {string.Empty, "DEBUG", "INFO", "WARN", "ERROR", "FATAL",}}
+        };
+
+        public ConfigureSeverityViewModel(ConfigureSeverityView view, ScopeSettings scopeSettings, TimestampSettings timestampSettings, SeveritySettings severitySettings)
         {
             View = view;
             ScopeSettings = scopeSettings;
+            TimestampSettings = timestampSettings;
             SeveritySettings = severitySettings ?? new SeveritySettings();
         }
 
         public ScopeSettings ScopeSettings { get; set; }
 
-        public SeveritySettings SeveritySettings { get; set; }
+        public TimestampSettings TimestampSettings { get; set; }
 
-        public void Init()
+        public SeveritySettings SeveritySettings
+        {
+            get => _severitySettings;
+            set => this.RaiseAndSetIfChanged(ref _severitySettings, value);
+        }
+
+        public async void Init()
         {
             if (SeveritySettings != null)
             {
+                SeverityName1 = SeveritySettings.Severities.ContainsKey(1)
+                    ? SeveritySettings.Severities[1]
+                    : Templates["NLog"][0];
+                SeverityName2 = SeveritySettings.Severities.ContainsKey(2)
+                    ? SeveritySettings.Severities[2]
+                    : Templates["NLog"][1];
+                SeverityName3 = SeveritySettings.Severities.ContainsKey(3)
+                    ? SeveritySettings.Severities[3]
+                    : Templates["NLog"][2];
+                SeverityName4 = SeveritySettings.Severities.ContainsKey(4)
+                    ? SeveritySettings.Severities[4]
+                    : Templates["NLog"][3];
+                SeverityName5 = SeveritySettings.Severities.ContainsKey(5)
+                    ? SeveritySettings.Severities[5]
+                    : Templates["NLog"][4];
+                SeverityName6 = SeveritySettings.Severities.ContainsKey(6)
+                    ? SeveritySettings.Severities[6]
+                    : Templates["NLog"][5];
                 SeverityLineSelectionStart = SeveritySettings.SeverityStart;
-                SeverityName1 = SeveritySettings.Severities.ContainsKey(1) ? SeveritySettings.Severities[1] : string.Empty;
-                SeverityName2 = SeveritySettings.Severities.ContainsKey(2) ? SeveritySettings.Severities[2] : string.Empty;
-                SeverityName3 = SeveritySettings.Severities.ContainsKey(3) ? SeveritySettings.Severities[3] : string.Empty;
-                SeverityName4 = SeveritySettings.Severities.ContainsKey(4) ? SeveritySettings.Severities[4] : string.Empty;
-                SeverityName5 = SeveritySettings.Severities.ContainsKey(5) ? SeveritySettings.Severities[5] : string.Empty;
-                SeverityName6 = SeveritySettings.Severities.ContainsKey(6) ? SeveritySettings.Severities[6] : string.Empty;
+                SeverityLineSelectionEnd = SeverityLineSelectionStart + SeveritySettings.MaxSeverityNameLength;
             }
 
             UpperCaseCommand = ReactiveCommand.Create(UpperCaseExecute);
             LowerCaseCommand = ReactiveCommand.Create(LowerCaseExecute);
             TitleCaseCommand = ReactiveCommand.Create(TitleCaseExecute);
 
+            // TODO: Get templates from config-file - apply via i.e. dropdown, instead of hardcoded values
             UseNLogCommand = ReactiveCommand.Create(UseNLogExecute);
             UseSeriLogLongCommand = ReactiveCommand.Create(UseSeriLogLongExecute);
             UseSeriLogShortNLogCommand = ReactiveCommand.Create(UseSeriLogShortNLogExecute);
             UseLog4JCommand = ReactiveCommand.Create(UseLog4JExecute);
             UsePythonCommand = ReactiveCommand.Create(UsePythonExecute);
 
+            ConfigureTimestampCommand = ReactiveCommand.Create(ConfigureTimestampExecute);
             CancelCommand = ReactiveCommand.Create(CancelExecute);
             OpenCommand = ReactiveCommand.Create(OpenExecute);
 
             _severitySubscription = this.WhenAnyValue(
                     x => x.SeverityLineSelectionStart,
+                    x => x.SeverityLineSelectionEnd)
+                .Throttle(TimeSpan.FromMilliseconds(100))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ =>
+                {
+                    UpdateSeveritySettings();
+                });
+
+            _severitySubscription2 = this.WhenAnyValue(
                     x => x.SeverityName1,
                     x => x.SeverityName2,
                     x => x.SeverityName3,
                     x => x.SeverityName4,
                     x => x.SeverityName5,
                     x => x.SeverityName6)
-                .Subscribe(_ => UpdateSeveritySettings());
+                .Throttle(TimeSpan.FromMilliseconds(100))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ =>
+                {
+                    UpdateSeveritySettings();
+                });
 
             _scopedFileMonitor = new ScopedFileMonitor(ScopeSettings.Folder, new List<string> {ScopeSettings.Pattern}, ScopeSettings.Recursive);
 
@@ -83,23 +130,92 @@ namespace LogExpress.ViewModels
                     .Sort(SortExpressionComparer<ScopedFile>.Ascending(t => t.CreationTime))
                     .ObserveOn(RxApp.MainThreadScheduler)
                     .Subscribe(LogFilesReady);
-            _parseFilesSubscription = this.WhenAnyValue(x => x.LogFiles)
-                .Where(files => files != null && files.Count > 0)
-                .Throttle(TimeSpan.FromMilliseconds(100))
-                .DistinctUntilChanged()
-                .ObserveOn(RxApp.MainThreadScheduler)
-                .Do(changes => Logger.Debug("Updating verification table due file-count: {Count}", changes.Count))
-                .Subscribe(_ => UpdateVerificationTable());
 
-            _parseSeveritySubscription = this.WhenAnyValue(
-                    x => x.SeveritySettings.SeverityStart,
-                    x => x.SeveritySettings.Severities
-                )
+            _parseFilesSubscription = this.WhenAnyValue(x => x.LogFiles, x=> x.SeveritySettings)
+                .Where(obs =>
+                {
+                    var (files, severitySettings) = obs;
+                    return files != null && files.Count > 0 && severitySettings != null;
+                })
                 .Throttle(TimeSpan.FromMilliseconds(100))
                 .DistinctUntilChanged()
                 .ObserveOn(RxApp.MainThreadScheduler)
-                .Do(changes => Logger.Debug("Updating verification table due severitySettings changes. Start={Start}, Count={Count}", changes.Item1, changes.Item2))
-                .Subscribe(_ => UpdateVerificationTable());
+                .Subscribe(_ => UpdateFileSamples());
+
+            _lineSampleSubscription = this.WhenAnyValue(x => x.SeverityFileSampleSelectedItem)
+                .Subscribe(UpdateLineSamples);
+           
+        }
+
+
+        private void UpdateLineSamples(SeverityFileSample selectedSeverityFile)
+        {
+            LineSamples.Clear();
+
+            if (selectedSeverityFile == null || !LogFiles.Any()) return;
+
+            LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
+
+            GetFileSeverities(selectedSeverityFile.ScopedFile, 100, out var lineSamples, true);
+            LineSamples.AddRange(lineSamples);
+            
+            Logger.Debug("Have {Count} lines from file {Filename}", LineSamples.Count, selectedSeverityFile.RelativeFullName);
+        }
+
+        public string NLogToolTip => string.Join("\n", Templates["NLog"]);
+        public string SeriLogLongToolTip => string.Join("\n", Templates["SeriLog-long"]);
+        public string SeriLogShortNLogToolTip => string.Join("\n", Templates["SeriLog-short"]);
+        public string Log4JToolTip => string.Join("\n", Templates["Log4j"]);
+        public string PythonToolTip => string.Join("\n", Templates["Python"]);
+
+        private void UseNLogExecute()
+        {
+            SeverityName1 = Templates["NLog"][0];
+            SeverityName2 = Templates["NLog"][1];
+            SeverityName3 = Templates["NLog"][2];
+            SeverityName4 = Templates["NLog"][3];
+            SeverityName5 = Templates["NLog"][4];
+            SeverityName6 = Templates["NLog"][5];
+        }
+
+        private void UseSeriLogLongExecute()
+        {
+            SeverityName1 = Templates["SeriLog-long"][0];
+            SeverityName2 = Templates["SeriLog-long"][1];
+            SeverityName3 = Templates["SeriLog-long"][2];
+            SeverityName4 = Templates["SeriLog-long"][3];
+            SeverityName5 = Templates["SeriLog-long"][4];
+            SeverityName6 = Templates["SeriLog-long"][5];
+        }
+
+        private void UseSeriLogShortNLogExecute()
+        {
+            SeverityName1 = Templates["SeriLog-short"][0];
+            SeverityName2 = Templates["SeriLog-short"][1];
+            SeverityName3 = Templates["SeriLog-short"][2];
+            SeverityName4 = Templates["SeriLog-short"][3];
+            SeverityName5 = Templates["SeriLog-short"][4];
+            SeverityName6 = Templates["SeriLog-short"][5];
+        }
+
+        private void UseLog4JExecute()
+        {
+            SeverityName1 = Templates["Log4j"][0];
+            SeverityName2 = Templates["Log4j"][1];
+            SeverityName3 = Templates["Log4j"][2];
+            SeverityName4 = Templates["Log4j"][3];
+            SeverityName5 = Templates["Log4j"][4];
+            SeverityName6 = Templates["Log4j"][5];
+        }
+
+        private void UsePythonExecute()
+        {
+            SeverityName1 = Templates["Python"][0];
+            SeverityName2 = Templates["Python"][1];
+            SeverityName3 = Templates["Python"][2];
+            SeverityName4 = Templates["Python"][3];
+            SeverityName5 = Templates["Python"][4];
+            SeverityName6 = Templates["Python"][5];
         }
 
         private void TitleCaseExecute()
@@ -132,54 +248,10 @@ namespace LogExpress.ViewModels
             SeverityName6 = SeverityName6.ToUpper();
         }
 
-        private void UsePythonExecute()
+        public SeverityFileSample SeverityFileSampleSelectedItem
         {
-            SeverityName1 = string.Empty;
-            SeverityName2 = "DEBUG";
-            SeverityName3 = "INFO";
-            SeverityName4 = "WARN";
-            SeverityName5 = "ERROR";
-            SeverityName6 = "FATAL";
-        }
-
-        private void UseLog4JExecute()
-        {
-            SeverityName1 = "TRACE";
-            SeverityName2 = "DEBUG";
-            SeverityName3 = "INFO";
-            SeverityName4 = "WARN";
-            SeverityName5 = "ERROR";
-            SeverityName6 = "FATAL";
-        }
-
-        private void UseSeriLogShortNLogExecute()
-        {
-            SeverityName1 = "VRB";
-            SeverityName2 = "DBG";
-            SeverityName3 = "INF";
-            SeverityName4 = "WRN";
-            SeverityName5 = "ERR";
-            SeverityName6 = "FTL";
-        }
-
-        private void UseSeriLogLongExecute()
-        {
-            SeverityName1 = "Verbose";
-            SeverityName2 = "Debug";
-            SeverityName3 = "Info";
-            SeverityName4 = "Warning";
-            SeverityName5 = "Error";
-            SeverityName6 = "Fatal";
-        }
-
-        private void UseNLogExecute()
-        {
-            SeverityName1 = "Trace";
-            SeverityName2 = "Debug";
-            SeverityName3 = "Info";
-            SeverityName4 = "Warn";
-            SeverityName5 = "Error";
-            SeverityName6 = "Fatal";
+            get => _severityFileSampleSelectedItem;
+            set => this.RaiseAndSetIfChanged(ref _severityFileSampleSelectedItem, value);
         }
 
         public ReactiveCommand<Unit, Unit> TitleCaseCommand { get; set; }
@@ -201,87 +273,126 @@ namespace LogExpress.ViewModels
         private void UpdateSeveritySettings()
         {
             var sevStart = Math.Min(SeverityLineSelectionStart, SeverityLineSelectionEnd);
-            SeveritySettings.SeverityStart = sevStart;
-
-            SeveritySettings.Severities = new Dictionary<byte, string>
+            var severitySettings = new SeveritySettings
             {
-                [1] = SeverityName1,
-                [2] = SeverityName2,
-                [3] = SeverityName3,
-                [4] = SeverityName4,
-                [5] = SeverityName5,
-                [6] = SeverityName6
+                SeverityStart = sevStart,
+                Severities = new Dictionary<byte, string>
+                {
+                    [1] = SeverityName1,
+                    [2] = SeverityName2,
+                    [3] = SeverityName3,
+                    [4] = SeverityName4,
+                    [5] = SeverityName5,
+                    [6] = SeverityName6
+                }
             };
+            this.RaisePropertyChanged(nameof(SeverityLineSelectionStart));
+            this.RaisePropertyChanged(nameof(SeverityLineSelectionEnd));
+
+            SeveritySettings = severitySettings;
         }
 
-        private void UpdateVerificationTable()
+        private void UpdateFileSamples()
         {
-            //LineItem.LogFiles = new ReadOnlyObservableCollection<ScopedFile>(LogFiles);
+            Logger.Debug(
+                "Updating the verification tables, based on severity settings: Start={Start} Severities={Severities}",
+                SeveritySettings.SeverityStart, string.Join(",", SeveritySettings.Severities));
 
-            Logger.Debug("Updating verification table: File-count={FileCount} Severity-count={SeverityCount}",
-                LogFiles.Count,
-                SeveritySettings.Severities.Count);
-            ParseSamples.Clear();
+            FileSamples.Clear();
             var isFirst = true;
+            SeverityFileSampleSelectedItem = null;
 
-            foreach (var scopedFile in LogFiles)
+            var entriesVerified = true;
+            foreach (var scopedFile in LogFiles.OrderBy(f => f.StartDate))
             {
-                scopedFile.SeveritySettings = SeveritySettings;
-                string content = null;
-                byte severity = 0;
-                string severityName = string.Empty;
-                try
+                if (isFirst && string.IsNullOrWhiteSpace(SeverityLine))
                 {
-                    content = LineItem.ContentFromDisk(scopedFile, 0);
-                    if (scopedFile.SeveritySettings != null && scopedFile.SeveritySettings.Severities.Count > 0)
-                    {
-                        severity = LineItem.SeverityFromDisk(scopedFile, 0);
-                        severityName = severity > 0 ? scopedFile.SeveritySettings?.Severities[severity] : string.Empty;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex, "Error while trying to get data from disk");
+                    SeverityLine = LineItem.ContentFromDisk(scopedFile, 0);
+                    isFirst = false;
                 }
 
-                var sample = new SeveritySample()
+                GetFileSeverities(scopedFile, 10, out var lineSamples);
+                var severitiesMissing = lineSamples.All(l => !l.SeverityFound);
+                var severities = lineSamples.OrderBy(l => l.SeverityLevel).GroupBy(l => l.SeverityLevel).Select(l => l.First().Severity);
+                var fileSample = new SeverityFileSample
                 {
+                    ScopedFile = scopedFile,
                     FullName = scopedFile.FullName,
                     RelativeFullName = scopedFile.RelativeFullName,
-                    Severity = $"{severityName}",
+                    Severities = string.Join(",", severities),
+                    SeveritiesMissing = severitiesMissing
+                };
+                entriesVerified = entriesVerified && !severitiesMissing;
+
+                FileSamples.Add(fileSample);
+
+                if (SeverityFileSampleSelectedItem == null) SeverityFileSampleSelectedItem = fileSample;
+            }
+
+            EntrySeveritiesVerified = entriesVerified;
+            var msg = entriesVerified ? "Matching severities found": "Severities found in the files are not matching";
+            EntrySeveritiesVerifiedMessage = $"{msg} (based on 10 first lines of each file)";
+        }
+
+        public string EntrySeveritiesVerifiedMessage
+        {
+            get => _entrySeveritiesVerifiedMessage;
+            set => this.RaiseAndSetIfChanged(ref _entrySeveritiesVerifiedMessage, value);
+        }
+
+        public bool EntrySeveritiesVerified
+        {
+            get => _entrySeveritiesVerified;
+            set => this.RaiseAndSetIfChanged(ref _entrySeveritiesVerified, value);
+        }
+
+        private void GetFileSeverities(ScopedFile scopedFile, uint maxLinesToRead, out ObservableCollection<SeverityLineSample> lineSamples, bool includeContent = false)
+        {
+            using var fileStream = new FileStream(scopedFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(fileStream, scopedFile.Encoding);
+
+            var lines = new ObservableCollection<LineItem>();
+
+            ScopedFile.ReadFileLinePositions(lines, reader, scopedFile, maxLinesToRead: maxLinesToRead);
+
+            lineSamples = new ObservableCollection<SeverityLineSample>();
+
+            foreach (var lineItem in lines)
+            {
+                var content = includeContent ? lineItem.Content : null;
+                var (level, severity) = ScopedFile.ReadFileLineSeverity(reader, SeveritySettings, lineItem.Position);
+
+                var lineSample = new SeverityLineSample()
+                {
+                    SeverityLevel = level,
+                    SeverityFound = level > 0,
+                    Severity = severity,
                     Content = content
                 };
 
-                if (severity == 0)
-                {
-                    sample.SeverityErrorColor = WarningColor;
-                    sample.SeverityErrorDetails = "Unable to find a severity level on the first line of the file. \nThis may be an issue with the severity settings. Tune and try again.";
-                }
-
-                ParseSamples.Add(sample);
-
-                if (isFirst)
-                {
-                    SeverityLine = content;
-                    isFirst = false;
-                }
+                lineSamples.Add(lineSample);
             }
         }
-
+        
+        public ReactiveCommand<Unit, Unit> ConfigureTimestampCommand { get; set; }
         public ReactiveCommand<Unit, Unit> CancelCommand { get; set; }
-
-        public ObservableCollection<ScopedFile> LogFiles { get; set; } = new ObservableCollection<ScopedFile>();
-
         public ReactiveCommand<Unit, Unit> OpenCommand { get; set; }
 
-        public ObservableCollection<SeveritySample> ParseSamples{ get; set; } = new ObservableCollection<SeveritySample>();
+        public ObservableCollection<ScopedFile> LogFiles { get; set; } = new ObservableCollection<ScopedFile>();
+        public ObservableCollection<SeverityFileSample> FileSamples { get; set; } = new ObservableCollection<SeverityFileSample>();
+        public ObservableCollection<SeverityLineSample> LineSamples { get; set; } = new ObservableCollection<SeverityLineSample>();
+
 
         public ConfigureSeverityView View { get; }
 
         private void LogFilesReady(IChangeSet<ScopedFile, ulong> changes = null)
         {
             if (changes == null) return;
+
             foreach (var change in changes)
+            {
+                change.Current.TimestampSettings = TimestampSettings;
+                change.Current.SeveritySettings = SeveritySettings;
                 switch (change.Reason)
                 {
                     case ChangeReason.Add:
@@ -304,35 +415,46 @@ namespace LogExpress.ViewModels
                     default:
                         throw new ArgumentOutOfRangeException();
                 }
+            }
         }
 
         private void ConfigureTimestampExecute()
         {
-            View.Close((ConfigureAction.Back, SeveritySettings));
+            var tuple = new Tuple<ConfigureAction, SeveritySettings>(ConfigureAction.Back, SeveritySettings);
+            View.Close(tuple);
         }
 
         private void CancelExecute()
         {
-            View.Close((ConfigureAction.Cancel, new object()));
+            var tuple = new Tuple<ConfigureAction, SeveritySettings>(ConfigureAction.Cancel, null);
+            View.Close(tuple);
         }
 
         private void OpenExecute()
         {
-            View.Close((ConfigureAction.Continue, SeveritySettings));
+            var tuple = new Tuple<ConfigureAction, SeveritySettings>(ConfigureAction.Continue, SeveritySettings);
+            View.Close(tuple);
         }
 
         #region Severity
 
         private string _severityLine = string.Empty;
-        private int _severityLineSelectionStart = 24;
-        private int _severityLineSelectionEnd = 27;
-        private string _severityName1 = "VRB"; // "VERBOSE";
-        private string _severityName2 = "DBG"; // "DEBUG";
-        private string _severityName3 = "INF"; // "INFO";
-        private string _severityName4 = "WRN"; // "WARN";
-        private string _severityName5 = "ERR"; // "ERROR";
-        private string _severityName6 = "FTL"; // "FATAL";
-        private int _severityStart = 25;
+        private int _severityLineSelectionStart;
+        private int _severityLineSelectionEnd;
+        private string _severityName1 = string.Empty; // "VERBOSE";
+        private string _severityName2 = string.Empty; // "DEBUG";
+        private string _severityName3 = string.Empty; // "INFO";
+        private string _severityName4 = string.Empty; // "WARN";
+        private string _severityName5 = string.Empty; // "ERROR";
+        private string _severityName6 = string.Empty; // "FATAL";
+
+        private bool _entrySeveritiesVerified;
+
+        private string _entrySeveritiesVerifiedMessage;
+
+        private SeveritySettings _severitySettings;
+        //private int _severityStart = 25;
+
 
         public string SeverityLine
         {
@@ -341,9 +463,18 @@ namespace LogExpress.ViewModels
         }
         public int SeverityLineSelectionStart
         {
-            get => _severityLineSelectionStart;
-            set => this.RaiseAndSetIfChanged(ref _severityLineSelectionStart, value);
+            get
+            {
+                Logger.Debug("_severityLineSelectionStart is {SeverityLineSelectionStart}", _severityLineSelectionStart);
+                return _severityLineSelectionStart;
+            }
+            set
+            {
+                Logger.Debug("Changing _severityLineSelectionStart from {OldSeverityLineSelectionStart} to {NewSeverityLineSelectionStart}", _severityLineSelectionStart, value);
+                this.RaiseAndSetIfChanged(ref _severityLineSelectionStart, value);
+            }
         }
+
         public int SeverityLineSelectionEnd
         {
             get => _severityLineSelectionEnd;
@@ -386,12 +517,6 @@ namespace LogExpress.ViewModels
             set => this.RaiseAndSetIfChanged(ref _severityName6, value);
         }
 
-        public int SeverityStart
-        {
-            get => _severityStart;
-            set => this.RaiseAndSetIfChanged(ref _severityStart, value);
-        }
-
         #endregion Severity
 
         #region Implementation of IDisposable
@@ -413,36 +538,30 @@ namespace LogExpress.ViewModels
             if (!disposing) return;
 
             _severitySubscription?.Dispose();
+            _severitySubscription2?.Dispose();
             _fileMonitorSubscription?.Dispose();
             _parseFilesSubscription?.Dispose();
-            _parseSeveritySubscription?.Dispose();
             _scopedFileMonitor?.Dispose();
+            _lineSampleSubscription?.Dispose();
         }
 
         #endregion Implementation of IDisposable
     }
 
-    public class SeveritySample: ReactiveObject
+    public class SeverityFileSample: ReactiveObject
     {
+        public ScopedFile ScopedFile { get; set; }
         public string RelativeFullName { get; set; }
-        public string StartDate { get; set; }
-        public string EndDate { get; set; }
-        public string Timestamp { get; set; }
+        public string FullName { get; set; }
+        public string Severities { get; set; }
+        public bool SeveritiesMissing { get; set; }
+    }
+
+    public class SeverityLineSample: ReactiveObject
+    {
         public string Severity { get; set; }
         public string Content { get; set; }
-        public string FullName { get; set; }
-
-
-        public Brush SequenceErrorColor { get; set; }
-
-        public Brush TimestampErrorColor{ get; set; }
-
-        public Brush SeverityErrorColor{ get; set; }
-        
-        public string SequenceErrorDetails{ get; set; } = string.Empty;
-
-        public string TimestampErrorDetails{ get; set; } = string.Empty;
-
-        public string SeverityErrorDetails{ get; set; } = string.Empty;
+        public bool SeverityFound { get; set; }
+        public byte SeverityLevel { get; set; }
     }
 }

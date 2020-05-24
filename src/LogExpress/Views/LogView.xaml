@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:progRing="clr-namespace:AvaloniaProgressRing;assembly=AvaloniaProgressRing"
-             mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+             mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="800"
              x:Class="LogExpress.Views.LogView">
   <UserControl.Styles>
     <Style Selector="StackPanel#Filters TextBlock">
@@ -32,24 +32,24 @@
     <Style Selector="#Toolbar Separator.group">
       <Setter Property="Background" Value="Gainsboro"/>      
       <Setter Property="Width" Value="2"/>
-      <Setter Property="Margin" Value="5"/>
+      <Setter Property="Margin" Value="4"/>
     </Style>
     <Style Selector="#Toolbar DockPanel.item">
-      <Setter Property="Margin" Value="5"/>
+      <Setter Property="Margin" Value="4"/>
     </Style>
     <Style Selector="#Toolbar CheckBox.item">
-      <Setter Property="Margin" Value="5"/>
+      <Setter Property="Margin" Value="4"/>
     </Style>
     <Style Selector="#Toolbar Button.item">
-      <Setter Property="Margin" Value="5"/>
+      <Setter Property="Margin" Value="4"/>
       <Setter Property="BorderBrush" Value="{DynamicResource ThemeControlHighBrush}"/>
       <Setter Property="Background" Value="{DynamicResource ThemeBorderMidBrush}"/>
       <Setter Property="FontWeight" Value="Bold"/>
     </Style>
     <Style Selector="#Toolbar Button.item:disabled">
-      <Setter Property="Margin" Value="5"/>
-      <Setter Property="BorderBrush" Value="{DynamicResource ThemeControlHighBrush}"/>
-      <Setter Property="Background" Value="{DynamicResource ThemeBorderMidBrush}"/>
+      <Setter Property="Margin" Value="4"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource ThemeControlMidBrush}"/>
+      <Setter Property="Background" Value="{DynamicResource ThemeBorderLowBrush}"/>
       <Setter Property="FontWeight" Value="Normal"/>
     </Style>
     <Style Selector="#Toolbar RepeatButton.spinner">
@@ -63,7 +63,7 @@
   </UserControl.Styles>
   <DockPanel>
     <StackPanel Name="Toolbar" Orientation="Horizontal" DockPanel.Dock="Top" Height="70" Background="{DynamicResource ThemeControlMidBrush}" >
-      <Border Margin="5">
+      <Border Margin="4">
         <StackPanel Name="Filters" Orientation="Horizontal">
           <DockPanel LastChildFill="True" Classes="item">
             <TextBlock Text="File" DockPanel.Dock="Top"/>
@@ -126,7 +126,7 @@
         </StackPanel>
       </Border>
       <Separator Classes="group"/>
-      <Border Padding="5" Margin="5">
+      <Border Padding="4" Margin="4" >
         <StackPanel Orientation="Horizontal" Spacing="7">
           <StackPanel Name="Search" Orientation="Vertical">
             <TextBox Name="SearchQuery" Watermark="Search" HorizontalAlignment="Stretch" Margin="0" Padding="5 3 5 3" FontSize="10" Text="{Binding SearchQuery}" AcceptsReturn="False"/>
@@ -172,7 +172,7 @@
         </StackPanel>
       </Border>
       <Separator Classes="group"/>
-      <Border Padding="5" Margin="5">
+      <Border Padding="4" Margin="4" >
         <StackPanel Name="Navigators" Orientation="Horizontal" Spacing="7">
           <StackPanel Name="Severity4" Orientation="Vertical" Classes="item">
             <TextBlock Text="{Binding Severity4Name}" HorizontalAlignment="Center"/>
@@ -212,21 +212,21 @@
         </StackPanel>        
       </Border>
       <Separator Classes="group"/>
-      <Border Padding="5" Margin="0 5">
+      <Border Padding="4" Margin="4" >
         <StackPanel Orientation="Horizontal">
-          <Button Width="40" Command="{Binding CopyCommand}" Classes="item" ToolTip.Tip="Copy selected line(s)" Background="Transparent" BorderThickness="0">
+          <Button Width="40" Command="{Binding CopyCommand}" Classes="item" ToolTip.Tip="Copy selected line(s)" BorderThickness="0" Margin="0" Background="Transparent">
             <DrawingPresenter>
               <DrawingPresenter.Drawing>
                 <GeometryDrawing Brush="{DynamicResource ThemeForegroundLowBrush}" Geometry="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
               </DrawingPresenter.Drawing>
 	          </DrawingPresenter>	
           </Button>
-          <CheckBox Content="Tail" Command="{Binding TailCommand}" IsChecked="True" Classes="item"/>
+          <CheckBox Content="Tail" Command="{Binding TailCommand}" IsChecked="True" Classes="item" Margin="10 4 4 4"/>
         </StackPanel>
       </Border>
     </StackPanel>
     <Grid ColumnDefinitions="*" RowDefinitions="*">
-      <StackPanel Orientation="Vertical" IsVisible="{Binding VirtualLogFile.ShowProgress}" HorizontalAlignment="Center">
+      <StackPanel Orientation="Vertical" IsVisible="{Binding VirtualLogFile.ShowProgress}" HorizontalAlignment="Center" VerticalAlignment="Center">
         <progRing:ProgressRing 
           Width="70" 
           Height="70"
@@ -241,14 +241,15 @@
       </StackPanel>
       <Image 
         Name="SeverityMap" 
-        IsVisible="{Binding VirtualLogFile.ShowLines}"
+        IsVisible="{Binding VirtualLogFile.HasLines}"
         Margin="0 20 0 38"
         Width="10" 
         Stretch="Fill"
         DockPanel.Dock="Right"/>
+      <TextBlock Text="No log-lines to show" IsVisible="{Binding VirtualLogFile.ShowNoLinesWarning}" HorizontalAlignment="Center" TextAlignment="Center" VerticalAlignment="Center"/>
       <ListBox 
         Name="Lines"
-        IsVisible="{Binding VirtualLogFile.ShowLines}"
+        IsVisible="{Binding VirtualLogFile.HasLines}"
         VirtualizationMode="Simple"
         Items="{Binding VirtualLogFile.FilteredLines}"
         SelectedItem="{Binding LineSelected}"
